@@ -1,0 +1,850 @@
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
+// import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
+import RAPIER from 'https://esm.sh/@dimforge/rapier3d-compat@0.12.0';
+import * as Shared from '../shared.js';
+import * as Stats from '../Stats.js';
+import * as GameHUD from './gameHUD.js';
+
+/*---------------------------------*/
+// GAMEPLAY VARIABLES
+/*---------------------------------*/
+
+// Player physical and camera setup
+
+const playerHeight = 1.8; // total player height in meters
+const cameraHeight = 1.3; // desired camera (eye) height above the floor
+// const cameraHeight = Shared.cameraOffsetY; // desired camera (eye) height above the floor
+const playerRadius = 0.4; // radius of the capsule collider
+
+// Distance from capsule center (which is halfway up the capsule) to the camera position.
+// Needed because Rapier places the capsule's origin at its center, not at the feet.
+const cameraHeightFromCapsuleCenter = cameraHeight - playerHeight / 2;
+
+// Half-height of the *cylindrical part* of the capsule.
+// The capsule’s total height = 2 * halfHeight + 2 * radius = playerHeight
+// halfHeight is a bit misleading because it’s not half of the total capsule height, it’s half of the cylindrical part only
+const halfHeight = (playerHeight / 2) - playerRadius;
+
+
+// move variables
+let moveVector = new THREE.Vector3();
+
+// jump variables
+//max height
+//kinetic e = potential e
+//(1/2)mv^2=mgh
+//v=sqrt(2gh)
+// const jumpSpeed     = 3.5;
+// const maxJumpHeight = 0.75;
+const maxJumpHeight = 1;
+const jumpSpeed     = Math.sqrt(2*Shared.gravity*maxJumpHeight);
+let   verticalSpeed = 0;
+// let isJumping = false;
+let jumpPressed = false;
+
+
+// max slope in degrees you want to treat as "floor"
+const maxSlopeDeg = 55;
+const maxSlopeRad = THREE.MathUtils.degToRad(maxSlopeDeg);
+// vertical threshold = cosine of slope
+const verticalThreshold = Math.cos(maxSlopeRad);
+
+//inventory
+const playerState = {
+    "health": 100,
+    "maxHealth": 100,
+    "inventory": {},
+};
+
+// actions variables
+export let Actions={};
+let gameId = null;
+
+export let ActionToKeyMap = {
+    moveCamRight: { key: 'KeyD' },
+    moveCamLeft : { key: 'KeyA' },
+    moveCamFront: { key: 'KeyW' },
+    moveCamBack : { key: 'KeyS' },
+    startGame   : { key: 'KeyG', OnPress: true },
+    jump        : { key: 'Space', OnPress: true },
+    interact    : { key: 'KeyE', OnPress: true },
+    hideCol     : { key: 'KeyH', OnPress: true },
+};
+
+/*---------------------------------*/
+// startGameLoop
+/*---------------------------------*/
+let firstInit = true;
+let playerBody = null;
+let playerColliderDesc = null;
+let playerCollider = null;
+export function startGameLoop() {
+
+    Shared.resetAllActions();
+    Shared.editorState.gameRunning = true;
+    // Shared.editorState.pause = false;
+    Shared.setPause(false);
+    gameId = requestAnimationFrame(gameLoop);
+    // enemyId = requestAnimationFrame(enemyLoop);
+    // Shared.resetCamera();
+    Shared.clock.start();
+    Shared.ambientLight.color.set(Shared.AMBIENTLIGHTGAMECOLOR);
+    verticalSpeed = 0;
+
+    document.addEventListener("mousedown", onMouseClick, false);
+    document.addEventListener("mouseup", onMouseUp, false);
+    // document.addEventListener("wheel", onMouseWheel, { passive: false });
+
+    firstFrame = true;
+
+    const campos = Shared.yawObject.position;
+    if (firstInit){
+        firstInit = false;
+        // --- Create kinematic body ---
+        const playerBodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
+        .setTranslation(campos.x, campos.y+cameraHeightFromCapsuleCenter, campos.z); // initial position where camera is
+
+        playerBody = Shared.physWorld.createRigidBody(playerBodyDesc);
+        playerBody.userData = { name: "playerBody" };
+
+        // --- Create capsule collider ---
+        playerColliderDesc = RAPIER.ColliderDesc.capsule(halfHeight, playerRadius)
+        .setFriction(0.9)
+        .setRestitution(0);
+
+        playerCollider = Shared.physWorld.createCollider(playerColliderDesc, playerBody);
+        Shared.colliderNameMap.set(playerCollider,"playerCollider");
+        playerCollider.userData = { name: "playerCollider" };
+
+        initHighlightPool(Shared.scene);
+
+        //start enemy loop
+        enemyLoop(Shared.enemyGroup.children);
+
+    } else {
+        playerBody.setNextKinematicTranslation(
+            campos.x, campos.y+cameraHeightFromCapsuleCenter, campos.z
+        );
+        playerBody.userData = { name: "playerBody" };
+    }
+
+}
+
+/*---------------------------------*/
+// stopGameLoop
+/*---------------------------------*/
+export function stopGameLoop() {
+    Shared.editorState.gameRunning = false;
+    cancelAnimationFrame(gameId);
+
+
+    document.removeEventListener("mousedown", onMouseClick, false);
+    document.removeEventListener("mouseup", onMouseUp, false);
+    // document.removeEventListener("wheel", onMouseWheel, { passive: false });
+}
+
+/*---------------------------------*/
+// gameLoop
+/*---------------------------------*/
+let lastUVUpdate = 0;
+let firstFrame = true;
+let isTouchingGround = false;
+let isTouchingCeiling = false;
+const verbose = false;
+// let skipOneFrame = false;
+const uvUpdateInterval = 0.07; // seconds between updates
+function gameLoop(now) {
+    const scene = Shared.scene;
+    
+    // console.log("player rigidbody position:", playerBody.translation());
+    // console.log("camera position:", Shared.yawObject.position);
+
+    if (!Shared.editorState.gameRunning) return;
+
+    //reset move vector
+    moveVector.set(0,0,0);
+
+    //execute actions
+    executeActions();
+
+    if (!Shared.editorState.pause) { // && !skipOneFrame) {
+
+        //fps counter
+        Stats.stats.begin();
+
+        //initialize gameplay variables this loop
+        const deltaTime  = Shared.clock.getDelta();       // Time elapsed since last frame
+
+        //clear the onpress/onrelease actions now that they have been sampled 
+        //in that loop to avoid resampling
+        Shared.releaseSingleEventActions();
+
+        //debug only: clear visibility of colliding meshes
+        hideAllHighlights();
+
+        //calculate move vector
+        moveVector.normalize();
+        moveVector.applyEuler(new THREE.Euler(0, Shared.yawObject.rotation.y, 0));
+
+        // 1️⃣ Get the current body translation
+        const currentPos = playerBody.translation();
+        if (firstFrame){
+            const campos = Shared.yawObject.position;
+            currentPos.x = campos.x,
+            currentPos.y = campos.y - cameraHeightFromCapsuleCenter,
+            currentPos.z = campos.z
+        }
+
+        // 2️⃣ Compute the target position
+        const newPos = {
+            x: currentPos.x,
+            y: currentPos.y,
+            z: currentPos.z
+        };
+
+
+        // 3️⃣ Compute rotation quaternion from yaw
+        const q = new THREE.Quaternion();
+        q.setFromEuler(new THREE.Euler(0, Shared.yawObject.rotation.y, 0));
+
+
+
+        if (!firstFrame) {
+
+            /*----------------------------*/
+            /* GROUND + CEILING DETECTION */
+            /*----------------------------*/
+            
+            // check ground and ceiling update vertical speed and snap to floor if close  
+            let checkResult = groundCeilingCheck();
+            let moveCam    = Shared.moveSpeed;
+            const contactThreshold = 0.05; //when capsule is closer than this distance to ground or ceiling we consider it a collision 
+            const skin = 0.02; //after a collision we snap the capsule bottom/up to the ground/ceiling and we nudge outward by skin distance to avoid penetration
+            isTouchingGround = checkResult.groundHit && checkResult.groundDistance < contactThreshold;
+            isTouchingCeiling = checkResult.ceilingHit && checkResult.ceilingDistance < contactThreshold;
+
+            if (!isTouchingGround && !isTouchingCeiling) {
+                if (verbose) console.log("FALLING");
+                moveCam *= 0.5; //slower lateral moves when in Air
+                verticalSpeed -= Shared.gravity * deltaTime;
+                // Clamp to max fall speed
+                if (verticalSpeed < -Shared.maxFallSpeed) verticalSpeed = -Shared.maxFallSpeed;
+            } else if (isTouchingGround) {
+                if (verbose) console.log("GROUNDHIT");
+                if (jumpPressed) {
+                    verticalSpeed = jumpSpeed;
+                    jumpPressed = false;
+                } else {
+                    verticalSpeed = 0; //cancel speed
+                    if (verbose) console.log("FLOOR STICKING from ", newPos.y, "to ", newPos.y - checkResult.groundDistance, " (distance:", checkResult.groundDistance, ")");
+                    newPos.y -= checkResult.groundDistance; //snap to floor
+                    newPos.y += skin; //small skin distance
+                }
+            } else if (isTouchingCeiling) {
+                verticalSpeed = 0; //cancel speed
+                //snap to ceiling and nudge downwards by skin distance
+                if (verbose) console.log("CEILING STICKING from ", newPos.y, "to ", newPos.y - checkResult.ceilingDistance, " (distance:", checkResult.ceilingDistance, ")");
+                newPos.y -= checkResult.ceilingDistance; //snap to ceiling
+                newPos.y -= skin; //small skin distance
+            }
+
+            moveCam *= deltaTime;
+            newPos.x += moveVector.x * moveCam;
+            newPos.y += moveVector.y * moveCam;
+            newPos.z += moveVector.z * moveCam;
+
+
+            // verticalSpeed = 0;
+            newPos.y += verticalSpeed * deltaTime;
+
+            /*----------------*/
+            // WALL DETECTION //
+            /*----------------*/
+
+            if (verbose) console.log("newPos",newPos, "currentPos",currentPos,"moveVector",moveVector);
+            const newPosv = newPos;
+            const currentPosv = currentPos;
+            const newPos2 = collisionCheck(newPosv,currentPosv, q,2);
+            const newPos3 = collisionCheck(newPos2,currentPosv, q,3); //second successive collision check to avoid "sliding" through another wall as a result of the first collision check
+            const newPos4 = collisionCheck(newPos3,currentPosv, q,4); //second successive collision check to avoid "sliding" through another wall as a result of the first collision check
+
+            newPos.x = newPos4.x;
+            newPos.y = newPos4.y;
+            newPos.z = newPos4.z;
+
+        }
+
+        // 4️⃣ Apply rotation first
+        playerBody.setNextKinematicRotation(q);
+
+        // 5️⃣ Then apply translation
+        playerBody.setNextKinematicTranslation(newPos);
+
+
+        //TOIMPROVE: call it in a recursive scheduled on next frame function
+        //update animated textures
+        // convert ms → seconds
+        const t = now * 0.001;
+        // only update if enough time has passed
+        if (t - lastUVUpdate >= uvUpdateInterval) {
+            Shared.updateAnimatedTextures();
+            lastUVUpdate = t;
+        }
+
+        //raycast against actionnables
+        raycastActionnables();
+
+        //render scene
+        Shared.renderer.setViewport(0, 0, Shared.container.clientWidth, Shared.container.clientHeight);//TODO: you just need to do that once?
+        Shared.renderer.render(Shared.scene, Shared.camera);
+
+        //calculate/display stats
+        Stats.renderStats.drawcalls = Shared.renderer.info.render.calls;
+        Stats.updateTextStatsThrottled();
+        Stats.stats.end();
+
+        if (Shared.physWorld){
+
+            updateDoorsPhysics();
+
+            myworldstep();
+
+            syncCameraToPlayer(); // camera follows capsule
+
+            Shared.rapierDebug.update();
+            
+        }
+
+    }
+    // skipOneFrame = false;
+
+    neednewframe = false;
+    if (firstFrame) firstFrame = false;
+    //repeat loop at next frame
+    gameId = requestAnimationFrame(gameLoop);
+
+}
+
+function enemyLoop(enemies){
+    const scene = Shared.scene;
+
+    if (!Shared.editorState.pause) { // && !skipOneFrame) {
+        
+        // const rotationSpeed = 0.01; // radians per frame
+        const moveSpeed = 0.025;     // Adjust movement speed        
+        const attackDistance = 1;     // Adjust movement speed        
+        enemies.forEach(enemy => {
+            // Update enemy here
+            // Rotate the enemy on the Y axis slowly
+            // enemy.rotation.y += rotationSpeed;
+            const toPlayer = new THREE.Vector3().subVectors(Shared.yawObject.position, enemy.position);
+            
+            // Optional: Rotate enemy to face the player
+            enemy.lookAt(Shared.yawObject.position);
+
+            if (enemy.position.distanceTo(Shared.yawObject.position) < attackDistance){
+                console.log("ATTACK");
+            } else {
+                // Move enemy slightly toward the player
+                toPlayer.normalize();           // Make it a unit vector
+                enemy.position.add(toPlayer.multiplyScalar(moveSpeed));
+            }
+
+        });
+
+    }
+
+    requestAnimationFrame(() => enemyLoop(enemies));
+}
+
+
+//wrapper around world step to check its not called twice within the same frame
+//otherwise the physics go crazy
+let neednewframe = false;
+function myworldstep(){
+    if (neednewframe){
+        throw new Error("world.step has been called more than once within the same frame, this is forbidden.");
+    }
+    Shared.physWorld.step();
+    neednewframe = true;
+}
+
+/*---------------------------------*/
+// executeActions
+/*---------------------------------*/
+function executeActions() {
+    if (!Shared.editorState.pause) {
+        //pauseable actions
+        if (Actions.moveCamLeft) moveVector.x  -= 1;
+        if (Actions.moveCamRight) moveVector.x += 1;
+        if (Actions.moveCamFront) moveVector.z -= 1;
+        if (Actions.moveCamBack) moveVector.z  += 1;
+        if (Actions.startGame) Shared.toggleGameMode();
+        if (Actions.jump)      jump();
+        if (Actions.interact)  interact();
+        if (Actions.hideCol) toggleHideCollider();
+    } else {
+        //unpauseable actions
+    }
+}
+
+/*---------------------------------*/
+// jump related functions 
+/*---------------------------------*/
+
+/*---------------------------------*/
+// jump
+/*---------------------------------*/
+function jump(){
+    // if (isTouchingGround()){
+    if (isTouchingGround){
+        // verticalSpeed = jumpSpeed;
+        jumpPressed = true;
+    }
+}
+
+/*---------------------------------*/
+// groundCeilingCheck
+/*---------------------------------*/
+let groundDebugArrow = null;
+let ceilingDebugArrow = null;
+let debugCapsuleBottom = null;
+let debugCapsuleUp = null;
+let firstTimeArrow = true;
+function groundCeilingCheck() {
+
+    const bodyPos = playerBody.translation();
+    // Y position of the *bottom* of the capsule (the player's feet).
+    // The capsule's center is at bodyPos.y, so we subtract the cylinder half-height
+    // plus the spherical cap radius to reach the very bottom of the capsule.
+    // halfHeight is a bit misleading because it’s not half of the total capsule height, it’s half of the cylindrical part only
+    const capsuleBottomY = bodyPos.y - (halfHeight + playerRadius);
+    const capsuleUpY     = bodyPos.y + (halfHeight + playerRadius);
+
+    // const skinDistance      = 0.01;
+    const aboveFeetDistance = 0.4;
+    const rayLength         = 0.2;                          // small margin
+    const totalrayLength    = aboveFeetDistance+rayLength;  // small margin
+
+    // GROUND DETECTION
+    const groundRayOrigin = {
+        x: bodyPos.x,
+        y: capsuleBottomY + aboveFeetDistance, // just above feet
+        z: bodyPos.z
+    };
+
+    const groundRayDir = { x: 0, y: -1, z: 0 };
+    const groundRay = new RAPIER.Ray(groundRayOrigin, groundRayDir);
+
+    const groundHit = Shared.physWorld.castRay(
+        groundRay, 
+        totalrayLength, 
+        true,              // solid
+        undefined,         // filterFlags
+        undefined,         // filterGroups
+        playerCollider,    // exclude this collider
+        undefined,         // exclude rigidbody (optional)
+        undefined          // filterPredicate (optional)
+    );
+
+    let distanceToGround = 0;
+    if (groundHit != null) {
+        const name = Shared.colliderNameMap.get(groundHit.collider);
+        distanceToGround = groundHit.toi - aboveFeetDistance;
+        updateHighlight(groundHit.collider,0);
+        if (verbose) 
+            console.log("GROUND hit ", name, "at distance", distanceToGround);
+        // console.log("Collider", groundHit.collider, "hit at distance", groundHit.toi, "shape", groundHit.collider.shape);
+        // if (Math.abs(distanceToGround) <= skinDistance) distanceToGround = 0;//discard small distances to avoid jitter
+    } else {
+        if (verbose) 
+            console.log("NOGROUND from origin ", groundRayOrigin);
+    }
+
+    // CEILING DETECTION
+    const ceilingRayOrigin = {
+        x: bodyPos.x,
+        y: capsuleUpY - aboveFeetDistance, // just below head
+        z: bodyPos.z
+    };
+
+    const ceilingRayDir = { x: 0, y: 1, z: 0 };
+    const ceilingRay = new RAPIER.Ray(ceilingRayOrigin, ceilingRayDir);
+
+    const ceilingHit = Shared.physWorld.castRay(
+        ceilingRay, 
+        totalrayLength, 
+        true,              // solid
+        undefined,         // filterFlags
+        undefined,         // filterGroups
+        playerCollider,    // exclude this collider
+        undefined,         // exclude rigidbody (optional)
+        undefined          // filterPredicate (optional)
+    );
+
+    let distanceToCeiling = 0;
+    if (ceilingHit != null) {
+        const name = Shared.colliderNameMap.get(ceilingHit.collider);
+        distanceToCeiling = ceilingHit.toi - aboveFeetDistance;
+        updateHighlight(ceilingHit.collider,1);
+        if (verbose) 
+            console.log("CEILING hit ", name, "at distance", distanceToCeiling);
+        // console.log("Collider", groundHit.collider, "hit at distance", groundHit.toi, "shape", groundHit.collider.shape);
+        // if (Math.abs(distanceToGround) <= skinDistance) distanceToGround = 0;//discard small distances to avoid jitter
+    } else {
+        if (verbose) 
+            console.log("CEILING from origin ", ceilingRayOrigin);
+    }
+
+
+    /*---------------*/
+    /*---------------*/
+    /*---------------*/
+    /*---------------*/
+    // DRAW A DEBUG LINE
+    /*---------------*/
+    /*---------------*/
+    /*---------------*/
+    if (firstTimeArrow) {
+        // console.log("FIRSTTIMEARROW");
+        // ground arrow
+        firstTimeArrow = false;
+        {
+            const origin = new THREE.Vector3(groundRayOrigin.x, groundRayOrigin.y, groundRayOrigin.z);
+            const direction = new THREE.Vector3(groundRayDir.x, groundRayDir.y, groundRayDir.z).normalize();
+            const length = totalrayLength;
+            const color = groundHit ? 0x00ff00 : 0xff0000;
+            groundDebugArrow = new THREE.ArrowHelper(direction, origin, length, color);
+            Shared.colliderDebugGroup.add(groundDebugArrow);
+            // Sphere for capsule bottom
+            const sphereGeometry = new THREE.SphereGeometry(0.05, 8, 8); // radius 5 cm
+            const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+            debugCapsuleBottom = new THREE.Mesh(sphereGeometry, sphereMaterial);
+            debugCapsuleBottom.position.set(groundRayOrigin.x, capsuleBottomY, groundRayOrigin.z);
+            Shared.colliderDebugGroup.add(debugCapsuleBottom);
+        }
+        {
+            const origin = new THREE.Vector3(ceilingRayOrigin.x, ceilingRayOrigin.y, ceilingRayOrigin.z);
+            const direction = new THREE.Vector3(ceilingRayDir.x, ceilingRayDir.y, ceilingRayDir.z).normalize();
+            const length = totalrayLength;
+            const color = ceilingHit ? 0x00ff00 : 0xff0000;
+            ceilingDebugArrow = new THREE.ArrowHelper(direction, origin, length, color);
+            Shared.colliderDebugGroup.add(ceilingDebugArrow);
+            // Sphere for capsule bottom
+            const sphereGeometry = new THREE.SphereGeometry(0.05, 8, 8); // radius 5 cm
+            const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+            debugCapsuleUp = new THREE.Mesh(sphereGeometry, sphereMaterial);
+            debugCapsuleUp.position.set(ceilingRayOrigin.x, capsuleUpY, ceilingRayOrigin.z);
+            Shared.colliderDebugGroup.add(debugCapsuleUp);
+        }
+    } else {
+        {        // move/update the arrow
+            groundDebugArrow.position.set(groundRayOrigin.x, groundRayOrigin.y, groundRayOrigin.z);
+            groundDebugArrow.setDirection(new THREE.Vector3(groundRayDir.x, groundRayDir.y, groundRayDir.z).normalize());
+            groundDebugArrow.setLength(totalrayLength);
+            groundDebugArrow.setColor(groundHit ? 0x00ff00 : 0xff0000);
+            // Update capsule bottom sphere
+            debugCapsuleBottom.position.set(groundRayOrigin.x, capsuleBottomY, groundRayOrigin.z);
+        }
+        {        // move/update the arrow
+            ceilingDebugArrow.position.set(ceilingRayOrigin.x, ceilingRayOrigin.y, ceilingRayOrigin.z);
+            ceilingDebugArrow.setDirection(new THREE.Vector3(ceilingRayDir.x, ceilingRayDir.y, ceilingRayDir.z).normalize());
+            ceilingDebugArrow.setLength(totalrayLength);
+            ceilingDebugArrow.setColor(ceilingHit ? 0x00ff00 : 0xff0000);
+            // Update capsule bottom sphere
+            debugCapsuleUp.position.set(ceilingRayOrigin.x, capsuleUpY, ceilingRayOrigin.z);
+        }
+    }
+    /*---------------*/
+    /*---------------*/
+    /*---------------*/
+    /*---------------*/
+
+
+
+    return {
+        groundHit: (groundHit != null),
+        groundDistance: distanceToGround,
+        ceilingHit: (ceilingHit != null),
+        ceilingDistance: distanceToCeiling,
+    };
+
+}
+
+
+/*---------------------------------*/
+// interact related functions 
+/*---------------------------------*/
+/*---------------------------------*/
+// interact
+/*---------------------------------*/
+function interact(){
+    console.log("interact");
+}
+
+
+let raycastChunkArray = [];
+const raycaster = new THREE.Raycaster();
+const screenCenter = new THREE.Vector2(0, 0); // Center of screen in NDC (Normalized Device Coordinates)
+
+let selectObject = null;
+
+function raycastActionnables(){
+    // console.log("raycastActionnables");
+    selectObject = null;
+    // raycastChunkArray = Object.values(Shared.chunksInScene);//to optimize only load nearby chunks
+    // const actionnableChunkArray = Object.values(Shared.actionnablesInScene).flat();
+    // const raycastTargets = raycastChunkArray.concat(actionnableChunkArray);
+    const raycastTargets = [];
+
+    //TODO: optimize with octree or BVH tree
+    Shared.actionnablesGroup.traverse((child) => {
+    if (child.isMesh) raycastTargets.push(child);
+    });
+    Shared.staticGroup.traverse((child) => {
+    if (child.isMesh) raycastTargets.push(child);
+    });
+    Shared.enemyGroup.traverse((child) => {
+    if (child.isMesh) raycastTargets.push(child);
+    });
+    // const raycastTargets = raycastChunkArray;
+    raycaster.setFromCamera(screenCenter, Shared.camera);
+    let doesIntersect = false;
+    const visibleTargets = raycastTargets.filter(obj => obj.visible);
+    const hits = raycaster.intersectObjects(visibleTargets, true);//true means recursive raycast, it parses children too
+
+    let closestHit = null;
+
+    for (const hit of hits) {
+        if (!closestHit || hit.distance < closestHit.distance) {
+            closestHit = hit;
+        }
+    }
+
+    if (closestHit && closestHit.distance < 3) {
+        doesIntersect = true;
+    }
+
+    if (doesIntersect) {
+
+        if(closestHit.object?.userData?.type=="actionnable" ||
+            closestHit.object?.userData?.type=="enemy"
+        ){
+            selectObject = closestHit.object;
+            console.log("RAYCASTHIT",selectObject.name);
+            if (selectObject.userData.actionnableParent != null)
+                selectObject = selectObject.userData.actionnableParent
+            // while (parentActionnable && !actionnableChunkArray.includes(parentActionnable)) {
+            //     parentActionnable = parentActionnable.parent;
+            // }
+            // selectObject = parentActionnable || selectObject;
+        }
+        // console.log("HIT");
+        // console.log(closestHit.object?.userData);
+        // closestHit.object?.userData?.action();
+    }
+
+}
+
+function onMouseClick(event) {
+    // console.log("game click");
+    if (selectObject){
+        selectObject?.userData?.actionnableData?.action(selectObject, playerState);
+    }
+}
+
+function onMouseUp(event) {
+    // console.log("game mouseup");
+}
+
+
+function syncCameraToPlayer() {
+    const t = playerBody.translation();
+    Shared.yawObject.position.set(t.x, t.y + cameraHeightFromCapsuleCenter, t.z);//
+}
+
+
+function collisionCheck(newPos, currentPos, currentRot, idx = 2) {
+
+    // Vector from current to new
+    const movement = {
+        x: newPos.x - currentPos.x,
+        y: newPos.y - currentPos.y,
+        z: newPos.z - currentPos.z,
+    };
+    // Raycast-like shape movement
+    const movementLength = Math.hypot(movement.x, movement.y, movement.z);
+    const direction = {
+        x: movement.x / (movementLength || 1),
+        y: movement.y / (movementLength || 1),
+        z: movement.z / (movementLength || 1),
+    };
+    const shapeVel = {
+        x: direction.x * movementLength,
+        y: direction.y * movementLength,
+        z: direction.z * movementLength
+    };
+
+    const hit = Shared.physWorld.castShape(
+        { x: currentPos.x, y: currentPos.y, z: currentPos.z }, // shapePos
+        currentRot,                                           // shapeRot
+        shapeVel,                                             // shapeVel
+        playerColliderDesc.shape,                             // shape
+        1.0,                                                  // maxToi (distance multiplier)
+        true,                                                 // stopAtPenetration
+        null,                                                 // filterFlags
+        null,                                                 // filterGroups
+        playerCollider,                                       // exclude this collider ✅
+        playerBody,                                           // exclude this rigidbody ✅
+    );
+
+    //any hit returning less than 1 is considered collision within the movement
+    if (hit && hit.toi < 1.0) {
+
+        let collidername = Shared.colliderNameMap.get(hit.collider);
+        if (verbose) 
+            console.log("check" + idx + " hit", collidername, "at fractional distance", hit.toi);
+
+        //calculate movement to contact and remaining of the movement after contact
+        const distToContact = movementLength * hit.toi;
+        const distRemaining = movementLength - distToContact;
+        const movementToContact = { x: direction.x*distToContact, y: direction.y*distToContact, z: direction.z*distToContact};
+        const movementRemaining = { x: direction.x*distRemaining, y: direction.y*distRemaining, z: direction.z*distRemaining};
+
+        updateHighlight(hit.collider,idx); //colour colliding collider
+
+        if (moveVector.z < -0.5)
+            if (verbose) console.log("THISMOVE"); //useful line for breakpoint
+        
+        // We hit something before full movement!
+        // Slide along the wall
+        const normal = hit.normal1;
+        
+        // Project movementRemaining onto plane (remove component along normal)
+        const dotRem = (movementRemaining.x * normal.x + movementRemaining.y * normal.y + movementRemaining.z * normal.z);
+        let slideVec = {
+            x: movementRemaining.x - (normal.x * dotRem),
+            y: movementRemaining.y - (normal.y * dotRem),
+            z: movementRemaining.z - (normal.z * dotRem)
+        };
+
+        const pushAway = 1e-4;
+        if (verbose) 
+            console.log("SLIDE:",
+                        "\n currentPos: ",currentPos,                  
+                        "\n movementToContact:",movementToContact,
+                        "\n slideVec:",slideVec,
+                        "\n normal:",normal
+            )
+        //move to contact point, then nudge slighly away along normal
+        newPos.x = currentPos.x + movementToContact.x + normal.x * pushAway; 
+        newPos.y = currentPos.y + movementToContact.y + normal.y * pushAway; 
+        newPos.z = currentPos.z + movementToContact.z + normal.z * pushAway; 
+
+        //then slide along the remaining distance projected onto collider
+        newPos.x += slideVec.x;
+        newPos.y += slideVec.y;
+        newPos.z += slideVec.z;
+
+    } else {
+        if (verbose)
+            console.log("NOHIT");
+    }
+
+    return newPos;
+
+}
+
+function toggleHideCollider(){
+    // Shared.rapierDebug.toggle();
+    Shared.colliderDebugGroup.visible = !Shared.colliderDebugGroup.visible;
+}
+
+function updateDoorsPhysics() {
+  for (const update of Shared.pendingBodyUpdates) {
+
+    // const position =  update.body.translation(); // returns a Rapier.Vector (x, y, z)
+    // const rotation =  update.body.rotation();   // returns a Rapier.Quaternion (x, y, z, w)
+    // console.log("Body position:", position.x, position.y, position.z);
+    // console.log("Body rotation:", rotation.x, rotation.y, rotation.z, rotation.w);
+
+    update.body.setNextKinematicTranslation(update.pivotPos);
+    update.body.setNextKinematicRotation(update.pivotQuat);
+
+    }
+  Shared.pendingBodyUpdates.length = 0; // clear for next frame
+}
+
+
+
+
+
+
+/*-----------------------------------*/
+// HIGHLIGHT COLLIDERS               //
+/*-----------------------------------*/
+
+// outside update loop
+const highlightCollidingMeshes = [];
+const highlightColors = [0xCFFF00, 0xFFFF00, 0xFFA500, 0xFF0000]; // green, yellow, orange, red
+const MAX_HIGHLIGHTS = 4; // slightly more than expected collisions
+
+function initHighlightPool(scene) {
+    for (let i = 0; i < MAX_HIGHLIGHTS; i++) {
+        const color = highlightColors[i % highlightColors.length]; // cycle if more than 4
+        const material = new THREE.MeshBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.5,
+            // wireframe: true,      // show edges
+            // depthTest: false,
+            // depthWrite: false
+        });
+
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), material);
+        mesh.name = "highlightCollidingMeshes_"+i;
+        mesh.renderOrder = 999;   // always in front
+        mesh.visible = false;
+        highlightCollidingMeshes.push(mesh);
+        Shared.colliderDebugGroup.add(mesh);
+    }
+}
+
+// update per frame
+// update a single highlight at a given index
+function updateHighlight(collider, index, highlightBody = false) {
+    if (!Shared.rapierDebug.isVisible()) return;
+    if (!collider) return;
+    if (index >= highlightCollidingMeshes.length) return;
+
+    const mesh = highlightCollidingMeshes[index];
+    mesh.visible = true;
+
+    const rigidBody = collider.parent(); // optional: get parent rigid body
+    const position = highlightBody ? rigidBody.translation() : collider.translation();
+    const rotation = highlightBody ? rigidBody.rotation() : collider.rotation();
+
+    mesh.position.set(position.x, position.y, position.z);
+    mesh.quaternion.set(rotation.x, rotation.y, rotation.z, rotation.w);
+
+    const shape = collider.shape;
+    if (shape instanceof RAPIER.Cuboid) {
+        const hx = shape.halfExtents.x;
+        const hy = shape.halfExtents.y;
+        const hz = shape.halfExtents.z;
+        mesh.scale.set(hx*2, hy*2, hz*2);
+    } else if (shape instanceof RAPIER.Capsule) {
+        const r = shape.radius;
+        const hh = shape.halfHeight;
+        mesh.scale.set(r*2, hh*2+r*2, r*2);
+    } else if (shape instanceof RAPIER.Ball) {
+        const r = shape.radius;
+        mesh.scale.set(r*2, r*2, r*2);
+    } else {
+        mesh.scale.set(1,1,1);
+    }
+}
+
+function hideAllHighlights() {
+    highlightCollidingMeshes.forEach(m => m.visible = false);
+}

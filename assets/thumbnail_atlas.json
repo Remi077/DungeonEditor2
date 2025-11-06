@@ -1,0 +1,163 @@
+{
+  "SIZE": 128,
+  "NUMX": 7,
+  "NUMY": 6,
+  "IMAGES": {
+    "Sphere": {
+      "x": 0,
+      "y": 0
+    },
+    "Cylinder": {
+      "x": 1,
+      "y": 0
+    },
+    "Torus": {
+      "x": 2,
+      "y": 0
+    },
+    "Bump": {
+      "x": 3,
+      "y": 0
+    },
+    "Door": {
+      "x": 4,
+      "y": 0
+    },
+    "Torch": {
+      "x": 5,
+      "y": 0
+    },
+    "SpriteTorch": {
+      "x": 6,
+      "y": 0
+    },
+    "Plane": {
+      "x": 0,
+      "y": 1
+    },
+    "PlaneBump": {
+      "x": 1,
+      "y": 1
+    },
+    "PlaneCross": {
+      "x": 2,
+      "y": 1
+    },
+    "PlaneFrame": {
+      "x": 3,
+      "y": 1
+    },
+    "PlaneFrame001": {
+      "x": 4,
+      "y": 1
+    },
+    "PlaneRidge": {
+      "x": 5,
+      "y": 1
+    },
+    "Pillar": {
+      "x": 6,
+      "y": 1
+    },
+    "Pillar45": {
+      "x": 0,
+      "y": 2
+    },
+    "PillarBase": {
+      "x": 1,
+      "y": 2
+    },
+    "PillarBase2": {
+      "x": 2,
+      "y": 2
+    },
+    "Pillarindent": {
+      "x": 3,
+      "y": 2
+    },
+    "PillarRound": {
+      "x": 4,
+      "y": 2
+    },
+    "PillarRoundBase": {
+      "x": 5,
+      "y": 2
+    },
+    "Arch": {
+      "x": 6,
+      "y": 2
+    },
+    "ArchBase": {
+      "x": 0,
+      "y": 3
+    },
+    "ArchBaseBig": {
+      "x": 1,
+      "y": 3
+    },
+    "ArchBigLeft": {
+      "x": 2,
+      "y": 3
+    },
+    "ArchBigRight": {
+      "x": 3,
+      "y": 3
+    },
+    "ArchInside": {
+      "x": 4,
+      "y": 3
+    },
+    "ArchInsideHalf": {
+      "x": 5,
+      "y": 3
+    },
+    "ArchWall": {
+      "x": 6,
+      "y": 3
+    },
+    "dome": {
+      "x": 0,
+      "y": 4
+    },
+    "domehalf": {
+      "x": 1,
+      "y": 4
+    },
+    "domehalfflat": {
+      "x": 2,
+      "y": 4
+    },
+    "domequarter": {
+      "x": 3,
+      "y": 4
+    },
+    "grid": {
+      "x": 4,
+      "y": 4
+    },
+    "gridsquare": {
+      "x": 5,
+      "y": 4
+    },
+    "Chest": {
+      "x": 6,
+      "y": 4
+    },
+    "Item_coinbag": {
+      "x": 0,
+      "y": 5
+    },
+    "Item_key": {
+      "x": 1,
+      "y": 5
+    },
+    "Item_vial": {
+      "x": 2,
+      "y": 5
+    },
+    "Item_sword": {
+      "x": 3,
+      "y": 5
+    }
+  }
+}

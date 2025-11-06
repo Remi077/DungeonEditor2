@@ -1,0 +1,15 @@
+{
+    "ATLAS": {
+        "ATLAS0": {
+            "url": "https://raw.githubusercontent.com/Remi077/DungeonEditor/main/assets/atlas_2048x2048_64x64_nopad.json"
+        },
+        "MESHTHUMBNAIL": {
+            "url": "https://raw.githubusercontent.com/Remi077/DungeonEditor/main/assets/thumbnail_atlas.json"
+        }
+    },
+    "MESHATLAS": {
+        "ATLAS0": {
+            "url": "https://raw.githubusercontent.com/Remi077/DungeonEditor/main/assets/Meshes5.glb"
+        }
+    }
+}
