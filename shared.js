@@ -252,8 +252,10 @@ export const LoadBtnProgress = document.getElementById('LoadBtnProgress');
 /*-----------------------------------------------------*/
 export async function loadResources() {
     // load all resources into dictionaries from JSON
-    let online = true;
-    if (online)
+    // let online = true;
+    const isOnline = location.hostname !== 'localhost' && location.hostname !== '127.0.0.1';
+    console.log("ISONLINE",isOnline)
+    if (isOnline)
         resourcesDict = await loadResourcesFromJson('./assets/resourcesonline.json');
     else
         resourcesDict = await loadResourcesFromJson('./assets/resources.json');
