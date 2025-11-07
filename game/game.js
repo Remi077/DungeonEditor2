@@ -118,10 +118,37 @@ export function startGameLoop() {
 
         initHighlightPool(Shared.scene);
 
+        // create enemy colliders
+        Shared.enemyGroup.children.forEach(element => {
+
+            const enemyBodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
+                .setTranslation(element.position.x, element.position.y, element.position.z)
+            // .setRotation(element.quaternion.x, element.position.y, element.position.z)
+
+            const enemyBody = Shared.physWorld.createRigidBody(enemyBodyDesc);
+            enemyBody.userData = { name: "enemyBody_"+element.name };
+
+            const enemyColliderDesc = RAPIER.ColliderDesc.capsule(halfHeight, playerRadius)
+            .setFriction(0.9)
+            .setRestitution(0)
+            ;
+
+            const enemyCollider = Shared.physWorld.createCollider(enemyColliderDesc, enemyBody);
+
+            Shared.colliderNameMap.set(enemyCollider,"enemyCollider_"+element.name);
+            enemyCollider.userData = { name: "enemyCollider_"+element.name };
+            element.userData.body = enemyBody;
+
+            //initialize body positions to mesh positions on first frame
+            // enemyBody.setNextKinematicTranslation(
+            //     element.position.x,element.position.y,element.position.z);
+        });
+
         //start enemy loop
-        enemyLoop(Shared.enemyGroup.children);
+        enemyLoop();
 
     } else {
+
         playerBody.setNextKinematicTranslation(
             campos.x, campos.y+cameraHeightFromCapsuleCenter, campos.z
         );
@@ -311,6 +338,8 @@ function gameLoop(now) {
 
             syncCameraToPlayer(); // camera follows capsule
 
+            syncEnemyToBodies();
+
             Shared.rapierDebug.update();
             
         }
@@ -325,36 +354,47 @@ function gameLoop(now) {
 
 }
 
-function enemyLoop(enemies){
+function enemyLoop(){
     const scene = Shared.scene;
 
     if (!Shared.editorState.pause) { // && !skipOneFrame) {
         
         // const rotationSpeed = 0.01; // radians per frame
         const moveSpeed = 0.025;     // Adjust movement speed        
+        // const moveSpeed = 1;     // Adjust movement speed        
         const attackDistance = 1;     // Adjust movement speed        
-        enemies.forEach(enemy => {
-            // Update enemy here
-            // Rotate the enemy on the Y axis slowly
-            // enemy.rotation.y += rotationSpeed;
+        Shared.enemyGroup.children.forEach(enemy => {
+
+            const enemyBody = enemy.userData.body;
             const toPlayer = new THREE.Vector3().subVectors(Shared.yawObject.position, enemy.position);
-            
+
             // Optional: Rotate enemy to face the player
-            enemy.lookAt(Shared.yawObject.position);
+            // enemy.lookAt(Shared.yawObject.position);
+            // Compute the quaternion that makes the enemy look at the target
+            const targetPos = Shared.yawObject.position.clone();
+            const enemyPos = enemy.position.clone();
+            const up = new THREE.Vector3(0, 1, 0);
+            const m = new THREE.Matrix4();
+            m.lookAt(enemyPos, targetPos, up);
+            const q = new THREE.Quaternion().setFromRotationMatrix(m);
+            const rapierQuat = { x: q.x, y: q.y, z: q.z, w: q.w };// ✅ Convert to Rapier format
+            enemyBody.setNextKinematicRotation(rapierQuat);
 
             if (enemy.position.distanceTo(Shared.yawObject.position) < attackDistance){
                 console.log("ATTACK");
             } else {
                 // Move enemy slightly toward the player
                 toPlayer.normalize();           // Make it a unit vector
-                enemy.position.add(toPlayer.multiplyScalar(moveSpeed));
+                toPlayer.multiplyScalar(moveSpeed);
+                const nextPos = enemy.position.clone().add(toPlayer);
+                enemyBody.setNextKinematicTranslation(nextPos);
             }
 
         });
 
     }
 
-    requestAnimationFrame(() => enemyLoop(enemies));
+    requestAnimationFrame(enemyLoop);
 }
 
 
@@ -365,8 +405,17 @@ function myworldstep(){
     if (neednewframe){
         throw new Error("world.step has been called more than once within the same frame, this is forbidden.");
     }
+    console.log("WORLD STEP")
+        Shared.enemyGroup.children.forEach(enemy => {
+            const enemyBodyPosition = enemy.userData.body.translation();
+            // console.log("ENEMYPOSBEFOREWORLDSTEP",enemyBodyPosition);
+        })
     Shared.physWorld.step();
     neednewframe = true;
+        Shared.enemyGroup.children.forEach(enemy => {
+            const enemyBodyPosition = enemy.userData.body.translation();
+            // console.log("ENEMYPOSAFTERWORLDSTEP",enemyBodyPosition);
+        })
 }
 
 /*---------------------------------*/
@@ -663,6 +712,15 @@ function syncCameraToPlayer() {
     Shared.yawObject.position.set(t.x, t.y + cameraHeightFromCapsuleCenter, t.z);//
 }
 
+function syncEnemyToBodies() {
+    Shared.enemyGroup.children.forEach(enemy => {
+        const enemyBody = enemy.userData.body;
+        const t = enemyBody.translation();
+        const q = enemyBody.rotation();
+        enemy.position.set(t.x, t.y, t.z);
+        enemy.quaternion.set(q.x,q.y,q.z,q.w)
+    })
+}
 
 function collisionCheck(newPos, currentPos, currentRot, idx = 2) {
 
@@ -774,10 +832,6 @@ function updateDoorsPhysics() {
     }
   Shared.pendingBodyUpdates.length = 0; // clear for next frame
 }
-
-
-
-
 
 
 /*-----------------------------------*/
