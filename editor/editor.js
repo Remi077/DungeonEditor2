@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
 // import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
 import RAPIER from 'https://esm.sh/@dimforge/rapier3d-compat@0.12.0';
@@ -1279,7 +1280,7 @@ function editorLoop(now) {
         // convert ms → seconds
         const t = now * 0.001;
         // only update if enough time has passed
-        if (t - lastUVUpdate >= uvUpdateInterval) {
+        if (t - lastUVUpdate >= Shared.uvUpdateInterval) {
             Shared.updateAnimatedTextures();
             lastUVUpdate = t;
         }

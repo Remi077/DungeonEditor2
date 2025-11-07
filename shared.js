@@ -1,3 +1,4 @@
+// @ts-nocheck
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
 // import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
 import RAPIER from 'https://esm.sh/@dimforge/rapier3d-compat@0.12.0';
@@ -152,6 +153,9 @@ if (shadowEnabled) {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap; // smoother shadows                            // important
 }
 
+export const uvUpdateInterval = 0.07; // seconds between updates
+
+
 //Rapier collider world
 export let physWorld = null;
 export let rapierDebug = null;
@@ -168,14 +172,11 @@ export const pendingBodyUpdates = [];
 export const colliderDebugGroup = new THREE.Group();
 colliderDebugGroup.name = "colliderDebugGroup";
 
-
-export const gravity       = 9.81;
+export const gravity = 9.81;
 export const maxFallSpeed = 50; // meters per second, adjust as needed
-// Define how steep is "walkable"
-export const maxSlopeCos = Math.cos(45 * Math.PI / 180); // walkable if < 45°
-
-export let physEventQueue = null;
-
+export const maxSlopeCos = Math.cos(45 * Math.PI / 180); // Define how steep is "walkable": walkable if < 45°
+export const contactThreshold = 0.05; //when capsule is closer than this distance to ground or ceiling we consider it a collision 
+export const skin = 0.02; //after a collision we snap the capsule bottom/up to the ground/ceiling and we nudge outward by skin distance to avoid penetration
 
 //ambient light
 export let ambientLight = new THREE.AmbientLight(AMBIENTLIGHTEDITCOLOR); // Soft light;
@@ -301,8 +302,6 @@ export async function initRapier(){
 
     rapierDebug = addRapierDebug(physWorld);
 
-// Create an event queue (for collision/contact events)
-    physEventQueue = new RAPIER.EventQueue(true); // "true" = auto drain    
 
     mainRigidBody = physWorld.createRigidBody(RAPIER.RigidBodyDesc.fixed());
     mainRigidBody.userData = { name: "mainRigidBody"};
@@ -793,10 +792,10 @@ export function openDoor(self, playerState) {
     if (!self?.userData) return;
 
     //if player has key open door
-    const haskey = playerState.inventory["Item_key001"]
+    const haskey = playerState.inventory["Action_Item_key001"]
     if (!haskey){
         console.log("NOKEY");
-        return;
+        // return;
     }
 
     // Toggle the door state
