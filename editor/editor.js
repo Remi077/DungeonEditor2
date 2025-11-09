@@ -1889,10 +1889,12 @@ export async function loadTest(scene) {
         const actionnablesArray = [];
         const lightsArray = [];
         const enemyArray = [];
+        const rigArray = [];
 
         // gltf.scene.traverse((child) => {
         gltf.scene.children.forEach((child) => {
-            if (!child.isMesh && !child.isLight) return;
+
+            // if (!child.isMesh && !child.isLight) return;
 
             if (child.isLight){
                 lightsArray.push(child);
@@ -1923,6 +1925,46 @@ export async function loadTest(scene) {
                 enemyArray.push(child);
                 child.userData.type = "enemy";
                 child.userData["actionnableData"] = Shared.actionnableUserData["enemy"];
+            } else if (child.name.startsWith("Armature")) {
+
+                Shared.playerMesh.v = child;//TEMP
+
+                let rigRoot = child;
+                //search for rig root
+                // child.children.forEach((c)=>{
+                //     if (c.name.startsWith("mixamorig"))
+                //         rigRoot = c;
+                //     });
+                // child.traverse(obj => {
+                // if (obj.isSkinnedMesh) {
+                //     console.log('SkinnedMesh:', obj.name, obj.skeleton);
+                // }
+                // });
+
+                //create mixer on the armature root
+                const mixer = new THREE.AnimationMixer(rigRoot)
+                Shared.mixerDictionary.set(child.name,mixer);
+                rigArray.push(child);
+
+                // extract animations
+                gltf.animations.forEach( clip =>{
+                    if (clip.name.startsWith(child.name)){
+                        Shared.clipActions.set(clip.name,
+                        {
+                            mixer:mixer,
+                            clipAction:mixer.clipAction(clip),
+                        });
+                        if (clip.name === Shared.ANIM_WALK_NAME){
+                            const walkLowerClip = Shared.makePartialClip(clip, Shared.lowerBodyBones);
+                            Shared.clipActions.set(Shared.ANIM_WALK_NAME_L,
+                            {
+                                mixer:mixer,
+                                clipAction:mixer.clipAction(walkLowerClip),
+                            });
+                        }
+                    }
+                });
+
             } else {
                 staticArray.push(child);
             }
@@ -1935,10 +1977,12 @@ export async function loadTest(scene) {
         staticArray.forEach(mesh => Shared.staticGroup.add(mesh));
         lightsArray.forEach(light=> Shared.lightGroup.add(light));
         enemyArray.forEach(ene=>Shared.enemyGroup.add(ene));
+        rigArray.forEach(rig=>Shared.rigGroup.add(rig));
         scene.add(Shared.staticGroup);
         scene.add(Shared.actionnablesGroup);
         scene.add(Shared.lightGroup);
         scene.add(Shared.enemyGroup);
+        scene.add(Shared.rigGroup);
 
         //enable shadows
         if (Shared.shadowEnabled) {

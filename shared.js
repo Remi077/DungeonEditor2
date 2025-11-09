@@ -153,6 +153,36 @@ if (shadowEnabled) {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap; // smoother shadows                            // important
 }
 
+//mixer
+export const upperBodyBones = [
+    'mixamorigSpine', 
+    'mixamorigSpine1', 
+    'mixamorigSpine2', 
+    'mixamorigNeck', 
+    'mixamorigHead', 
+    // 'mixamorigRightArm', 
+    'mixamorigLeftArm'];
+export const lowerBodyBones = [//define bone whitelist for an animation
+  'mixamorigHips',
+  'mixamorigRightUpLeg',
+  'mixamorigRightLeg',
+  'mixamorigRightFoot',
+  'mixamorigLeftUpLeg',
+  'mixamorigLeftLeg',
+  'mixamorigLeftFoot',
+    'mixamorigRightArm',  //for walk cycle, weapon is in left hand so leave right arm go with walk
+];
+export const ANIM_ATTACK_NAME =  "Armature_Man_Attack"
+export const ANIM_WALK_NAME =  "Armature_Man_Walking"
+export const ANIM_WALK_NAME_L =  "Armature_Man_Walking_Lower"
+export function makePartialClip(clip, boneNames) {
+    const filteredTracks = clip.tracks.filter(track => {
+        return boneNames.some(name => track.name.startsWith(name));
+    });
+    return new THREE.AnimationClip(clip.name + '_partial', clip.duration, filteredTracks);
+}
+export const mixerDictionary = new Map();
+export const clipActions = new Map();
 export const uvUpdateInterval = 0.07; // seconds between updates
 
 
@@ -207,7 +237,7 @@ export const spritesInScene = {};
 export const actionnablesInScene = {};
 
 export const staticGroup = new THREE.Group();
-staticGroup.name="actionnablesGroup";
+staticGroup.name="staticGroup";
 export const actionnablesGroup = new THREE.Group();
 actionnablesGroup.name="actionnablesGroup";
 export const actionnableNames = ["Door","Item","Chest"];
@@ -234,12 +264,16 @@ lightGroup.name="lightGroup";
 export const enemyGroup = new THREE.Group();
 enemyGroup.name="enemyGroup";
 
+export const rigGroup = new THREE.Group();
+rigGroup.name="rigGroup";
+
 //colliders grouped by chunks
 export const colliderInScene = {};
 
 // camera holder: FPS-style rotation system
 export const pitchObject = new THREE.Object3D(); // Up/down rotation (X axis)
 export const yawObject = new THREE.Object3D();   // Left/right rotation (Y axis)
+export const playerMesh = {v:null};
 
 // clock
 export const clock = new THREE.Clock();

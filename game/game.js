@@ -69,6 +69,7 @@ export let ActionToKeyMap = {
     jump: { key: 'Space', OnPress: true },
     interact: { key: 'KeyE', OnPress: true },
     hideCol: { key: 'KeyH', OnPress: true },
+    // playActionTest: {key: 'KeyB', OnPress: true }
 };
 
 /*---------------------------------*/
@@ -165,6 +166,9 @@ export function startGameLoop() {
         //start enemy loop
         enemyLoop();
 
+        //start animate loop
+        animateLoop();
+
     }
 
 }
@@ -196,6 +200,7 @@ export function stopGameLoop() {
 let lastUVUpdate = 0;
 let isPlayerTouchingGround = false;
 const verbose = false;
+let deltaTime = 0;
 
 function gameLoop(now) {
     const scene = Shared.scene;
@@ -214,7 +219,13 @@ function gameLoop(now) {
         Stats.stats.begin();
 
         //initialize gameplay variables this loop
-        const deltaTime = Shared.clock.getDelta();       // Time elapsed since last frame
+        deltaTime = Shared.clock.getDelta();       // Time elapsed since last frame
+        //getDelta resets the clock at every call
+        //so its important its called once per clock and per frame
+        //all the other frame loop (enemyLoop, animateLoop) which reads deltaTime and call
+        //requestAnimationFrame actually run on one single thread in a given unknown order
+        //so best approach is to set deltaTime at same place every loop and have all the 
+        //other loops consume this deltaTime
 
         //clear the onpress/onrelease actions now that they have been sampled 
         //in that loop to avoid resampling
@@ -276,6 +287,8 @@ function gameLoop(now) {
 
             syncCameraToPlayer(); // camera follows capsule
 
+            syncPlayerMesh();
+
             syncEnemyToBodies();
 
             Shared.rapierDebug.update();
@@ -293,15 +306,15 @@ function gameLoop(now) {
 
 
 //TODO: moved in Shared
-const enableEnemy = true;
-const enemyMoveSpeed = Shared.moveSpeed*0.8;     // Adjust movement speed
+const enableEnemy = false;
+// const enemyMoveSpeed = Shared.moveSpeed*0.8;     // Adjust movement speed
+const enemyMoveSpeed = Shared.moveSpeed*0.1;     // Adjust movement speed
 const enemyAttackDistance = 2;     // Adjust movement speed        
 const up = new THREE.Vector3(0, 1, 0);
 
 function enemyLoop() {
 
     if (!Shared.editorState.pause && enableEnemy) {
-        const deltaTime = Shared.clock.getDelta();       // Time elapsed since last frame
         
         const targetPos = Shared.yawObject.position.clone();
         Shared.enemyGroup.children.forEach(enemy => {
@@ -374,6 +387,18 @@ function executeActions() {
         if (Actions.jump) jump();
         if (Actions.interact) interact();
         if (Actions.hideCol) toggleHideCollider();
+        // if (Actions.playActionTest) playClip("Armature_Man_Walking");
+
+        //animations
+        if (
+            Actions.moveCamLeft || 
+            Actions.moveCamRight || 
+            Actions.moveCamFront || 
+            Actions.moveCamBack
+        ) playClip(Shared.ANIM_WALK_NAME_L);
+        // ) playClip(Shared.ANIM_WALK_NAME);
+        else stopClip();
+
     } else {
         //unpauseable actions
     }
@@ -688,6 +713,7 @@ function onMouseClick(event) {
     if (selectObject) {
         selectObject?.userData?.actionnableData?.action(selectObject, playerState);
     }
+    playClipOnce(Shared.ANIM_ATTACK_NAME);
 }
 
 function onMouseUp(event) {
@@ -697,7 +723,30 @@ function onMouseUp(event) {
 
 function syncCameraToPlayer() {
     const t = playerBody.translation();
-    Shared.yawObject.position.set(t.x, t.y + cameraHeightFromCapsuleCenter, t.z);//
+    // Shared.yawObject.position.set(t.x, t.y + cameraHeightFromCapsuleCenter, t.z);//
+    Shared.yawObject.position.set(t.x, t.y + cameraHeightFromCapsuleCenter + 0.2, t.z);//
+}
+
+function syncPlayerMesh() {
+    const q = playerBody.rotation();
+    Shared.playerMesh.v.quaternion.set(q.x, q.y, q.z, q.w);
+
+    // optional 180° turn if needed
+    Shared.playerMesh.v.rotation.y += Math.PI;
+
+    const t = playerBody.translation();
+    const capsuleBottomY = t.y - (halfHeight + playerRadius);
+
+    // compute forward vector in world space
+    const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(Shared.playerMesh.v.quaternion);
+
+    const offset = 0.25; // distance behind playerBody
+
+    Shared.playerMesh.v.position.set(
+        t.x - forward.x * offset,
+        capsuleBottomY,
+        t.z - forward.z * offset
+    );
 }
 
 function syncEnemyToBodies() {
@@ -834,4 +883,64 @@ function updateHighlight(collider, index, highlightBody = false) {
 
 function hideAllHighlights() {
     highlightCollidingMeshes.forEach(m => m.visible = false);
+}
+
+
+
+
+
+/*----------------*/
+/* SKIN ANIMATION */
+/*----------------*/
+
+let currentAction = null;
+let currentSingleAction = null;
+let currentMixer = null;
+
+function animateLoop(){
+    if ((currentSingleAction || currentAction)
+        && currentMixer){
+        // console.log("UPDATING",currentAction);
+        currentMixer.update(deltaTime);
+    }
+    requestAnimationFrame(animateLoop);
+}
+
+function playClip(clipName) {
+  const clipInfo = Shared.clipActions.get(clipName);
+  const nextAction = clipInfo?.clipAction;
+  if (!nextAction || (nextAction === currentAction)) return;
+  currentMixer = clipInfo.mixer;
+  if (currentAction && currentAction !== nextAction) {
+      currentAction.crossFadeTo(nextAction, 0.3, true);
+    }
+//   console.log("SETACTION TO ",clipName);
+  nextAction.reset().play();
+  currentAction = nextAction;
+}
+
+function playClipOnce(clipName) {
+  const clipInfo = Shared.clipActions.get(clipName);
+  const nextAction = clipInfo?.clipAction;
+  currentMixer = clipInfo.mixer;
+  nextAction.reset();
+  nextAction.setLoop(THREE.LoopOnce, 1);
+  nextAction.clampWhenFinished = true;
+  nextAction.play();
+  currentSingleAction = nextAction;
+}
+
+function stopClip() {
+    // return;
+    if (!currentAction) return;
+    currentAction.fadeOut(0.3); // fades over 0.3s
+    // currentAction.stop();  // stops playback immediately
+    currentAction = null;
+}
+
+function makePartialClip(clip, boneNames) {
+  const filteredTracks = clip.tracks.filter(track => {
+    return boneNames.some(name => track.name.startsWith(name));
+  });
+  return new THREE.AnimationClip(clip.name + '_partial', clip.duration, filteredTracks);
 }
