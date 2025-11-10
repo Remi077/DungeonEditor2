@@ -1940,6 +1940,14 @@ export async function loadTest(scene) {
                 //     console.log('SkinnedMesh:', obj.name, obj.skeleton);
                 // }
                 // });
+                child.traverse(obj => {
+                if (obj.isSkinnedMesh) {
+                    console.log('SkinnedMesh:', obj.name, obj.skeleton);
+                    if (obj.name.startsWith("Item")) //do this only for sword, body can be frustrum culled
+                        obj.frustumCulled = false; //this prevents sword in first person view to be culled when camera tilts and get too close
+                }
+                });
+
 
                 //create mixer on the armature root
                 const mixer = new THREE.AnimationMixer(rigRoot)

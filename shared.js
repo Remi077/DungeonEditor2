@@ -142,7 +142,16 @@ export const mazefloorpopupCanvas = document.getElementById("mazefloorpopupCanva
 
 // Scene, Camera, Renderer
 export const scene    = new THREE.Scene();
-export const camera   = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+export const camera   = new THREE.PerspectiveCamera(
+    75,
+    // 90,
+    container.clientWidth / container.clientHeight,
+    0.1, //near plane
+    // 0.00001, //near plane
+    // 5 //far plane
+    1000 //far plane
+);
+// console.log("NEARPLANE",camera.near)
 export const renderer = new THREE.WebGLRenderer({ 
     canvas:canvas, 
     alpha: true,
@@ -172,7 +181,8 @@ export const lowerBodyBones = [//define bone whitelist for an animation
   'mixamorigLeftFoot',
     'mixamorigRightArm',  //for walk cycle, weapon is in left hand so leave right arm go with walk
 ];
-export const ANIM_ATTACK_NAME =  "Armature_Man_Attack"
+// export const ANIM_ATTACK_NAME =  "Armature_Man_Attack"
+export const ANIM_ATTACK_NAME =  "Armature_Man_Attack_two"
 export const ANIM_WALK_NAME =  "Armature_Man_Walking"
 export const ANIM_WALK_NAME_L =  "Armature_Man_Walking_Lower"
 export function makePartialClip(clip, boneNames) {

@@ -720,11 +720,15 @@ function onMouseUp(event) {
     // console.log("game mouseup");
 }
 
-
+// const camTweakY = 0.2;
+// const camTweakXZ = 0.25;
+const camTweakY = 0.2;
+const camTweakXZ = 0.10;
 function syncCameraToPlayer() {
     const t = playerBody.translation();
     // Shared.yawObject.position.set(t.x, t.y + cameraHeightFromCapsuleCenter, t.z);//
-    Shared.yawObject.position.set(t.x, t.y + cameraHeightFromCapsuleCenter + 0.2, t.z);//
+    // Shared.yawObject.position.set(t.x, t.y + cameraHeightFromCapsuleCenter + 0.2, t.z);//
+    Shared.yawObject.position.set(t.x, t.y + cameraHeightFromCapsuleCenter + camTweakY, t.z);//
 }
 
 function syncPlayerMesh() {
@@ -740,7 +744,7 @@ function syncPlayerMesh() {
     // compute forward vector in world space
     const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(Shared.playerMesh.v.quaternion);
 
-    const offset = 0.25; // distance behind playerBody
+    const offset = camTweakXZ; // distance behind playerBody
 
     Shared.playerMesh.v.position.set(
         t.x - forward.x * offset,
