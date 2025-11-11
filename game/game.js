@@ -81,7 +81,7 @@ let playerColliderDesc = null;
 let playerCollider = null;
 
 function newMovementState(){
-    return {
+    const newObj = {
         body: playerBody,
         collider: playerCollider,
         verticalSpeed: 0,
@@ -92,11 +92,16 @@ function newMovementState(){
         isTouchingCeiling: false,
         moveVector: new THREE.Vector3(),
         moveSpeed: Shared.moveSpeed,
-        rotation: new THREE.Quaternion()
+        rotation: new THREE.Quaternion(),
+        collisionmask: null,
     }
+    Object.seal(newObj);
+    return newObj;
 }
 const playerMovementState = newMovementState()
 
+// let swordMesh;
+// let swordBody;
 export function startGameLoop() {
 
     Shared.resetAllActions();
@@ -106,6 +111,7 @@ export function startGameLoop() {
     Shared.clock.start();
     Shared.ambientLight.color.set(Shared.AMBIENTLIGHTGAMECOLOR);
     playerMovementState.verticalSpeed = 0;
+    playerMovementState.collisionmask = Shared.COL_MASKS.PLAYER;
 
     document.addEventListener("mousedown", onMouseClick, false);
     document.addEventListener("mouseup", onMouseUp, false);
@@ -123,7 +129,8 @@ export function startGameLoop() {
         // --- Create capsule collider ---
         playerColliderDesc = RAPIER.ColliderDesc.capsule(halfHeight, playerRadius)
             .setFriction(0.9)
-            .setRestitution(0);
+            .setRestitution(0)
+            .setCollisionGroups(Shared.COL_MASKS.PLAYER);
 
         playerCollider = Shared.physWorld.createCollider(playerColliderDesc, playerBody);
         Shared.colliderNameMap.set(playerCollider, "playerCollider");
@@ -148,12 +155,14 @@ export function startGameLoop() {
             const enemyColliderDesc = RAPIER.ColliderDesc.capsule(halfHeight, playerRadius)
                 .setFriction(0.9)
                 .setRestitution(0)
+                .setCollisionGroups(Shared.COL_MASKS.ENEMY)
                 ;
 
             const enemyCollider = Shared.physWorld.createCollider(enemyColliderDesc, enemyBody);
 
             const enemyMovementState    = newMovementState()
             enemyMovementState.body     = enemyBody
+            enemyMovementState.collisionmask = Shared.COL_MASKS.ENEMY
             enemyMovementState.collider = enemyCollider
             enemyMovementState.curPos   = element.position
 
@@ -163,6 +172,10 @@ export function startGameLoop() {
 
         });
 
+        //weapon collider and body
+
+
+        
         //start enemy loop
         enemyLoop();
 
@@ -280,16 +293,21 @@ function gameLoop(now) {
         Stats.stats.end();
 
         if (Shared.physWorld) {
+            
+            // syncRigidBodyToBones(); //sync elected rb to their bones
 
-            updateDoorsPhysics();
+            syncWeaponBody();
+
+            updatePhysics();
 
             myworldstep();
 
             syncCameraToPlayer(); // camera follows capsule
 
-            syncPlayerMesh();
+            syncPlayerMesh(); //sync player mesh to player body
+            // syncWeaponBody();
 
-            syncEnemyToBodies();
+            syncEnemyToBodies(); //sync enemy mesh to enemy body
 
             Shared.rapierDebug.update();
 
@@ -713,7 +731,8 @@ function onMouseClick(event) {
     if (selectObject) {
         selectObject?.userData?.actionnableData?.action(selectObject, playerState);
     }
-    playClipOnce(Shared.ANIM_ATTACK_NAME);
+    attack();
+    // playClipOnce(Shared.ANIM_ATTACK_NAME);
 }
 
 function onMouseUp(event) {
@@ -732,21 +751,22 @@ function syncCameraToPlayer() {
 }
 
 function syncPlayerMesh() {
+    const p = Shared.playerMesh.root
     const q = playerBody.rotation();
-    Shared.playerMesh.v.quaternion.set(q.x, q.y, q.z, q.w);
+    p.quaternion.set(q.x, q.y, q.z, q.w);
 
     // optional 180° turn if needed
-    Shared.playerMesh.v.rotation.y += Math.PI;
+    p.rotation.y += Math.PI;
 
     const t = playerBody.translation();
     const capsuleBottomY = t.y - (halfHeight + playerRadius);
 
     // compute forward vector in world space
-    const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(Shared.playerMesh.v.quaternion);
+    const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(p.quaternion);
 
     const offset = camTweakXZ; // distance behind playerBody
 
-    Shared.playerMesh.v.position.set(
+    p.position.set(
         t.x - forward.x * offset,
         capsuleBottomY,
         t.z - forward.z * offset
@@ -770,6 +790,14 @@ function collisionCheck(movementState, idx = 2) {
     const movementLength = movement.length();
     const direction = movement.clone().normalize();
 
+const excludedColliders = new Set([
+  movementState.collider,
+//   someOtherCollider,
+//   yetAnotherCollider,
+]);
+    const excludeBodies = [];
+    excludeBodies.push(movementState.body);
+
     const hit = Shared.physWorld.castShape(
         currentPos,               // shapePos
         movementState.rotation,   // shapeRot
@@ -778,15 +806,55 @@ function collisionCheck(movementState, idx = 2) {
         1.0,                      // maxToi (distance multiplier)
         true,                     // stopAtPenetration
         null,                     // filterFlags
-        null,                     // filterGroups
-        movementState.collider,   // exclude this collider
-        movementState.body,       // exclude this rigidbody
+        // null,                     // filterGroups
+        movementState.collisionmask,                     // filterGroups
+
+        null,                     // exclude this collider
+        // movementState.collider,   // exclude this collider
+
+        // null,                      // exclude this rigidbody
+        movementState.body,     // exclude this rigidbody
+
+        // (collider) => {
+        //     // return false;
+        // // Return true to *consider* collider, false to *ignore*
+        // if (excludedColliders.has(collider)) return false;
+        // return true;
+        // }                         //filterPredicate
     );
 
     if (hit && hit.toi < 1.0) { //toi<=0: penetration, 0<toi<1: collision within movement, 1<toi: collision beyond movement
         let collidername = Shared.colliderNameMap.get(hit.collider);
         updateHighlight(hit.collider, idx); //colour colliding collider
-        if (verbose) console.log("check" + idx + " hit", collidername, "at fractional distance", hit.toi);
+        // if (verbose) 
+            console.log("check" + idx + " hit", collidername, "at fractional distance", hit.toi);
+
+
+        // const collider = hit.collider;
+        // const groups = collider.collisionGroups();
+        // const layer = groups >>> 16;
+        // const mask = groups & 0xFFFF;
+
+        // console.log(
+        //     "Hit collider:", Shared.colliderNameMap.get(collider),
+        //     "\n  Layer bits:", layer.toString(2).padStart(16, "0"),
+        //     "\n  Mask bits:", mask.toString(2).padStart(16, "0"),
+        //     "\n  Layer:", Object.keys(Shared.COL_LAYERS).find(k => Shared.COL_LAYERS[k] === layer)
+        // );
+
+        // const p_collider = movementState.collider;
+        // const p_groups = p_collider.collisionGroups();
+        // const p_layer = p_groups >>> 16;
+        // const p_mask = p_groups & 0xFFFF;
+
+        // console.log(
+        //     "Hit collider:", Shared.colliderNameMap.get(p_collider),
+        //     "\n  Layer bits:", p_layer.toString(2).padStart(16, "0"),
+        //     "\n  Mask bits:", p_mask.toString(2).padStart(16, "0"),
+        //     "\n  Layer:", Object.keys(Shared.COL_LAYERS).find(k => Shared.COL_LAYERS[k] === p_layer)
+        // );
+
+
 
         //calculate movement to contact and remaining of the movement after contact
         const distToContact = movementLength * hit.toi;
@@ -811,10 +879,10 @@ function toggleHideCollider() {
     Shared.colliderDebugGroup.visible = !Shared.colliderDebugGroup.visible;
 }
 
-function updateDoorsPhysics() {
+function updatePhysics() {
     for (const update of Shared.pendingBodyUpdates) {
-        update.body.setNextKinematicTranslation(update.pivotPos);
-        update.body.setNextKinematicRotation(update.pivotQuat);
+        update.body.setNextKinematicTranslation(update.pos);
+        update.body.setNextKinematicRotation(update.quat);
     }
     Shared.pendingBodyUpdates.length = 0; // clear for next frame
 }
@@ -923,13 +991,27 @@ function playClip(clipName) {
   currentAction = nextAction;
 }
 
-function playClipOnce(clipName) {
+function playClipOnce(clipName, endAction=null) {
   const clipInfo = Shared.clipActions.get(clipName);
   const nextAction = clipInfo?.clipAction;
   currentMixer = clipInfo.mixer;
   nextAction.reset();
   nextAction.setLoop(THREE.LoopOnce, 1);
   nextAction.clampWhenFinished = true;
+
+//   console.log(nextAction.getClip().duration);
+  // Remove previous listener to prevent stacking
+  currentMixer.removeEventListener('finished', currentMixer._onFinishListener);
+
+  // Add new listener
+  currentMixer._onFinishListener = (e) => {
+    if (e.action === nextAction) {  // check which action finished
+      console.log('Animation finished!');
+      if (endAction) endAction();
+    }
+  };
+  currentMixer.addEventListener('finished', currentMixer._onFinishListener);
+
   nextAction.play();
   currentSingleAction = nextAction;
 }
@@ -947,4 +1029,103 @@ function makePartialClip(clip, boneNames) {
     return boneNames.some(name => track.name.startsWith(name));
   });
   return new THREE.AnimationClip(clip.name + '_partial', clip.duration, filteredTracks);
+}
+
+
+let isAttacking = false;
+function attack() {
+    
+    if (!isAttacking){
+    isAttacking = true;
+
+    playClipOnce(Shared.ANIM_ATTACK_NAME, endAttack);
+}
+}
+
+function endAttack()
+{
+    console.log("ENDATTACK");
+    isAttacking = false;
+}
+
+
+// Reuse temporary vectors/quaternions to avoid GC churn
+const _worldPos = new THREE.Vector3();
+const _worldQuat = new THREE.Quaternion();
+
+function syncRigidBodyToBones() {
+  // ✅ Map iteration is done with forEach, not .array
+  Shared.RigidBodyBoneBindingMap.forEach((bone, rb) => {
+    bone.getWorldPosition(_worldPos);
+    bone.getWorldQuaternion(_worldQuat);
+
+    // ✅ Rapier expects raw values (Vec3 + Quaternion)
+    rb.setNextKinematicTranslation({
+      x: _worldPos.x,
+      y: _worldPos.y,
+      z: _worldPos.z,
+    });
+
+    rb.setNextKinematicRotation({
+      x: _worldQuat.x,
+      y: _worldQuat.y,
+      z: _worldQuat.z,
+      w: _worldQuat.w,
+    });
+
+    // rb.setNextKinematicTranslation({
+    //   x: _worldPos.x,
+    //   y: _worldPos.z,   // Blender Z → Three.js Y
+    //   z: -_worldPos.y,  // Blender -Y → Three.js -Z
+    // });
+
+
+    // ✅ Rapier expects raw values (Vec3 + Quaternion)
+    // rb.setNextKinematicTranslation({
+    //   x: _worldPos.x,
+    //   y: _worldPos.y,
+    //   z: _worldPos.z,
+    // });
+
+    // const blenderToThree = new THREE.Quaternion();
+    // // blenderToThree.setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)); 
+    // blenderToThree.setFromEuler(new THREE.Euler(
+    //     // 0,
+    //     // Math.PI/2,
+    //     0,
+    //     // -Math.PI / 2,
+    //     0,
+    //     Math.PI / 2,
+    // )); 
+    // // rotates from Blender Z-up to Three.js Y-up
+
+    // const correctedQuat = _worldQuat.clone().premultiply(blenderToThree);
+
+    // rb.setNextKinematicRotation({
+    //   x: correctedQuat.x,
+    //   y: correctedQuat.y,
+    //   z: correctedQuat.z,
+    //   w: correctedQuat.w,
+    // });
+
+  });
+}
+
+
+let swordMesh = null;
+let swordBody = null;
+const swordPos=new THREE.Vector3();
+const swordQuat=new THREE.Quaternion();
+// const swordBody;
+function syncWeaponBody(){
+
+    if (!swordMesh)  swordMesh = Shared.scene.getObjectByName(Shared.SWORD_NAME);
+    if (!swordBody) swordBody = Shared.BodyNameMap.get("Collider_Kine_"+Shared.SWORD_NAME)
+
+    swordMesh.getWorldPosition(swordPos);
+    swordMesh.getWorldQuaternion(swordQuat);
+
+    swordBody.setNextKinematicTranslation(swordPos);
+    swordBody.setNextKinematicRotation(swordQuat);
+
 }

@@ -1886,6 +1886,7 @@ export async function loadTest(scene) {
 
         // const visibleMeshes = [];
         const staticArray = [];
+        const weaponArray = [];
         const actionnablesArray = [];
         const lightsArray = [];
         const enemyArray = [];
@@ -1927,30 +1928,25 @@ export async function loadTest(scene) {
                 child.userData["actionnableData"] = Shared.actionnableUserData["enemy"];
             } else if (child.name.startsWith("Armature")) {
 
-                Shared.playerMesh.v = child;//TEMP
+                Shared.playerMesh.root = child;//TEMP
 
-                let rigRoot = child;
-                //search for rig root
-                // child.children.forEach((c)=>{
-                //     if (c.name.startsWith("mixamorig"))
-                //         rigRoot = c;
-                //     });
-                // child.traverse(obj => {
-                // if (obj.isSkinnedMesh) {
-                //     console.log('SkinnedMesh:', obj.name, obj.skeleton);
-                // }
-                // });
                 child.traverse(obj => {
                 if (obj.isSkinnedMesh) {
-                    console.log('SkinnedMesh:', obj.name, obj.skeleton);
-                    if (obj.name.startsWith("Item")) //do this only for sword, body can be frustrum culled
+                    // console.log('SkinnedMesh:', obj.name, obj.skeleton);
+                    Shared.playerMesh.skeleton = obj.skeleton;//TEMP
+                    Shared.playerMesh.weaponBone = obj.skeleton.getBoneByName(Shared.WEAPON_BONE_NAME);;//TEMP
+                    if (!Shared.playerMesh.weaponBone) throw new Error("weapon bone not defined");
+                    if (obj.name.startsWith("weapon")){ 
+                        //do this only for sword, body can be frustrum culled
                         obj.frustumCulled = false; //this prevents sword in first person view to be culled when camera tilts and get too close
+                        weaponArray.push(obj);
+                    }
                 }
                 });
-
+                if (!Shared.playerMesh.weaponBone) throw new Error("weapon bone not defined");
 
                 //create mixer on the armature root
-                const mixer = new THREE.AnimationMixer(rigRoot)
+                const mixer = new THREE.AnimationMixer(child)
                 Shared.mixerDictionary.set(child.name,mixer);
                 rigArray.push(child);
 
@@ -1991,6 +1987,7 @@ export async function loadTest(scene) {
         scene.add(Shared.lightGroup);
         scene.add(Shared.enemyGroup);
         scene.add(Shared.rigGroup);
+
 
         //enable shadows
         if (Shared.shadowEnabled) {
@@ -2075,6 +2072,13 @@ export async function loadTest(scene) {
 
                 }
 
+                //collision groups
+                if (child.name.startsWith("Collider_Kine_weapon"))
+                    colliderDesc.setCollisionGroups(Shared.COL_MASKS.PLAYERWPN)
+                else 
+                    colliderDesc.setCollisionGroups(Shared.COL_MASKS.SCENERY)
+
+
                 const colliderHandle = Shared.physWorld.createCollider(colliderDesc, bodyHandle);
 
                 colliderHandle.userData = { name: child.name };
@@ -2082,6 +2086,14 @@ export async function loadTest(scene) {
                 Shared.BodyNameMap.set(child.name, bodyHandle);
 
             }});
+
+        //bind weapons to player bone
+        // const weaponBone=Shared.playerMesh.weaponBone;
+        // const weaponBody = Shared.BodyNameMap.get("Collider_Kine_"+Shared.SWORD_NAME)
+        // weaponArray.forEach(mesh=>{
+        //     Shared.bindRigidBodyToBone(weaponBody,weaponBone)
+        // })
+
 
     } catch (err) {
         console.error("Failed to load GLB:", err);

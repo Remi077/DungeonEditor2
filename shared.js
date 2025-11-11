@@ -182,9 +182,13 @@ export const lowerBodyBones = [//define bone whitelist for an animation
     'mixamorigRightArm',  //for walk cycle, weapon is in left hand so leave right arm go with walk
 ];
 // export const ANIM_ATTACK_NAME =  "Armature_Man_Attack"
-export const ANIM_ATTACK_NAME =  "Armature_Man_Attack_two"
-export const ANIM_WALK_NAME =  "Armature_Man_Walking"
-export const ANIM_WALK_NAME_L =  "Armature_Man_Walking_Lower"
+export const ANIM_ATTACK_NAME = "Armature_Man_Attack_two";
+export const ANIM_WALK_NAME = "Armature_Man_Walking";
+export const ANIM_WALK_NAME_L = "Armature_Man_Walking_Lower";
+// export const WEAPON_BONE_NAME = "mixamorigLeftHand";
+export const WEAPON_BONE_NAME = "mixamorigLeftHand";
+export const SWORD_NAME = "weapon_sword";
+
 export function makePartialClip(clip, boneNames) {
     const filteredTracks = clip.tracks.filter(track => {
         return boneNames.some(name => track.name.startsWith(name));
@@ -250,7 +254,7 @@ export const staticGroup = new THREE.Group();
 staticGroup.name="staticGroup";
 export const actionnablesGroup = new THREE.Group();
 actionnablesGroup.name="actionnablesGroup";
-export const actionnableNames = ["Door","Item","Chest"];
+export const actionnableNames = ["Door","Item","Chest","sword"];
 export const actionnableUserData = {
     "Door": {
         action: openDoor,
@@ -283,7 +287,12 @@ export const colliderInScene = {};
 // camera holder: FPS-style rotation system
 export const pitchObject = new THREE.Object3D(); // Up/down rotation (X axis)
 export const yawObject = new THREE.Object3D();   // Left/right rotation (Y axis)
-export const playerMesh = {v:null};
+export const playerMesh = {
+    root: null,
+    skeleton: null,
+    weaponBone: null
+};
+Object.seal(playerMesh);
 
 // clock
 export const clock = new THREE.Clock();
@@ -908,8 +917,8 @@ function rotatePivot(pivot, axis, targetAngle, duration = 1, body = null, pivotO
             pendingBodyUpdates.push({
                 body,
                 // pivotPos: pivotPos,
-                pivotPos: finalPos,
-                pivotQuat
+                pos: finalPos,
+                quat:pivotQuat
             });
         }
 
@@ -1099,4 +1108,56 @@ const deg = {
   z: THREE.MathUtils.radToDeg(euler.z)
 };
 
-console.log('World rotation:', deg);}
+console.log('World rotation:', deg);
+}
+
+
+export const RigidBodyBoneBindingMap = new Map();
+
+export function bindRigidBodyToBone(rb, bone) {
+  RigidBodyBoneBindingMap.set(rb, bone);
+}
+
+
+
+// COLLISION GROUPS
+export const COL_LAYERS = {
+  PLAYER:    1 << 0,  // 00001
+  PLAYERWPN: 1 << 1,  // 00010
+  ENEMY:     1 << 2,  // 00100
+  ENEMYWPN:  1 << 3,  // 01000
+  SCENERY:   1 << 4,  // 10000
+};
+
+// --- Helper to make masks ---
+export const makeMask = (layer, collidesWith) =>
+  (layer << 16) | collidesWith;
+
+// --- Define who collides with who ---
+export const COL_MASKS = {
+  PLAYER: makeMask(
+    COL_LAYERS.PLAYER,
+    COL_LAYERS.ENEMY | COL_LAYERS.ENEMYWPN | COL_LAYERS.SCENERY 
+  ),
+
+  PLAYERWPN: makeMask(
+    COL_LAYERS.PLAYERWPN,
+    COL_LAYERS.ENEMY | COL_LAYERS.SCENERY
+  ),
+
+  ENEMY: makeMask(
+    COL_LAYERS.ENEMY,
+    COL_LAYERS.PLAYER | COL_LAYERS.PLAYERWPN | COL_LAYERS.SCENERY 
+  ),
+
+  ENEMYWPN: makeMask(
+    COL_LAYERS.ENEMYWPN,
+    COL_LAYERS.PLAYER | COL_LAYERS.SCENERY
+  ),
+
+  SCENERY: makeMask(
+    COL_LAYERS.SCENERY,
+    COL_LAYERS.PLAYER | COL_LAYERS.ENEMY | COL_LAYERS.PLAYERWPN | COL_LAYERS.ENEMYWPN
+  ),
+  
+};
