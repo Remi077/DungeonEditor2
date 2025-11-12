@@ -1,12 +1,12 @@
 // @ts-nocheck
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
-// import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
 import RAPIER from 'https://esm.sh/@dimforge/rapier3d-compat@0.12.0';
 import seedrandom from 'https://cdn.skypack.dev/seedrandom';
-import {loadResourcesFromJson} from './LoadResources.js';
 //OTHER IMPORTS FORBIDDEN! CIRCULAR DEPENDENCIES
 
-// grid and cell dimensions
+/*-------------------------*/
+// GRID AND CELL DIMENSION //
+/*-------------------------*/
 export const gridSize = 100;
 export const gridDivisions = 100;
 export const cellSize = gridSize / gridDivisions; //TODO: when not 1 this will break (myfunction load atlas planes are 1,1)
@@ -17,10 +17,7 @@ if (cellSize != 1) {
 /*-----------------------------------------------------*/
 // PSEUDO RANDOMNESS
 /*-----------------------------------------------------*/
-
 // pseudoseed
-// const rng = seedrandom('666'); // Create a seeded random generator
-// export const rng = seedrandom(); // Create a seeded random generator
 export let rng = seedrandom(); // Create a seeded random generator
 
 // Reset RNG with a new seed
@@ -31,9 +28,6 @@ export function setSeed(newSeed) {
 // Function to generate a random float position between min and max using rng()
 export function getRandom(min, max) {
     return rng() * (max - min) + min;
-    // const _rng = rng();
-    // console.log(_rng);
-    // return _rng * (max - min) + min;
 }
 
 // Random int in [min, max] inclusive
@@ -45,150 +39,87 @@ export function branchChance(p) {
     return getRandomInt(0, 100) < p * 100;
 }
 
-/*-----------------------------------------------------*/
-// GAMEPLAY CONSTANTS
-/*-----------------------------------------------------*/
-export const EPSILON = 0.01;
+/*------------------*/
+// CANVAS VARIABLES //
+/*------------------*/
+export const canvas = document.getElementById('three-canvas');
+export const container = document.getElementById('canvas-container');
+export const uipanel = document.getElementById('ui-panel');
 
-// speeds
-export const moveSpeed = 5;
+export const matpopup = document.getElementById("matpopup");
+export const meshpopup = document.getElementById("meshpopup");
+export const mazewallpopup = document.getElementById("mazewallpopup");
+export const mazefloorpopup = document.getElementById("mazefloorpopup");
 
-// camera offset position
-const cameraOffsetX = 2;
-const cameraOffsetZ = 2;
-export const cameraOffsetY = 1.3+0.1; //see camera height in game.js
-
-// floor/wall height
-export const WALLHEIGHTDEFAULT = 2;
-export const WALLHEIGHTMAX = 4;
-export const WALLHEIGHTMIN = 1;
-export const FLOORHEIGHTDEFAULT = 0;
-export const FLOORHEIGHTMAX = 4;
-export const FLOORHEIGHTMIN = 0;
-export const CEILINGHEIGHTMAX = WALLHEIGHTMAX + FLOORHEIGHTMAX;
-export let wallHeight = WALLHEIGHTDEFAULT;
-export let floorHeight = 0;
-
-// undo max capacity
-export const MAXUNDOACTIONS = 10;
-
-// Chunk size
-export const CHUNKSIZE = 8;
-
-// modes
-export const MODEMENU = 0;
-export const MODEEDITOR = 1;
-export const MODEGAME = 2;
-
-// ambient light in editor and game mode
-export const AMBIENTLIGHTEDITCOLOR =new THREE.Color(1, 1, 1).multiplyScalar(0.45);
-// export const AMBIENTLIGHTGAMECOLOR =new THREE.Color(0, 0, 1).multiplyScalar(0.10);
-export const AMBIENTLIGHTGAMECOLOR =new THREE.Color(0.5, 0.5, 1).multiplyScalar(0.30);
-
-// editor variables
-export const editorState = {
-    mode          : MODEEDITOR,
-    editorRunning : false,        //TODO: maybe make it one running variable only
-    gameRunning   : false,
-    pause         : true,
-    renderOneFrame: true,
-    hasClicked    : false,
-    mouseIsDown   : false
-};
-
-const keys = {};
-
-// resources dictionaries
-export let resourcesDict = {};  //resources dictionary
-export let matDict       = {};  //material dictionary
-export let atlasDict     = {};  //atlas dictionary
-export let atlasUVsArray = [];  //material array (from dictionary)
-export let atlasUVsidx   = {};  //UV to index map (for fast lookup)
-export let atlasMat;
-export let atlasMatTransp;
-export let atlasUVs;
-export let atlasMesh;
-export let atlasMeshArray      = [];
-export let atlasMeshidx        = {};
-export let uvidBits            = 8;          //default
-export let meshidBits          = 8;          //default
-export let rotationBits        = 4;          //default
-export let uvmeshidBits        = rotationBits + meshidBits + uvidBits;
-export let uvmeshidHexWidth    = uvmeshidBits/4;
-export const sceneGeometryDict = new Map();
-export let thumbDict           = {};         //thumbnail dictionary
-export let thumbDictUVsArray   = [];         //mesh array (from dictionary)
-
-//holds geometry with animated uvs
-export const UVToUpdate = [];
-
-//uv info
-export const uvInfo = {};
-
-// Dynamically create a canvas element
-export const canvas               = document.getElementById('three-canvas');
-export const container            = document.getElementById('canvas-container');
-export const uipanel              = document.getElementById('ui-panel');
-
-export const matpopup             = document.getElementById("matpopup");
-export const meshpopup            = document.getElementById("meshpopup");
-export const mazewallpopup        = document.getElementById("mazewallpopup");
-export const mazefloorpopup       = document.getElementById("mazefloorpopup");
-
-export const matpopupCanvas       = document.getElementById("matpopupCanvas");
-export const meshpopupCanvas      = document.getElementById("meshpopupCanvas");
-export const mazewallpopupCanvas  = document.getElementById("mazewallpopupCanvas");
+export const matpopupCanvas = document.getElementById("matpopupCanvas");
+export const meshpopupCanvas = document.getElementById("meshpopupCanvas");
+export const mazewallpopupCanvas = document.getElementById("mazewallpopupCanvas");
 export const mazefloorpopupCanvas = document.getElementById("mazefloorpopupCanvas");
 
-// Scene, Camera, Renderer
-export const scene    = new THREE.Scene();
-export const camera   = new THREE.PerspectiveCamera(
+/*-------------------------*/
+// SCENE, CAMERA, RENDERER //
+/*-------------------------*/
+export const scene = new THREE.Scene();
+export const camera = new THREE.PerspectiveCamera(
     75,
     // 90,
     container.clientWidth / container.clientHeight,
     0.1, //near plane
-    // 0.00001, //near plane
-    // 5 //far plane
     1000 //far plane
 );
-// console.log("NEARPLANE",camera.near)
-export const renderer = new THREE.WebGLRenderer({ 
-    canvas:canvas, 
+export const renderer = new THREE.WebGLRenderer({
+    canvas: canvas,
     alpha: true,
- });  
+});
+
+/*-------*/
+// CLOCK //
+/*-------*/
+export const clock = new THREE.Clock();
+
+/*-------------------------*/
+// LIGHTS VARIABLES        //
+/*-------------------------*/
+// ambient light in editor and game mode
+export const AMBIENTLIGHTEDITCOLOR = new THREE.Color(1, 1, 1).multiplyScalar(0.45);
+export const AMBIENTLIGHTGAMECOLOR = new THREE.Color(0.5, 0.5, 1).multiplyScalar(0.30);
+export let ambientLight = new THREE.AmbientLight(AMBIENTLIGHTEDITCOLOR); // Soft light;
+
+/*------------------*/
+// SHADOW VARIABLES //
+/*------------------*/
 export const shadowEnabled = false;
 if (shadowEnabled) {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap; // smoother shadows                            // important
 }
 
-//mixer
+/*----------------------*/
+// ANIMATIONS VARIABLES //
+/*----------------------*/
 export const upperBodyBones = [
-    'mixamorigSpine', 
-    'mixamorigSpine1', 
-    'mixamorigSpine2', 
-    'mixamorigNeck', 
-    'mixamorigHead', 
+    'mixamorigSpine',
+    'mixamorigSpine1',
+    'mixamorigSpine2',
+    'mixamorigNeck',
+    'mixamorigHead',
     // 'mixamorigRightArm', 
     'mixamorigLeftArm'];
 export const lowerBodyBones = [//define bone whitelist for an animation
-  'mixamorigHips',
-  'mixamorigRightUpLeg',
-  'mixamorigRightLeg',
-  'mixamorigRightFoot',
-  'mixamorigLeftUpLeg',
-  'mixamorigLeftLeg',
-  'mixamorigLeftFoot',
+    'mixamorigHips',
+    'mixamorigRightUpLeg',
+    'mixamorigRightLeg',
+    'mixamorigRightFoot',
+    'mixamorigLeftUpLeg',
+    'mixamorigLeftLeg',
+    'mixamorigLeftFoot',
     'mixamorigRightArm',  //for walk cycle, weapon is in left hand so leave right arm go with walk
 ];
-// export const ANIM_ATTACK_NAME =  "Armature_Man_Attack"
 export const ANIM_ATTACK_NAME = "Armature_Man_Attack_two";
 export const ANIM_WALK_NAME = "Armature_Man_Walking";
 export const ANIM_WALK_NAME_L = "Armature_Man_Walking_Lower";
-// export const WEAPON_BONE_NAME = "mixamorigLeftHand";
 export const WEAPON_BONE_NAME = "mixamorigLeftHand";
 export const SWORD_NAME = "weapon_sword";
-
 export function makePartialClip(clip, boneNames) {
     const filteredTracks = clip.tracks.filter(track => {
         return boneNames.some(name => track.name.startsWith(name));
@@ -197,96 +128,6 @@ export function makePartialClip(clip, boneNames) {
 }
 export const mixerDictionary = new Map();
 export const clipActions = new Map();
-export const uvUpdateInterval = 0.07; // seconds between updates
-
-
-//Rapier collider world
-export let physWorld = null;
-export let rapierDebug = null;
-export let mainRigidBody = null;
-export let mainKinematicBody = null;
-// export let debugRender = null;
-// export let debugGeometry = null;
-// export let debugLines = null;
-// export const rigidBodies = [];
-export const colliderNameMap = new Map();
-export const BodyNameMap = new Map();
-export const pendingBodyUpdates = [];
-// collider debug group
-export const colliderDebugGroup = new THREE.Group();
-colliderDebugGroup.name = "colliderDebugGroup";
-
-export const gravity = 9.81;
-export const maxFallSpeed = 50; // meters per second, adjust as needed
-export const maxSlopeCos = Math.cos(45 * Math.PI / 180); // Define how steep is "walkable": walkable if < 45°
-export const contactThreshold = 0.05; //when capsule is closer than this distance to ground or ceiling we consider it a collision 
-export const skin = 0.02; //after a collision we snap the capsule bottom/up to the ground/ceiling and we nudge outward by skin distance to avoid penetration
-
-//ambient light
-export let ambientLight = new THREE.AmbientLight(AMBIENTLIGHTEDITCOLOR); // Soft light;
-
-// Maps tracking tile/lights positions per PLANE
-export const gridMapChunk = new Map();
-export const chunksGroup = new THREE.Group(); chunksGroup.name = "chunksGroup";
-
-// export const gridMapSprites = {};
-// gridMapSprites.XZ = new Map();
-// gridMapSprites.YZ = new Map();
-// gridMapSprites.XY = new Map();
-export const spritesGroup = new THREE.Group(); spritesGroup.name = "spritesGroup";
-export const gridMapSpriteChunk = new Map();
-
-export const gridMap   = {};
-gridMap.XZ = new Map();
-gridMap.YZ = new Map();
-gridMap.XY = new Map();
-
-export const gridLight = new Map();
-
-// holds baked chunk geometry
-export const chunksInScene = {};
-export const spritesInScene = {};
-
-//actionnable meshes in scene grouped by chunk
-export const actionnablesInScene = {};
-
-export const staticGroup = new THREE.Group();
-staticGroup.name="staticGroup";
-export const actionnablesGroup = new THREE.Group();
-actionnablesGroup.name="actionnablesGroup";
-export const actionnableNames = ["Door","Item","Chest","sword"];
-export const actionnableUserData = {
-    "Door": {
-        action: openDoor,
-        isOpen: false
-    },
-    "Item":{
-        action: takeItem,
-    },
-    "Chest":{
-        action: openChest,
-        isOpen: false
-    },
-    "enemy":{
-        action: hitEnemy,
-        hp: 100
-    }
-}
-export const lightGroup = new THREE.Group();
-lightGroup.name="lightGroup";
-
-export const enemyGroup = new THREE.Group();
-enemyGroup.name="enemyGroup";
-
-export const rigGroup = new THREE.Group();
-rigGroup.name="rigGroup";
-
-//colliders grouped by chunks
-export const colliderInScene = {};
-
-// camera holder: FPS-style rotation system
-export const pitchObject = new THREE.Object3D(); // Up/down rotation (X axis)
-export const yawObject = new THREE.Object3D();   // Left/right rotation (Y axis)
 export const playerMesh = {
     root: null,
     skeleton: null,
@@ -294,83 +135,126 @@ export const playerMesh = {
 };
 Object.seal(playerMesh);
 
-// clock
-export const clock = new THREE.Clock();
+/*---------------------------------*/
+// PHYSICS VARIABLES
+/*---------------------------------*/
+// speeds
+export const moveSpeed = 5;
+// camera offset position
+export const cameraOffsetX = 2;
+export const cameraOffsetZ = 2;
+export const cameraOffsetY = 1.3 + 0.1; //see camera height in game.js
+/*-----------------------------*/
+// jump variables
+//
+// max height
+// kinetic e = potential e
+// (1/2)mv^2=mgh
+// v=sqrt(2gh)
+/*-----------------------------*/
+export const gravity = 9.81;
+export const maxJumpHeight = 1;
+export const jumpSpeed = Math.sqrt(2 * gravity * maxJumpHeight);
+export const maxFallSpeed = 50; // meters per second, adjust as needed
+// max slope in degrees you want to treat as "floor"
+export const maxSlopeDeg = 55;
+export const maxSlopeRad = THREE.MathUtils.degToRad(maxSlopeDeg);
+// vertical threshold = cosine of slope
+export const verticalThreshold = Math.cos(maxSlopeRad);
+export const contactThreshold = 0.05; //when capsule is closer than this distance to ground or ceiling we consider it a collision 
+export const skin = 0.02; //after a collision we snap the capsule bottom/up to the ground/ceiling and we nudge outward by skin distance to avoid penetration
+// Player physical and camera setup
+export const playerHeight = 1.8; // total player height in meters
+export const cameraHeight = 1.3; // desired camera (eye) height above the floor
+export const playerRadius = 0.4; // radius of the capsule collider
+// Distance from capsule center (which is halfway up the capsule) to the camera position.
+// Needed because Rapier places the capsule's origin at its center, not at the feet.
+export const cameraHeightFromCapsuleCenter = cameraHeight - playerHeight / 2;
+// Half-height of the *cylindrical part* of the capsule.
+// The capsule’s total height = 2 * halfHeight + 2 * radius = playerHeight
+// halfHeight is a bit misleading because it’s not half of the total capsule height, it’s half of the cylindrical part only
+export const halfHeight = (playerHeight / 2) - playerRadius;
 
+/*------------------------*/
+// ACTIONNABLE VARIABLES //
+/*------------------------*/
+export const actionnableNames = ["Door", "Item", "Chest", "sword"];
+export const actionnableUserData = {
+    "Door": {
+        action: openDoor,
+        isOpen: false
+    },
+    "Item": {
+        action: takeItem,
+    },
+    "Chest": {
+        action: openChest,
+        isOpen: false
+    },
+    "enemy": {
+        action: hitEnemy,
+        hp: 100
+    }
+}
+
+/*------------------*/
+// PRIMITIVE GROUPS //
+/*------------------*/
+export const staticGroup = new THREE.Group();
+staticGroup.name = "staticGroup";
+export const actionnablesGroup = new THREE.Group();
+actionnablesGroup.name = "actionnablesGroup";
+export const lightGroup = new THREE.Group();
+lightGroup.name = "lightGroup";
+export const enemyGroup = new THREE.Group();
+enemyGroup.name = "enemyGroup";
+export const rigGroup = new THREE.Group();
+rigGroup.name = "rigGroup";
+export const colliderDebugGroup = new THREE.Group(); // collider debug group
+colliderDebugGroup.name = "colliderDebugGroup";
+
+/*------------------------------------------*/
+// FPS VIEW CONTROL VARIABLE                //
+// camera holder: FPS-style rotation system //
+/*------------------------------------------*/
+export const pitchObject = new THREE.Object3D(); // Up/down rotation (X axis)
+export const yawObject = new THREE.Object3D();   // Left/right rotation (Y axis)
+
+/*---------------------------------*/
+// resetCamera
+/*---------------------------------*/
+export function resetCamera() {
+    pitchObject.rotation.set(0, 0, 0);
+    yawObject.position.set(cameraOffsetX, cameraOffsetY, cameraOffsetZ);
+    yawObject.rotation.set(0, 0, 0);
+}
+
+/*------*/
+// MISC //
+/*------*/
 //load progress, written by editor so cannot be in editorUI (dependent of editor)
-export const LoadBtnTxt = document.getElementById('LoadBtnText');
-export const LoadBtnProgress = document.getElementById('LoadBtnProgress');
+export const LoadBtnTxt = document.getElementById('LoadBtnText'); //TOMOVE
+export const LoadBtnProgress = document.getElementById('LoadBtnProgress'); //TOMOVE
+
 
 /*-----------------------------------------------------*/
-// loadResources
+// MODE CONSTANTS
 /*-----------------------------------------------------*/
-export async function loadResources() {
-    // load all resources into dictionaries from JSON
-    // let online = true;
-    const isOnline = location.hostname !== 'localhost' && location.hostname !== '127.0.0.1';
-    console.log("ISONLINE",isOnline)
-    if (isOnline)
-        resourcesDict = await loadResourcesFromJson('./assets/resourcesonline.json');
-    else
-        resourcesDict = await loadResourcesFromJson('./assets/resources.json');
-    matDict    = resourcesDict.IMAGES;
-    atlasDict  = resourcesDict.ATLAS.ATLAS0;
-    thumbDict  = resourcesDict.ATLAS.MESHTHUMBNAIL;
-    atlasMat   = atlasDict.ATLASMATERIAL;
-    atlasMatTransp   = atlasDict.ATLASMATERIALTRANSP;
-    atlasUVs   = atlasDict.UVS;
-    atlasUVsArray = Object.entries(atlasUVs);
-    atlasUVsArray.forEach(([key], idx) => {
-        atlasUVsidx[key] = idx;// key -> index map for fast lookup
-    });
-    thumbDictUVsArray = Object.entries(thumbDict.UVS);
-    atlasMesh  = resourcesDict.MESHATLAS.ATLAS0;
-    atlasMeshArray = Object.entries(atlasMesh);
-    atlasMeshArray.forEach(([key], idx) => {
-        atlasMeshidx[key] = idx;// key -> index map for fast lookup
-    });
-    // uvidBits   = Math.ceil(Math.log2(atlasUVsArray.length));
-    // meshidBits = Math.ceil(Math.log2(atlasMeshArray.length));
-    //support up to 256 textures and 256 meshes
-    //64k combinations
-    uvidBits = 8;
-    meshidBits = 8;
-    if(atlasUVsArray.length > 256) console.error("max textures supported is 256")
-    if(atlasMeshArray.length > 256) console.error("max meshes supported is 256")
+// modes
+export const MODEMENU = 0;
+export const MODEEDITOR = 1;
+export const MODEGAME = 2;
 
-    uvInfo.uvtilesPerRow = atlasDict?.NUMX || 8;
-    uvInfo.uvtilesPerCol = atlasDict?.NUMY || 8;
-    uvInfo.uvscalex = 1 / uvInfo.uvtilesPerRow; // 0.125
-    uvInfo.uvscaley = 1 / uvInfo.uvtilesPerCol; // 0.125
-        
-}
-
-/*-----------------------------------------------------*/
-// initRapier
-/*-----------------------------------------------------*/
-export async function initRapier(){
-    await RAPIER.init();
-    physWorld = new RAPIER.World({ x: 0, y: -gravity, z: 0 });
-    console.log('Rapier initialized', physWorld);
-
-    rapierDebug = addRapierDebug(physWorld);
-
-
-    mainRigidBody = physWorld.createRigidBody(RAPIER.RigidBodyDesc.fixed());
-    mainRigidBody.userData = { name: "mainRigidBody"};
-
-    mainKinematicBody = physWorld.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased());
-    mainKinematicBody.userData = { name: "mainKinematicBody"};
-
-    //add collider debug group to scene
-    scene.add(colliderDebugGroup);
-
-    // debugRender = new RAPIER.DebugRenderPipeline();
-    // physWorld.debugRender = debugRender;    
-    // debugGeometry = new THREE.BufferGeometry();
-    // const debugMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00 });
-    // debugLines = new THREE.LineSegments(debugGeometry, debugMaterial);
-}
+// editor variables
+export const editorState = {
+    mode: MODEEDITOR,
+    editorRunning: false,        //TODO: maybe make it one running variable only
+    gameRunning: false,
+    pause: true,
+    renderOneFrame: true,
+    hasClicked: false,
+    mouseIsDown: false
+};
 
 /*---------------------------------------------------------*/
 // proxies to editor/game loop
@@ -409,7 +293,7 @@ export function setEditorActionsMap(ActionsMap) {
 export function setGameActionsMap(ActionsMap) {
     gameActionToKeyMap = ActionsMap;
 }
-        
+
 /*---------------------------------------------------------*/
 // toggleGameMode
 /*---------------------------------------------------------*/
@@ -434,7 +318,6 @@ export function setMode(mode) {
             stopEditorUI();
             ActionToKeyMap = gameActionToKeyMap;
             Actions = GameActions;
-            // Actions = {};
             generateKeyToActionMaps();
             startGameLoop();
             startGameLoopUI();
@@ -445,7 +328,6 @@ export function setMode(mode) {
             stopGameLoopUI();
             ActionToKeyMap = editorActionToKeyMap;
             Actions = EditorActions;
-            // Actions = {};
             generateKeyToActionMaps();
             startEditorLoop();
             startEditorUI();
@@ -461,10 +343,10 @@ export function setMode(mode) {
     document.dispatchEvent(cevent);
 }
 
-
-
+/*---------------------------------*/
+// setMode
+/*---------------------------------*/
 let onMouseDown, onMouseUp;
-
 function startEditorUI() {
     console.log("startEditorUI");
 
@@ -490,66 +372,66 @@ function startEditorUI() {
 
 }
 
+/*---------------------------------*/
+// stopEditorUI
+/*---------------------------------*/
 function stopEditorUI() {
     if (onMouseDown) canvas.removeEventListener("mousedown", onMouseDown);
     if (onMouseUp) document.removeEventListener("mouseup", onMouseUp);
     document.removeEventListener("mousemove", onMouseMoveEditor, false);
 }
 
-function startGameLoopUI(){
+/*---------------------------------*/
+// startGameLoopUI
+/*---------------------------------*/
+function startGameLoopUI() {
     canvas.requestPointerLock();
     document.addEventListener("mousemove", onMouseMoveGame, false);
     canvas.addEventListener("mousedown", onMouseDown);
 }
-function stopGameLoopUI(){
+
+/*---------------------------------*/
+// stopGameLoopUI
+/*---------------------------------*/
+function stopGameLoopUI() {
     document.exitPointerLock();
     document.removeEventListener("mousemove", onMouseMoveGame, false);
 }
-
 
 /*---------------------------------*/
 // doPause
 /*---------------------------------*/
 export function doPause() {
     setPause(!editorState.pause);
-    // editorState.pause = !editorState.pause;
 }
 
 /*---------------------------------*/
 // setPause
 /*---------------------------------*/
 export function setPause(value) {
-    console.log("Pause",value);
+    console.log("Pause", value);
     editorState.pause = value;
 }
 
 /*---------------------------------*/
-// resetCamera
+// ACTION VARIABLES
 /*---------------------------------*/
-export function resetCamera() {
-    pitchObject.rotation.set(0, 0, 0);
-    yawObject.position.set(cameraOffsetX, cameraOffsetY, cameraOffsetZ);
-    yawObject.rotation.set(0, 0, 0);
-}
-
-/*---------------------------------*/
-// actions variables
-/*---------------------------------*/
-let Actions=null;
-let EditorActions=null;
-let GameActions=null;
+const keys = {};
+let Actions = null;
+let EditorActions = null;
+let GameActions = null;
 let editorActionToKeyMap = null;//wired in main
 let gameActionToKeyMap = null;//wired in main
+let keyPressToActionMap = {};
+let keyPressOnceToActionMap = {};
+let keyReleaseToActionMap = {};
+let ActionToKeyMap = null;//wired in main
 
 /*---------------------------------*/
 // generateKeyToActionMaps
 // Reverse the mapping to get the action from the key (press or release)
 /*---------------------------------*/
-let keyPressToActionMap = {};
-let keyPressOnceToActionMap = {};
-let keyReleaseToActionMap = {};
-let ActionToKeyMap = null;//wired in main
-export function generateKeyToActionMaps(){
+export function generateKeyToActionMaps() {
     keyPressToActionMap = {};
     keyPressOnceToActionMap = {};
     keyReleaseToActionMap = {};
@@ -568,7 +450,7 @@ export function generateKeyToActionMaps(){
 /*---------------------------------*/
 // onKeyDownEvent
 /*---------------------------------*/
-export function onKeyDownEvent(event){
+export function onKeyDownEvent(event) {
 
     let eventcode = event.code
     // Only prepend "Ctrl+" if the pressed key is NOT a modifier
@@ -582,7 +464,7 @@ export function onKeyDownEvent(event){
     else if (keyPressOnceToActionMap[eventcode])
         Actions[keyPressOnceToActionMap[eventcode]] = !keys[eventcode];
 
-    if (eventcode === "Tab" 
+    if (eventcode === "Tab"
         || eventcode === "Ctrl+KeyS"
         || eventcode === "Ctrl+KeyL"
         || eventcode === "Ctrl+KeyR"
@@ -597,12 +479,12 @@ export function onKeyDownEvent(event){
 /*---------------------------------*/
 // onKeyUpEvent
 /*---------------------------------*/
-export function onKeyUpEvent(event){
+export function onKeyUpEvent(event) {
     // if key up is control set the ctrl+ keys to false
     if (event.code === "ControlLeft" || event.code === "ControlRight") {
         for (const key in keys) if (key.startsWith("Ctrl+")) keys[key] = false;
     } else {
-        if (keys["Ctrl+"+event.code]) keys["Ctrl+"+event.code] = false;
+        if (keys["Ctrl+" + event.code]) keys["Ctrl+" + event.code] = false;
     }
 
     keys[event.code] = false;
@@ -632,111 +514,31 @@ export function releaseSingleEventActions() {
 /*---------------------------------*/
 // resetAllActions
 /*---------------------------------*/
-export function resetAllActions(){
-    for (const [action, ] of Object.entries(Actions)) {
+export function resetAllActions() {
+    for (const [action,] of Object.entries(Actions)) {
         Actions[action] = false
     }
 }
 
 /*---------------------------------*/
-// encodeID
-/*---------------------------------*/
-//[ rotation | uvid | meshid ] 4 + 8 + 8 bits = 20 bits = 5 nibbles
-export function encodeID(uvid, meshid, rotation=0) {
-    const encoded =
-        ((rotation << (uvidBits + meshidBits)) |  // rotation at top
-         (uvid << meshidBits) |
-         meshid) + 1; // reserve 0, 0 is reserved to null
-    return encoded.toString(16).padStart(uvmeshidHexWidth, "0"); // use 5 hex digits (20 bits)
-}
-
-/*---------------------------------*/
-// decodeID
-/*---------------------------------*/
-export function decodeID(hexStr) {
-    const encoded = parseInt(hexStr, 16); // back to integer
-    if (encoded === 0) return null; // reserved null
-
-    const shifted = encoded - 1;
-
-    const meshidMask = (1 << meshidBits) - 1;
-    const uvidMask   = (1 << uvidBits) - 1;
-    const rotationMask = (1 << rotationBits) - 1;
-
-    const meshid   = shifted & meshidMask;
-    const uvid     = (shifted >> meshidBits) & uvidMask;
-    const rotid    = (shifted >> (uvidBits + meshidBits)) & rotationMask;
-
-    return { rotid, uvid, meshid };
-}
-
-/*---------------------------------*/
-// getGridChunkKey
-/*---------------------------------*/
-export function getGridChunkKey(x, y = 0, z) {
-    const nx = Math.floor(x/CHUNKSIZE);
-    const ny = Math.floor(y/CHUNKSIZE);
-    const nz = Math.floor(z/CHUNKSIZE);
-    return `${nx},${ny},${nz}`;
-}
-
-/*---------------------------------*/
-// getGridKey
-/*---------------------------------*/
-export function getGridKey(x, y = 0, z) {
-    return `${x},${y},${z}`;
-}
-
-/*---------------------------------*/
-// parseGridKey
-/*---------------------------------*/
-export function parseGridKey(key) {
-    const [x, y, z] = key.split(',').map(Number);
-    return { x, y, z };
-}
-
-/*---------------------------------*/
-// createLight
-/*---------------------------------*/
-export function createLight(pos, range = 100, intensity = 1, color = 0xffffff, helper = true) {
-
-    //light
-    const pointLight = new THREE.PointLight(color, intensity, range); // white light, intensity 1, range 100
-    // Set position from passed Vector3
-    pointLight.position.copy(pos);  // ✅ use copy() to assign from a Vector3
-
-    let lightHelper = null;
-    if (helper) {
-        // Optional: add helper to visualize light
-        lightHelper = new THREE.PointLightHelper(pointLight, 0.5);
-        // scene.add(lightHelper);
-    }
-
-    return { light: pointLight, helper: lightHelper };
-}
-
-/*---------------------------------*/
-// onMouseMove
+// onMouseMoveEditor
 /*---------------------------------*/
 export let isMouseOverCanvas = false;
 export function setIsMouseOverCanvas(val) { isMouseOverCanvas = val; }
 export function getIsMouseOverCanvas() { return isMouseOverCanvas; }
 export const mouse = new THREE.Vector2();
-export function getMouse() {return mouse;}
+export function getMouse() { return mouse; }
 export let rightMouseDown = false;
 export function setRightMouseDown(val) { rightMouseDown = val; }
 
 export function onMouseMoveEditor(event) {
 
-    // console.log("onMouseMove");  
+    console.log("onMouseMove");  
 
     if (!isMouseOverCanvas) return;
     if (rightMouseDown) {
         const dx = event.movementX;
         const dy = event.movementY;
-
-        // Use dx and dy to rotate camera/player
-        //   console.log("Mouse moved:", dx, dy);
 
         const sensitivity = 0.002;
 
@@ -754,16 +556,12 @@ export function onMouseMoveEditor(event) {
 
         mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
         mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-        // console.log("mouse",mouse);
     }
 }
 
 export function onMouseMoveGame(event) {
     const dx = event.movementX;
     const dy = event.movementY;
-
-    // Use dx and dy to rotate camera/player
-    //   console.log("Mouse moved:", dx, dy);
 
     const sensitivity = 0.002;
 
@@ -775,57 +573,17 @@ export function onMouseMoveGame(event) {
     pitchObject.rotation.x = Math.max(-maxPitch, Math.min(maxPitch, pitchObject.rotation.x));
 }
 
-
-/*---------------------------------*/
-// setWallHeight
-/*---------------------------------*/
-export function setWallHeight(height){
-    // console.log("wall height is",height);
-    wallHeight = height;
-}
-
-/*---------------------------------*/
-// setFloorHeight
-/*---------------------------------*/
-export function setFloorHeight(height){
-    // console.log("floor height is",height);
-    floorHeight = height;
-}
-
-export function updateAnimatedTextures() {
-
-    for (const obj of UVToUpdate) {
-
-        // const probesprite = spritesInScene;
-        // if (maxiterations<=0)return;
-        // maxiterations--;
-
-        let { geomToUpdate, uvs, curidx } = obj;
-        obj.curidx = (curidx + 1) % uvs.length; // advance safely in loop
-        // console.log(obj.curidx);
-        // geomToUpdate.attributes.uv = uvs[obj.curidx];
-        // geomToUpdate.attributes.uv.needsUpdate = true; // <-- required
-
-        geomToUpdate.traverse((child) => {
-            if (child.isMesh && child.geometry && child.geometry.attributes.uv) {
-                child.geometry.attributes.uv = uvs[obj.curidx];
-                child.geometry.attributes.uv.needsUpdate = true;
-            }
-        })
-
-        // geomToUpdate.userData["uvupdateiter"]=maxiterations;
-    }
-
-}
-
-
-
-//game actionnable functions
-export function doSomething(self){
+/*----------------------------*/
+// GAME ACTIONNABLE FUNCTIONS //
+/*----------------------------*/
+export function doSomething(self) {
     console.log("do something");
 }
 
-export function takeItem(self, playerState){
+/*----------------------------*/
+// takeItem
+/*----------------------------*/
+export function takeItem(self, playerState) {
     self.visible = false;
 
     const key = self.name;
@@ -836,17 +594,18 @@ export function takeItem(self, playerState){
     playerState.inventory[key]++;
 }
 
-// export const sceneObjToUpdate = [];
-
 let centerToColliderOffset = new THREE.Vector3();
-let firstopendoor=true;
+let firstopendoor = true;
+/*----------------------------*/
+// openDoor
+/*----------------------------*/
 export function openDoor(self, playerState) {
     console.log("openDoor");
     if (!self?.userData) return;
 
     //if player has key open door
     const haskey = playerState.inventory["Action_Item_key001"]
-    if (!haskey){
+    if (!haskey) {
         console.log("NOKEY");
         // return;
     }
@@ -859,36 +618,28 @@ export function openDoor(self, playerState) {
     const dir = self.userData.isOpen ? 1 : -1;
     const ninetyDeg = Math.PI / 2;
 
-
     // const doorPivot = self.children[0];
     const doorPivot = self;
 
-    const doorBody = BodyNameMap.get("Collider_Kine_"+self.name);
-    // const doorBody = self.userData?.body;
+    const doorBody = BodyNameMap.get("Collider_Kine_" + self.name);
 
-    // const pivotToCenterOffset = doorPivot.position.clone().negate(); // invert the pivot position
-    // const centerToColliderOffset = atlasMesh["DOOR"].COLLIDER.collideroffset;
-    if (firstopendoor){
+    if (firstopendoor) {
         firstopendoor = false;
-    // const centerToColliderOffset = new THREE.Vector3().subVectors(doorBody.translation(),self.position);
-     centerToColliderOffset = new THREE.Vector3().subVectors(doorBody.translation(),self.position);
+        centerToColliderOffset = new THREE.Vector3().subVectors(doorBody.translation(), self.position);
     }
 
-
-    // const pivotOffset = pivotToCenterOffset.clone().add(centerToColliderOffset);
     const pivotOffset = centerToColliderOffset;
 
-    rotatePivot(doorPivot, new THREE.Vector3(0, 1, 0),dir * ninetyDeg, 0.6, doorBody, pivotOffset); //local rotation axis
+    rotatePivot(doorPivot, new THREE.Vector3(0, 1, 0), dir * ninetyDeg, 0.6, doorBody, pivotOffset); //local rotation axis
 
 }
 
-
+/*----------------------------*/
+// rotatePivot
+/*----------------------------*/
 function rotatePivot(pivot, axis, targetAngle, duration = 1, body = null, pivotOffset = null) {
     const startTime = performance.now();
     let accumulatedAngle = 0;
-
-    // const centerToColliderOffset = new THREE.Vector3().subVectors(body.translation(),pivot.position);
-
 
     function animate(time) {
         const elapsed = (time - startTime) / 1000; // seconds
@@ -901,24 +652,19 @@ function rotatePivot(pivot, axis, targetAngle, duration = 1, body = null, pivotO
         accumulatedAngle += angleToApply;
 
         if (body) {
-        // if (false) {
             //schedule the body physics change
             //this is executed in main loop before world.step
             //if this is done here we can have race conditions with 
             //world.step in the main loop
             const pivotPos = pivot.getWorldPosition(new THREE.Vector3());
             const pivotQuat = pivot.getWorldQuaternion(new THREE.Quaternion());
-            // printQuat(pivot);
             const worldOffset = pivotOffset.clone().applyQuaternion(pivotQuat);
-            // const worldOffset = pivotOffset.clone();
-            // const worldOffset = centerToColliderOffset.clone().applyQuaternion(pivotQuat);
 
             const finalPos = pivotPos.clone().add(worldOffset);
             pendingBodyUpdates.push({
                 body,
-                // pivotPos: pivotPos,
                 pos: finalPos,
-                quat:pivotQuat
+                quat: pivotQuat
             });
         }
 
@@ -931,7 +677,9 @@ function rotatePivot(pivot, axis, targetAngle, duration = 1, body = null, pivotO
     requestAnimationFrame(animate);
 }
 
-
+/*----------------------------*/
+// openChest
+/*----------------------------*/
 export function openChest(self, playerState) {
     console.log("openChest");
     if (!self?.userData) return;
@@ -956,33 +704,108 @@ export function openChest(self, playerState) {
 
     const doorPivot = target.children[0];
     // rotatePivot(doorPivot, new THREE.Vector3(0, 1, 0),dir * ninetyDeg, 0.6);
-    rotatePivot(doorPivot, new THREE.Vector3(1, 0, 0),dir * ninetyDeg, 0.6); //local rotation axis
-
+    rotatePivot(doorPivot, new THREE.Vector3(1, 0, 0), dir * ninetyDeg, 0.6); //local rotation axis
 }
 
-export function hitEnemy(self){
+/*----------------------------*/
+// hitEnemy
+/*----------------------------*/
+export function hitEnemy(self) {
     console.log("HITENEMY");
     self.userData.actionnableData.hp -= 25;
-    if (self.userData.actionnableData.hp <= 0){
+    if (self.userData.actionnableData.hp <= 0) {
         console.log("ENEMYDEAD");
         enemyGroup.remove(self);
     }
 }
 
 
+/*------------------*/
+/*------------------*/
+// RAPIER VARIABLES //
+/*------------------*/
+/*------------------*/
 
-export function addRapierDebugExp(){
+export let physWorld = null;
+export let rapierDebug = null;
+export let mainRigidBody = null;
+export let mainKinematicBody = null;
+export const colliderNameMap = new Map();
+export const BodyNameMap = new Map();
+export const pendingBodyUpdates = [];
+
+/*-----------------------------------------------------*/
+// initRapier
+/*-----------------------------------------------------*/
+export async function initRapier() {
+    await RAPIER.init();
+    physWorld = new RAPIER.World({ x: 0, y: -gravity, z: 0 });
+    console.log('Rapier initialized', physWorld);
+
+    rapierDebug = addRapierDebug(physWorld);
+
+
+    mainRigidBody = physWorld.createRigidBody(RAPIER.RigidBodyDesc.fixed());
+    mainRigidBody.userData = { name: "mainRigidBody" };
+
+    mainKinematicBody = physWorld.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased());
+    mainKinematicBody.userData = { name: "mainKinematicBody" };
+
+    //add collider debug group to scene
+    scene.add(colliderDebugGroup);
+}
+// COLLISION GROUPS
+export const COL_LAYERS = {
+    PLAYER: 1 << 0,  // 00001
+    PLAYERWPN: 1 << 1,  // 00010
+    ENEMY: 1 << 2,  // 00100
+    ENEMYWPN: 1 << 3,  // 01000
+    SCENERY: 1 << 4,  // 10000
+};
+
+// --- Helper to make masks ---
+export const makeMask = (layer, collidesWith) =>
+    (layer << 16) | collidesWith;
+
+// --- Define who collides with who ---
+export const COL_MASKS = {
+    PLAYER: makeMask(
+        COL_LAYERS.PLAYER,
+        COL_LAYERS.ENEMY | COL_LAYERS.ENEMYWPN | COL_LAYERS.SCENERY
+    ),
+
+    PLAYERWPN: makeMask(
+        COL_LAYERS.PLAYERWPN,
+        COL_LAYERS.ENEMY | COL_LAYERS.SCENERY
+    ),
+
+    ENEMY: makeMask(
+        COL_LAYERS.ENEMY,
+        COL_LAYERS.PLAYER | COL_LAYERS.PLAYERWPN | COL_LAYERS.SCENERY
+    ),
+
+    ENEMYWPN: makeMask(
+        COL_LAYERS.ENEMYWPN,
+        COL_LAYERS.PLAYER | COL_LAYERS.SCENERY
+    ),
+
+    SCENERY: makeMask(
+        COL_LAYERS.SCENERY,
+        COL_LAYERS.PLAYER | COL_LAYERS.ENEMY | COL_LAYERS.PLAYERWPN | COL_LAYERS.ENEMYWPN
+    ),
+
+};
+
+
+export function addRapierDebugExp() {
     rapierDebug = addRapierDebug(physWorld);
 }
-
-
 
 // call after Rapier.init() and after you have a world
 function addRapierDebug(world) {
     // geometry & material for line segments
     const debugGeo = new THREE.BufferGeometry();
     // start empty; we'll allocate when we get data
-    //   const debugMat = new THREE.LineBasicMaterial({ vertexColors: true });
 
     const debugMat = new THREE.LineBasicMaterial({
         color: 0xffffff,      // white lines
@@ -1094,70 +917,18 @@ function addRapierDebug(world) {
     };
 }
 
+function printQuat(pivot) {
+    const quat = pivot.getWorldQuaternion(new THREE.Quaternion());
 
-function printQuat(pivot){
-const quat = pivot.getWorldQuaternion(new THREE.Quaternion());
+    // Convert to Euler (THREE uses radians by default)
+    const euler = new THREE.Euler().setFromQuaternion(quat, 'XYZ');
 
-// Convert to Euler (THREE uses radians by default)
-const euler = new THREE.Euler().setFromQuaternion(quat, 'XYZ');
+    // Convert to degrees
+    const deg = {
+        x: THREE.MathUtils.radToDeg(euler.x),
+        y: THREE.MathUtils.radToDeg(euler.y),
+        z: THREE.MathUtils.radToDeg(euler.z)
+    };
 
-// Convert to degrees
-const deg = {
-  x: THREE.MathUtils.radToDeg(euler.x),
-  y: THREE.MathUtils.radToDeg(euler.y),
-  z: THREE.MathUtils.radToDeg(euler.z)
-};
-
-console.log('World rotation:', deg);
+    console.log('World rotation:', deg);
 }
-
-
-export const RigidBodyBoneBindingMap = new Map();
-
-export function bindRigidBodyToBone(rb, bone) {
-  RigidBodyBoneBindingMap.set(rb, bone);
-}
-
-
-
-// COLLISION GROUPS
-export const COL_LAYERS = {
-  PLAYER:    1 << 0,  // 00001
-  PLAYERWPN: 1 << 1,  // 00010
-  ENEMY:     1 << 2,  // 00100
-  ENEMYWPN:  1 << 3,  // 01000
-  SCENERY:   1 << 4,  // 10000
-};
-
-// --- Helper to make masks ---
-export const makeMask = (layer, collidesWith) =>
-  (layer << 16) | collidesWith;
-
-// --- Define who collides with who ---
-export const COL_MASKS = {
-  PLAYER: makeMask(
-    COL_LAYERS.PLAYER,
-    COL_LAYERS.ENEMY | COL_LAYERS.ENEMYWPN | COL_LAYERS.SCENERY 
-  ),
-
-  PLAYERWPN: makeMask(
-    COL_LAYERS.PLAYERWPN,
-    COL_LAYERS.ENEMY | COL_LAYERS.SCENERY
-  ),
-
-  ENEMY: makeMask(
-    COL_LAYERS.ENEMY,
-    COL_LAYERS.PLAYER | COL_LAYERS.PLAYERWPN | COL_LAYERS.SCENERY 
-  ),
-
-  ENEMYWPN: makeMask(
-    COL_LAYERS.ENEMYWPN,
-    COL_LAYERS.PLAYER | COL_LAYERS.SCENERY
-  ),
-
-  SCENERY: makeMask(
-    COL_LAYERS.SCENERY,
-    COL_LAYERS.PLAYER | COL_LAYERS.ENEMY | COL_LAYERS.PLAYERWPN | COL_LAYERS.ENEMYWPN
-  ),
-  
-};

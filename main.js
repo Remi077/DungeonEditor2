@@ -14,15 +14,10 @@ import * as Game from './game/game.js';
 /*-----------------------------------------------------*/
 
 // revision hash
-const revision = "0.7"; // Replace with actual Git hash
+const revision = "0.8"; // Replace with actual Git hash
 
 // Add it to the div
 document.getElementById('revision-info').innerText = `Version: ${revision}`;
-
-//pick params passed from url
-// const params = new URLSearchParams(window.location.search);
-// const compressed = params.get("level");
-// console.log("compressed", compressed);
 
 /*-----------------------------------------------------*/
 // PLATFORM MANAGEMENT
@@ -37,7 +32,6 @@ if (isMobile()) {
 } else {
     console.log("You're on a desktop! revision:", revision);
 }
-
 
 
 //DEPENDENCIES DIAGRAM
@@ -58,9 +52,7 @@ main
  │    ├──> stats ─────> shared
  │    ├──> shared
  │    └──> gameHUD
- ├── menuUI ──────────> shared
- │ 
- └── shared ─────────> LoadResources
+ └── menuUI ──────────> shared
 
 */
 
@@ -88,8 +80,6 @@ main
 
 //stats->shared
 
-//shared->LoadResources
-
 
 /*-----------------------------------------------------*/
 // SETUP AND START GAME
@@ -100,9 +90,6 @@ async function setupAndStart() {
 
         //init Rapier
         await Shared.initRapier();
-
-        //load assets
-        await Shared.loadResources();
 
         //setup editor scene
         Editor.setupEditor();

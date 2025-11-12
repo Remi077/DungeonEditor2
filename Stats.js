@@ -7,16 +7,9 @@ import * as Shared from './shared.js';
 /*-----------------------------------------------------*/
 
 export const stats = new Stats();
-// stats.dom.style.position = 'relative'; // <-- remove fixed position
-// stats.dom.style.top = 'auto';
-// stats.dom.style.left = 'auto';
-// stats.dom.style.marginTop = '10px';
-// stats.dom.style.transform = 'scale(2)';
-// stats.dom.style.transformOrigin = 'top left';
-// document.getElementById('ui-panel').appendChild(stats.dom);
-// document.getElementById('canvas-container').appendChild(stats.dom);
-export function dockStats(inUI){
-    if (inUI){
+
+export function dockStats(inUI) {
+    if (inUI) {
         stats.dom.style.position = 'relative'; // <-- remove fixed position
         stats.dom.style.top = 'auto';
         stats.dom.style.left = 'auto';
@@ -36,7 +29,6 @@ export function dockStats(inUI){
         document.getElementById('main-container').appendChild(stats.dom);
     }
 }
-
 
 
 // stats
@@ -91,7 +83,6 @@ function updateTextStats() {
     //floor and masked markers are not counted
     visibleMeshCount = countVisibleMeshes(Shared.scene);
     document.getElementById('meshCount').textContent = meshCount;
-    document.getElementById('chunkCount').textContent = Shared.chunksGroup.children.length;
     document.getElementById('visibleMeshCount').textContent = visibleMeshCount;
     document.getElementById('lightCount').textContent = lightCount;
 
@@ -117,30 +108,6 @@ function updateTextStats() {
 }
 
 /*---------------------------------*/
-// countBufferAttributes
-/*---------------------------------*/
-function countBufferAttributes() {
-    const attributes = new Set();
-
-    Shared.scene.traverse(obj => {
-        if (obj.isMesh && obj.geometry && obj.geometry.attributes) {
-            const geom = obj.geometry;
-            // Position / normal / uv / etc
-            for (const key in geom.attributes) {
-                attributes.add(geom.attributes[key]);
-            }
-            // Index buffer
-            if (geom.index) {
-                attributes.add(geom.index);
-            }
-        }
-    });
-
-    return attributes.size;
-}
-
-
-/*---------------------------------*/
 // countVisibleMeshes
 /*---------------------------------*/
 function countVisibleMeshes(root = Shared.scene) {
@@ -163,8 +130,6 @@ function countVisibleMeshes(root = Shared.scene) {
 
     return count;
 }
-
-
 
 /*---------------------------------*/
 // simulateBlockingWait

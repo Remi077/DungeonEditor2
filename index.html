@@ -27,8 +27,6 @@
         #main-container {
             display: flex;
             flex-direction: row;
-            /* width: 100%;
-            height: 100%; */
             width: 100vw;
             height: 100vh;
             overflow: hidden;
@@ -45,16 +43,8 @@
             /* 👈 Prevents content overflow from breaking flex */
         }
 
-        /* #canvas-container.fullscreen {
-            flex: 1 1 100%;
-            width: 100% !important;
-        } */
-
         #crosshair {
             position: absolute;
-            /* top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%); */
             color: white;
             font-size: 24px;
             pointer-events: none;
@@ -76,49 +66,10 @@
             display: none;
         }
 
-        .popup {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            display: none;
-            background: #222;
-            padding: 10px;
-            border-radius: 5px;
-            pointer-events: auto;
-            z-index: 1000;
-        }
-
-        .popupArrow {
-            position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 30px;
-            height: 30px;
-            background: rgba(255,255,255,0.2);
-            color: white;
-            font-size: 24px;
-            text-align: center;
-            line-height: 30px;
-            border-radius: 15px;
-            cursor: pointer;
-            user-select: none;
-        }
-        #leftArrow { left: 10px; }
-        #rightArrow { right: 10px; }
-
-        #popupCategoryTitle {
-            color: white;
-            text-align: center;
-            font-size: 16px;
-            margin-bottom: 8px;
-        }
-
         canvas {
             display: block;
-            max-width: none;   
+            max-width: none;
             height: auto;
-            /* cursor: none;  */
         }
 
         /* HUD canvas stays on top */
@@ -132,28 +83,6 @@
             z-index: 1;
         }
 
-        /* Right UI panel */
-        /* #ui-panel {
-            width: 300px;
-            min-width: 250px; */
-            /* 👈 prevent it from collapsing or being pushed off */
-            /* background-color: #222;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            border-left: 1px solid #333;
-            box-sizing: border-box;
-        } */
-
-
-
-
-
-
-
-
-    
         /* sidebar in edit mode */
         #ui-panel {
             width: 300px;
@@ -201,23 +130,10 @@
         }
 
         .tab.active .tab-content {
-            max-height: 500px; /* adjust if needed */
+            max-height: 500px;
+            /* adjust if needed */
             padding: 10px;
         }
-
-        /* .form-row {
-            display: grid;
-            grid-template-columns: 130px 1fr; 
-            align-items: center;
-            gap: 0.5rem;
-        }
-            */
-
-        /* .form-row .inputs {
-            display: grid;
-            grid-template-columns: 1fr 1fr; 
-            gap: 0.5rem;
-        } */
 
         .form-row {
             display: flex;
@@ -227,8 +143,9 @@
         }
 
         .form-row label {
-            min-width: 100px; /* keeps labels aligned */
-        }        
+            min-width: 100px;
+            /* keeps labels aligned */
+        }
 
 
         button {
@@ -297,129 +214,15 @@
             <div id="crosshair">+</div>
             <!-- <div id="pointer-lock-hint">Press ESC to release the mouse</div> -->
             <canvas id="hud-canvas"></canvas>
-
-            <!-- POPUPS -->
-            <div id="matpopup" class="popup">
-            <canvas id="matpopupCanvas"></canvas>
-            </div>
-
-            <div id="mazewallpopup" class="popup">
-            <canvas id="mazewallpopupCanvas"></canvas>
-            </div>
-
-            <div id="mazefloorpopup" class="popup">
-            <canvas id="mazefloorpopupCanvas"></canvas>
-            </div>        
-
-            <div id="meshpopup" class="popup">
-            <div id="popupCategoryTitle"></div>            
-            <canvas id="meshpopupCanvas"></canvas>
-            <div id="leftArrow" class="popupArrow">&lt;</div>
-            <div id="rightArrow" class="popupArrow">&gt;</div>
-            </div>
         </div>
 
         <div id="ui-panel">
             <div class="tab-header">Game controls</div>
-            <div class="tab">
-                <div class="tab-header" data-mode="0">+ Add meshes (1) </div>
-                <div class="tab-content">
-                    <!-- <button id="AddBtn">Add Planes (1)</button> -->
-                    <!-- <select id="matSelect"></select> TODO: this is a simple combobox for the moment -->
-                    <div class="form-row">
-                        <label for="matSelect">Material:</label>
-                        <button id="matSelectBtn">
-                            <canvas id="matPreviewCanvas" width="64" height="64"></canvas>
-                        </button>                        
-                        <!-- <select id="matSelect"></select> -->
-                    </div>
-                    <div class="form-row">
-                        <label for="meshSelect">Mesh:</label>
-                        <button id="meshSelectBtn">
-                            <canvas id="meshPreviewCanvas" width="64" height="64"></canvas>
-                        </button> 
-                        <!-- <label for="meshSelect">Mesh:</label> -->
-                        <!-- <select id="meshSelect"></select> -->
-                    </div>
-                    <div class="form-row">
-                        <label for="wallHeightSelect">Wall Height:</label>
-                        <select id="wallHeightSelect"></select>
-                    </div>
-                    <div class="form-row">
-                        <label for="floorHeightSelect">floor Height:</label>
-                        <select id="floorHeightSelect"></select>
-                    </div>
-                    <!-- Checkboxes -->
-                    <label><input type="radio" name="wallOption" value="0"> floor</label>
-                    <label><input type="radio" name="wallOption" value="1"> leftwall</label>
-                    <label><input type="radio" name="wallOption" value="2"> rightwall</label>
-                    <label><input type="radio" name="wallOption" value="3"> walls</label>
-                    <label><input type="radio" name="wallOption" value="4" checked> All</label>
-                </div>
-            </div>
 
-            <div class="tab">
-                <div class="tab-header" data-mode="1">+ Add lights (2) </div>
-                <div class="tab-content">
-                    <!-- <button id="AddLBtn">Add Lights (2)</button> -->
-                </div>
-            </div>
-
-            <!-- <div class="tab">
-                <div class="tab-header" data-mode="2">+ Add gameplay (3) </div>
-                <div class="tab-content">
-                </div>
-            </div>             -->
-
-            <div class="tab">
-                <div class="tab-header" data-mode="2">+ Generate random (3) </div>
-                <div class="tab-content">
-                    <button id="RandBtn">Generate</button>
-                    <div class="form-row">
-                        <label for="SeedField">Seed:</label>
-                        <input type="number" id="SeedField" value="4" />
-                    </div>
-                    <div class="form-row">
-                        <label for="MazeSize">Maze size:</label>
-                        <input type="number" id="MazeSize" value="5" min="2" />
-                    </div>
-                    <div class="form-row">
-                        <label for="MazeHeight">Maze height:</label>
-                        <input type="number" id="MazeHeight" value="2" min="0" />
-                    </div>
-                    <div class="form-row">
-                        <label for="mazewallSelect">Walls:</label>
-                        <button id="mazewallSelectBtn">
-                            <canvas id="mazewallPreviewCanvas" width="64" height="64"></canvas>
-                        </button>                        
-                    </div>
-                    <div class="form-row">
-                        <label for="mazefloorSelect">Floor:</label>
-                        <button id="mazefloorSelectBtn">
-                            <canvas id="mazefloorPreviewCanvas" width="64" height="64"></canvas>
-                        </button>                        
-                    </div>
-                    <div class="form-row">
-                        <label for="MazeSecLMin">Corridor length min/max:</label>
-                        <!-- <div class="inputs"> -->
-                            <input type="number" id="MazeSecLMin" value="2" min="2" max="10" />
-                            <input type="number" id="MazeSecLMax" value="5" min="2" max="10" />
-                        <!-- </div> -->
-                    </div>
-                    <div class="form-row">
-                        <label for="MazeBranchProba">branch proba:</label>
-                        <input type="number" id="MazeBranchProba" value="50" min="0" max="100" />
-                    </div>
-                </div>
-            </div>
-
-            <!-- <div class="tab">
-                <div class="tab-header" data-mode="SaveLoad">Save/Load</div>
-                <div class="tab-content"> -->
-                <div id="utilities" style="padding:10px; gap:10px; display: flex; flex-direction: column;">
-                    <button id="LoadBtn" style="position: relative; overflow: hidden;">
-                        <span id="LoadBtnText" style="position: relative; z-index: 2;">Load (Ctrl+L)</span>
-                        <div id="LoadBtnProgress" style="
+            <div id="utilities" style="padding:10px; gap:10px; display: flex; flex-direction: column;">
+                <button id="LoadBtn" style="position: relative; overflow: hidden;">
+                    <span id="LoadBtnText" style="position: relative; z-index: 2;">Load (Ctrl+L)</span>
+                    <div id="LoadBtnProgress" style="
                             position: absolute;
                             top: 0; left: 0; bottom: 0;
                             background-color: #4caf50;
@@ -428,45 +231,33 @@
                             transition: width 0.3s ease;
                             opacity: 0.5;
                         "></div>
-                    </button>
-                    <button id="SaveBtn">Save (Ctrl+S)</button>
-                    <!-- <button id="BakeBtn">Bake Planes (B)</button> -->
-                    <button id="ResetBtn">Reset (Ctrl+R)</button>   
-                    <button id="StartBtn">Start Game(G)</button>
-                </div>  
-                <!-- </div>   -->
-            <!-- </div> -->
+                </button>
+                <button id="SaveBtn">Save (Ctrl+S)</button>
+                <button id="ResetBtn">Reset (Ctrl+R)</button>
+                <button id="StartBtn">Start Game(G)</button>
+            </div>
 
-            <!-- <div class="tab"> -->
-                <!-- <div class="tab-header">Stats</div> -->
-                <!-- <div class="tab-content"> -->
-                    <div id="text-stats" style="padding:10px;font-family: monospace; font-size: 12px; line-height: 1.5em;">
-                        <div>FPS: <span id="fps">0</span></div>
-                        <div>Meshes: <span id="meshCount">0</span></div>
-                        <div>Visible Meshes: <span id="visibleMeshCount">0</span></div>
-                        <div>Chunks: <span id="chunkCount">0</span></div>
-                        <div>Lights: <span id="lightCount">0</span></div>
-                        <div>Materials: <span id="materialCount">0</span></div>
-                        <div>Geometries: <span id="geometryCount">0</span></div>
-                        <div>Textures: <span id="textureCount">0</span></div>
-                        <div>Draw Calls: <span id="drawCalls">0</span></div>
-                        <div>Colliders: <span id="Colliders">0</span></div>
-                        <div>RigidBodies: <span id="RigidBodies">0</span></div>
-                    </div>  
-                <!-- </div> -->
-            <!-- </div> -->
+            <div id="text-stats" style="padding:10px;font-family: monospace; font-size: 12px; line-height: 1.5em;">
+                <div>FPS: <span id="fps">0</span></div>
+                <div>Meshes: <span id="meshCount">0</span></div>
+                <div>Visible Meshes: <span id="visibleMeshCount">0</span></div>
+                <div>Lights: <span id="lightCount">0</span></div>
+                <div>Materials: <span id="materialCount">0</span></div>
+                <div>Geometries: <span id="geometryCount">0</span></div>
+                <div>Textures: <span id="textureCount">0</span></div>
+                <div>Draw Calls: <span id="drawCalls">0</span></div>
+                <div>Colliders: <span id="Colliders">0</span></div>
+                <div>RigidBodies: <span id="RigidBodies">0</span></div>
+            </div>
+
         </div>
 
+        <div id="revision-info">Version: 0.1</div>
 
-
-
-
-    <div id="revision-info">Version: 0.1</div>
-
-    <!-- Your Three.js app -->
-    <script type="module" src="main.js"></script>
-    <!-- FPS counter -->
-    <script src="https://cdn.jsdelivr.net/npm/stats.js@0.17.0/build/stats.min.js"></script>
+        <!-- Your Three.js app -->
+        <script type="module" src="main.js"></script>
+        <!-- FPS counter -->
+        <script src="https://cdn.jsdelivr.net/npm/stats.js@0.17.0/build/stats.min.js"></script>
 
 </body>
 

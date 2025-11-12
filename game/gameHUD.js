@@ -42,7 +42,6 @@ export function drawHUD(delta = 1) {
     hudContext.textAlign = 'left';
 
     // Draw "Score" at the top-left corner with a surrounding rectangle
-    // const scoreText = `TileCount: ${tilecount}`;
     const scoreText = ` `;
     const scoreMetrics = hudContext.measureText(scoreText);
     const scorePadding = 10; // Padding for the rectangle
