@@ -448,13 +448,13 @@ export async function loadTest(scene) {
                 child.userData["actionnableData"] = Shared.actionnableUserData["enemy"];
             } else if (child.name.startsWith("Armature")) {
 
-                Shared.playerMesh.root = child;//TEMP
+                Shared.playerMovementState.root = child;//TEMP
 
                 child.traverse(obj => {
                     if (obj.isSkinnedMesh) {
-                        Shared.playerMesh.skeleton = obj.skeleton;//TEMP
-                        Shared.playerMesh.weaponBone = obj.skeleton.getBoneByName(Shared.WEAPON_BONE_NAME);;//TEMP
-                        if (!Shared.playerMesh.weaponBone) throw new Error("weapon bone not defined");
+                        Shared.playerMovementState.skeleton = obj.skeleton;//TEMP
+                        Shared.playerMovementState.weaponBone = obj.skeleton.getBoneByName(Shared.WEAPON_BONE_NAME);;//TEMP
+                        if (!Shared.playerMovementState.weaponBone) throw new Error("weapon bone not defined");
                         if (obj.name.startsWith("weapon")) {
                             //do this only for sword, body can be frustrum culled
                             obj.frustumCulled = false; //this prevents sword in first person view to be culled when camera tilts and get too close
@@ -462,7 +462,7 @@ export async function loadTest(scene) {
                         }
                     }
                 });
-                if (!Shared.playerMesh.weaponBone) throw new Error("weapon bone not defined");
+                if (!Shared.playerMovementState.weaponBone) throw new Error("weapon bone not defined");
 
                 //create mixer on the armature root
                 const mixer = new THREE.AnimationMixer(child)

@@ -94,47 +94,6 @@ if (shadowEnabled) {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap; // smoother shadows                            // important
 }
 
-/*----------------------*/
-// ANIMATIONS VARIABLES //
-/*----------------------*/
-export const upperBodyBones = [
-    'mixamorigSpine',
-    'mixamorigSpine1',
-    'mixamorigSpine2',
-    'mixamorigNeck',
-    'mixamorigHead',
-    // 'mixamorigRightArm', 
-    'mixamorigLeftArm'];
-export const lowerBodyBones = [//define bone whitelist for an animation
-    'mixamorigHips',
-    'mixamorigRightUpLeg',
-    'mixamorigRightLeg',
-    'mixamorigRightFoot',
-    'mixamorigLeftUpLeg',
-    'mixamorigLeftLeg',
-    'mixamorigLeftFoot',
-    'mixamorigRightArm',  //for walk cycle, weapon is in left hand so leave right arm go with walk
-];
-export const ANIM_ATTACK_NAME = "Armature_Man_Attack_two";
-export const ANIM_WALK_NAME = "Armature_Man_Walking";
-export const ANIM_WALK_NAME_L = "Armature_Man_Walking_Lower";
-export const WEAPON_BONE_NAME = "mixamorigLeftHand";
-export const SWORD_NAME = "weapon_sword";
-export function makePartialClip(clip, boneNames) {
-    const filteredTracks = clip.tracks.filter(track => {
-        return boneNames.some(name => track.name.startsWith(name));
-    });
-    return new THREE.AnimationClip(clip.name + '_partial', clip.duration, filteredTracks);
-}
-export const mixerDictionary = new Map();
-export const clipActions = new Map();
-export const playerMesh = {
-    root: null,
-    skeleton: null,
-    weaponBone: null
-};
-Object.seal(playerMesh);
-
 /*---------------------------------*/
 // PHYSICS VARIABLES
 /*---------------------------------*/
@@ -174,6 +133,66 @@ export const cameraHeightFromCapsuleCenter = cameraHeight - playerHeight / 2;
 // The capsule’s total height = 2 * halfHeight + 2 * radius = playerHeight
 // halfHeight is a bit misleading because it’s not half of the total capsule height, it’s half of the cylindrical part only
 export const halfHeight = (playerHeight / 2) - playerRadius;
+
+/*----------------------*/
+// ANIMATIONS VARIABLES //
+/*----------------------*/
+export const upperBodyBones = [
+    'mixamorigSpine',
+    'mixamorigSpine1',
+    'mixamorigSpine2',
+    'mixamorigNeck',
+    'mixamorigHead',
+    // 'mixamorigRightArm', 
+    'mixamorigLeftArm'];
+export const lowerBodyBones = [//define bone whitelist for an animation
+    'mixamorigHips',
+    'mixamorigRightUpLeg',
+    'mixamorigRightLeg',
+    'mixamorigRightFoot',
+    'mixamorigLeftUpLeg',
+    'mixamorigLeftLeg',
+    'mixamorigLeftFoot',
+    'mixamorigRightArm',  //for walk cycle, weapon is in left hand so leave right arm go with walk
+];
+export const ANIM_ATTACK_NAME = "Armature_Man_Attack_two";
+export const ANIM_WALK_NAME = "Armature_Man_Walking";
+export const ANIM_WALK_NAME_L = "Armature_Man_Walking_Lower";
+export const WEAPON_BONE_NAME = "mixamorigLeftHand";
+export const SWORD_NAME = "weapon_sword";
+export function makePartialClip(clip, boneNames) {
+    const filteredTracks = clip.tracks.filter(track => {
+        return boneNames.some(name => track.name.startsWith(name));
+    });
+    return new THREE.AnimationClip(clip.name + '_partial', clip.duration, filteredTracks);
+}
+export const mixerDictionary = new Map();
+export const clipActions = new Map();
+export function newMovementState() {
+    const newObj = {
+        root: null,
+        skeleton: null,
+        weaponBone: null,
+        body: null,
+        offsetRootToBody: null,
+        tweakRot: null,
+        tweakPos: null,
+        collider: null,
+        verticalSpeed: 0,
+        curPos: 0,
+        newPos: 0,
+        jumpPressed: false,
+        isTouchingGround: false,
+        isTouchingCeiling: false,
+        moveVector: new THREE.Vector3(),
+        moveSpeed: moveSpeed,
+        rotation: new THREE.Quaternion(),
+        collisionmask: null,
+    }
+    Object.seal(newObj);
+    return newObj;
+}
+export const playerMovementState = newMovementState()
 
 /*------------------------*/
 // ACTIONNABLE VARIABLES //
@@ -611,7 +630,6 @@ export function openDoor(self, playerState) {
     // Toggle the door state
     self.userData.isOpen = !self.userData.isOpen;
 
-
     // Define 90 degrees in radians
     const dir = self.userData.isOpen ? 1 : -1;
     const ninetyDeg = Math.PI / 2;
@@ -619,18 +637,14 @@ export function openDoor(self, playerState) {
     // const doorPivot = self.children[0];
     const doorPivot = self;
 
-    const doorBody = BodyNameMap.get("Collider_Kine_" + self.name);
-
-    const pivotOffset = doorBody.userData.offsetBodyToMesh
-
-    rotatePivot(doorPivot, new THREE.Vector3(0, 1, 0), dir * ninetyDeg, 0.6, doorBody, pivotOffset); //local rotation axis
+    rotatePivot(doorPivot, new THREE.Vector3(0, 1, 0), dir * ninetyDeg, 0.6); //local rotation axis
 
 }
 
 /*----------------------------*/
 // rotatePivot
 /*----------------------------*/
-function rotatePivot(pivot, axis, targetAngle, duration = 1, body = null, pivotOffset = null) {
+function rotatePivot(pivot, axis, targetAngle, duration = 1) {
     const startTime = performance.now();
     let accumulatedAngle = 0;
 
@@ -641,26 +655,9 @@ function rotatePivot(pivot, axis, targetAngle, duration = 1, body = null, pivotO
 
         // Rotate the door by the small delta around the pivot
         pivot.rotateOnAxis(axis, angleToApply);
-
         accumulatedAngle += angleToApply;
 
-        if (body) {
-            //schedule the body physics change
-            //this is executed in main loop before world.step
-            //if this is done here we can have race conditions with 
-            //world.step in the main loop
-            const pivotPos = pivot.getWorldPosition(new THREE.Vector3());
-            const pivotQuat = pivot.getWorldQuaternion(new THREE.Quaternion());
-            const worldOffset = pivotOffset.clone().applyQuaternion(pivotQuat);
-
-            const finalPos = pivotPos.clone().add(worldOffset);
-            pendingBodyUpdates.push({
-                body,
-                pos: finalPos,
-                quat: pivotQuat
-            });
-        }
-
+        scheduleSyncBodyToMesh(pivot); //have the body follow the mesh (pivot)
 
         if (t < 1) {
             requestAnimationFrame(animate);
@@ -727,6 +724,32 @@ export const colliderNameMap = new Map();
 export const BodyNameMap = new Map();
 export const pendingBodyUpdates = [];
 
+export function getKineBodyFromMesh(mesh) {
+    return BodyNameMap.get("Collider_Kine_" + mesh.name);
+}
+
+//schedule the body physics change
+//so this is executed in main loop before world.step (avoid race conditions)
+export function scheduleSyncBodyToMesh(mesh, body = null){
+    if (!body) body = getKineBodyFromMesh(mesh);
+    const p = pivot.getWorldPosition(new THREE.Vector3());
+    const q = pivot.getWorldQuaternion(new THREE.Quaternion());
+    const off = body.userData.offsetBodyToMesh
+    if (off === undefined) throw new Error("offsetBodyToMesh not defined")
+    const offrot = off.clone().applyQuaternion(q);
+    const finalp = p.clone().add(offrot);
+    pendingBodyUpdates.push({
+        body: body,
+        pos: finalp,
+        quat: q
+    });
+}
+
+export function updateMovementStatePhysics(movementState){
+    scheduleSyncBodyToMesh(movementState.body, movementState.root)
+}
+
+
 /*-----------------------------------------------------*/
 // initRapier
 /*-----------------------------------------------------*/
@@ -747,6 +770,7 @@ export async function initRapier() {
     //add collider debug group to scene
     scene.add(colliderDebugGroup);
 }
+
 // COLLISION GROUPS
 export const COL_LAYERS = {
     PLAYER: 1 << 0,  // 00001
@@ -788,7 +812,6 @@ export const COL_MASKS = {
     ),
 
 };
-
 
 export function addRapierDebugExp() {
     rapierDebug = addRapierDebug(physWorld);
@@ -925,3 +948,4 @@ function printQuat(pivot) {
 
     console.log('World rotation:', deg);
 }
+
