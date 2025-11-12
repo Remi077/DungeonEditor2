@@ -580,6 +580,14 @@ export async function loadTest(scene) {
                     bodyHandle = Shared.physWorld.createRigidBody(bodyDesc);
                     bodyHandle.userData = { name: "Body_" + child.name };
 
+                    //add corresponding mesh offset
+                    // const relatedName = child.name.substring(child.name.lastIndexOf("_") + 1);
+                    const [, relatedName] = child.name.match(/Collider_Kine_(.*)$/);
+                    const relatedMesh = Shared.scene.getObjectByName(relatedName)
+                    const offsetBodyToMesh = newCenterPosition.clone().sub(relatedMesh.position)
+                    bodyHandle.userData = { offsetBodyToMesh: offsetBodyToMesh };
+
+
                     //static collider
                 } else {
 

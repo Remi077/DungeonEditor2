@@ -594,8 +594,6 @@ export function takeItem(self, playerState) {
     playerState.inventory[key]++;
 }
 
-let centerToColliderOffset = new THREE.Vector3();
-let firstopendoor = true;
 /*----------------------------*/
 // openDoor
 /*----------------------------*/
@@ -623,12 +621,7 @@ export function openDoor(self, playerState) {
 
     const doorBody = BodyNameMap.get("Collider_Kine_" + self.name);
 
-    if (firstopendoor) {
-        firstopendoor = false;
-        centerToColliderOffset = new THREE.Vector3().subVectors(doorBody.translation(), self.position);
-    }
-
-    const pivotOffset = centerToColliderOffset;
+    const pivotOffset = doorBody.userData.offsetBodyToMesh
 
     rotatePivot(doorPivot, new THREE.Vector3(0, 1, 0), dir * ninetyDeg, 0.6, doorBody, pivotOffset); //local rotation axis
 
