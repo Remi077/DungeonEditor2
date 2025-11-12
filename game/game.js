@@ -81,7 +81,7 @@ export function startGameLoop() {
             0,Shared.halfHeight + Shared.playerRadius,0
         );
         Shared.playerMovementState.tweakRot = Math.PI
-        Shared.playerMovementState.tweakPos = new THREE.Vector(0.1,0,0.1);
+        Shared.playerMovementState.tweakPos = new THREE.Vector3(0.1,0,0.1);
 
         initHighlightPool(Shared.scene);
 
@@ -103,7 +103,7 @@ export function startGameLoop() {
 
             const enemyCollider = Shared.physWorld.createCollider(enemyColliderDesc, enemyBody);
 
-            const enemyMovementState = newMovementState()
+            const enemyMovementState = Shared.newMovementState()
             enemyMovementState.body = enemyBody
             enemyMovementState.collisionmask = Shared.COL_MASKS.ENEMY
             enemyMovementState.collider = enemyCollider
@@ -213,28 +213,19 @@ function gameLoop(now) {
         // Shared.playerMovementState.body.setNextKinematicTranslation(Shared.playerMovementState.newPos);
         // Shared.playerMovementState.body.setNextKinematicRotation(Shared.playerMovementState.rotation);
         // movePlayerMesh(Shared.playerMovementState); //move Player Mesh to new position/rotation
-        updateMeshRotPos(Shared.playerMovementState);
-        syncCameraTo(Shared.playerMesh.root, camPlayerTweak);
+        Shared.updateMeshRotPos(Shared.playerMovementState);
+        syncCameraTo(Shared.playerMovementState, camPlayerTweak);
 
         //raycast against actionnables
         raycastActionnables();
-
-        //render scene
-        Shared.renderer.setViewport(0, 0, Shared.container.clientWidth, Shared.container.clientHeight);//TODO: you just need to do that once?
-        Shared.renderer.render(Shared.scene, Shared.camera);
-
-        //calculate/display stats
-        Stats.renderStats.drawcalls = Shared.renderer.info.render.calls;
-        Stats.updateTextStatsThrottled();
-        Stats.stats.end();
 
         //consistent approach: 
         //we update the mesh/rendered models based on movement/collision data
         //then in last step we sync the rigidbodies to the rendered models
         if (Shared.physWorld) {
 
-            Shared.updateMovementStatePhysics(Shared.playerMovementState) // schedule player rigidbody sync
-            Shared.scheduleSyncBodyToMesh(playerState.weapon) // schedule weapon collider sync
+            Shared.scheduleSyncBodyFromMovementState(Shared.playerMovementState) // schedule player rigidbody sync
+            Shared.scheduleSyncBodyToMesh(playerState.weapon) // schedule weapon rigidbody sync
 
             updatePhysics(); // update all the kinematic rigidbodies
 
@@ -245,6 +236,15 @@ function gameLoop(now) {
             Shared.rapierDebug.update();
 
         }
+
+        //render scene
+        Shared.renderer.setViewport(0, 0, Shared.container.clientWidth, Shared.container.clientHeight);//TODO: you just need to do that once?
+        Shared.renderer.render(Shared.scene, Shared.camera);
+
+        //calculate/display stats
+        Stats.renderStats.drawcalls = Shared.renderer.info.render.calls;
+        Stats.updateTextStatsThrottled();
+        Stats.stats.end();
 
     }
     // skipOneFrame = false;
@@ -297,7 +297,7 @@ function enemyLoop() {
                 updateVerticalSpeedAndPos(enemyMovementState, deltaTime);
                 updateHorizontalSpeedAndPos(enemyMovementState, deltaTime);
 
-                updateMeshRotPos(enemyMovementState);
+                Shared.updateMeshRotPos(enemyMovementState);
                 Shared.updateMovementStatePhysics(enemyMovementState) // schedule enemy rigidbody sync
                 // enemyBody.setNextKinematicTranslation(enemyMovementState.newPos);
             }
@@ -533,7 +533,7 @@ function updateVerticalSpeedAndPos(movementState, deltaTime) {
 
     //jump
     if (isTouchingGround && !isTouchingCeiling && movementState.jumpPressed) {
-        movementState.verticalSpeed = jumpSpeed;
+        movementState.verticalSpeed = Shared.jumpSpeed;
     }
 
     movementState.newPos.y += movementState.verticalSpeed * deltaTime;
@@ -642,9 +642,10 @@ function onMouseClick(event) {
 /*---------------------------------*/
 // syncCameraTo
 /*---------------------------------*/
-const camPlayerTweak = new THREE.Vector3(0,Shared.cameraHeightFromCapsuleCenter + 0.2,0);
-function syncCameraTo(object, tweak=null) {
-    const t = object.position;
+// const camPlayerTweak = new THREE.Vector3(0,Shared.cameraHeightFromCapsuleCenter + 0.2,0);
+const camPlayerTweak = new THREE.Vector3(0,Shared.cameraHeightFromCapsuleCenter,0);
+function syncCameraTo(movementState, tweak=null) {
+    const t = movementState.newPos;
     Shared.yawObject.position.set(
         t.x + (tweak ? tweak.x : 0), 
         t.y + (tweak ? tweak.y : 0), 
@@ -668,21 +669,8 @@ function syncCameraTo(object, tweak=null) {
 //         pos.z - forward.z * meshTweak.z
 //     );
 // }
-function updateMeshRotPos(movementState) {
-    const root = Shared.Shared.playerMovementState.root;
-    
-    const rot = movementState.rotation;
-    root.quaternion.set(rot.x, rot.y, rot.z, rot.w);
-    if (movementState.tweakRot) root.rotation.y += movementState.tweakRot; // optional 180° turn if needed
-    
-    const newRootPos = movementState.newPos.clone();
-    if (movementState.offsetRootToBody)
-        newRootPos.sub(movementState.offsetRootToBody);
-    if (movementState.tweakPos){
-        const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(root.quaternion); // compute forward vector in world space
-        newRootPos.sub(forward.multiply(movementState.tweakPos));}
-    root.position.set(newRootPos);    
-}
+
+//move mesh to new position/rotation in movement state
 
 /*---------------------------------*/
 // syncEnemyToBodies

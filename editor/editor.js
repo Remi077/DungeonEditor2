@@ -584,8 +584,13 @@ export async function loadTest(scene) {
                     // const relatedName = child.name.substring(child.name.lastIndexOf("_") + 1);
                     const [, relatedName] = child.name.match(/Collider_Kine_(.*)$/);
                     const relatedMesh = Shared.scene.getObjectByName(relatedName)
-                    const offsetBodyToMesh = newCenterPosition.clone().sub(relatedMesh.position)
-                    bodyHandle.userData = { offsetBodyToMesh: offsetBodyToMesh };
+                    const p = relatedMesh.getWorldPosition(new THREE.Vector3());
+                    const q = relatedMesh.getWorldQuaternion(new THREE.Quaternion());
+                    // const offsetRootToBody = newCenterPosition.clone().sub(relatedMesh.position)
+                    const offsetRootToBody = newCenterPosition.clone().sub(p)
+                    bodyHandle.userData = { 
+                        name: (child.name+"_body"),
+                        offsetRootToBody: offsetRootToBody };
 
 
                     //static collider

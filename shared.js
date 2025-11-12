@@ -99,10 +99,6 @@ if (shadowEnabled) {
 /*---------------------------------*/
 // speeds
 export const moveSpeed = 5;
-// camera offset position
-export const cameraOffsetX = 2;
-export const cameraOffsetZ = 2;
-export const cameraOffsetY = 1.3 + 0.1; //see camera height in game.js
 /*-----------------------------*/
 // jump variables
 //
@@ -124,7 +120,8 @@ export const contactThreshold = 0.05; //when capsule is closer than this distanc
 export const skin = 0.02; //after a collision we snap the capsule bottom/up to the ground/ceiling and we nudge outward by skin distance to avoid penetration
 // Player physical and camera setup
 export const playerHeight = 1.8; // total player height in meters
-export const cameraHeight = 1.3; // desired camera (eye) height above the floor
+// export const cameraHeight = 1.3; // desired camera (eye) height above the floor
+export const cameraHeight = 1.5; // desired camera (eye) height above the floor
 export const playerRadius = 0.4; // radius of the capsule collider
 // Distance from capsule center (which is halfway up the capsule) to the camera position.
 // Needed because Rapier places the capsule's origin at its center, not at the feet.
@@ -133,6 +130,11 @@ export const cameraHeightFromCapsuleCenter = cameraHeight - playerHeight / 2;
 // The capsule’s total height = 2 * halfHeight + 2 * radius = playerHeight
 // halfHeight is a bit misleading because it’s not half of the total capsule height, it’s half of the cylindrical part only
 export const halfHeight = (playerHeight / 2) - playerRadius;
+// camera initial offset position
+export const cameraOffsetX = 2;
+export const cameraOffsetZ = 2;
+// export const cameraOffsetY = 1.3 + 0.1; //see camera height in game.js
+export const cameraOffsetY = cameraHeight+0.1; //see camera height in game.js
 
 /*----------------------*/
 // ANIMATIONS VARIABLES //
@@ -178,6 +180,7 @@ export function newMovementState() {
         tweakRot: null,
         tweakPos: null,
         collider: null,
+        colliderDesc: null,
         verticalSpeed: 0,
         curPos: 0,
         newPos: 0,
@@ -637,14 +640,14 @@ export function openDoor(self, playerState) {
     // const doorPivot = self.children[0];
     const doorPivot = self;
 
-    rotatePivot(doorPivot, new THREE.Vector3(0, 1, 0), dir * ninetyDeg, 0.6); //local rotation axis
+    rotatePivot(doorPivot, new THREE.Vector3(0, 1, 0), dir * ninetyDeg, 0.6, true); //local rotation axis
 
 }
 
 /*----------------------------*/
 // rotatePivot
 /*----------------------------*/
-function rotatePivot(pivot, axis, targetAngle, duration = 1) {
+function rotatePivot(pivot, axis, targetAngle, duration = 1, updateBody = false) {
     const startTime = performance.now();
     let accumulatedAngle = 0;
 
@@ -657,7 +660,8 @@ function rotatePivot(pivot, axis, targetAngle, duration = 1) {
         pivot.rotateOnAxis(axis, angleToApply);
         accumulatedAngle += angleToApply;
 
-        scheduleSyncBodyToMesh(pivot); //have the body follow the mesh (pivot)
+        if (updateBody)
+            scheduleSyncBodyToMesh(pivot); //have the body follow the mesh (pivot)
 
         if (t < 1) {
             requestAnimationFrame(animate);
@@ -724,6 +728,22 @@ export const colliderNameMap = new Map();
 export const BodyNameMap = new Map();
 export const pendingBodyUpdates = [];
 
+//update mesh rot/pos from movement state
+export function updateMeshRotPos(movementState) {
+    const root = movementState.root;
+    const rot = movementState.rotation;
+    root.quaternion.set(rot.x, rot.y, rot.z, rot.w);
+    if (movementState.tweakRot) root.rotation.y += movementState.tweakRot; // optional 180° turn if needed
+    
+    const newRootPos = movementState.newPos.clone();
+    if (movementState.offsetRootToBody)
+        newRootPos.sub(movementState.offsetRootToBody);
+    if (movementState.tweakPos){
+        const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(root.quaternion); // compute forward vector in world space
+        newRootPos.sub(forward.multiply(movementState.tweakPos));}
+    root.position.set(newRootPos.x,newRootPos.y,newRootPos.z);    
+}
+
 export function getKineBodyFromMesh(mesh) {
     return BodyNameMap.get("Collider_Kine_" + mesh.name);
 }
@@ -732,12 +752,12 @@ export function getKineBodyFromMesh(mesh) {
 //so this is executed in main loop before world.step (avoid race conditions)
 export function scheduleSyncBodyToMesh(mesh, body = null){
     if (!body) body = getKineBodyFromMesh(mesh);
-    const p = pivot.getWorldPosition(new THREE.Vector3());
-    const q = pivot.getWorldQuaternion(new THREE.Quaternion());
-    const off = body.userData.offsetBodyToMesh
+    const p = mesh.getWorldPosition(new THREE.Vector3());
+    const q = mesh.getWorldQuaternion(new THREE.Quaternion());
+    const off = body.userData.offsetRootToBody
     if (off === undefined) throw new Error("offsetBodyToMesh not defined")
-    const offrot = off.clone().applyQuaternion(q);
-    const finalp = p.clone().add(offrot);
+    const offrot = off.clone().applyQuaternion(q)
+    const finalp = p.add(offrot);
     pendingBodyUpdates.push({
         body: body,
         pos: finalp,
@@ -745,8 +765,16 @@ export function scheduleSyncBodyToMesh(mesh, body = null){
     });
 }
 
-export function updateMovementStatePhysics(movementState){
-    scheduleSyncBodyToMesh(movementState.body, movementState.root)
+export function scheduleSyncBodyFromMovementState(movementState){
+    // scheduleSyncBodyToMesh(movementState.root, movementState.body)
+    const p = movementState.newPos;
+    const q = movementState.rotation;
+    const body = movementState.body;
+    pendingBodyUpdates.push({
+        body: body,
+        pos: p,
+        quat: q
+    });    
 }
 
 
