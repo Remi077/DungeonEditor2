@@ -191,6 +191,7 @@ export function newMovementState() {
         moveSpeed: moveSpeed,
         rotation: new THREE.Quaternion(),
         collisionmask: null,
+        kcc: null,
     }
     Object.seal(newObj);
     return newObj;

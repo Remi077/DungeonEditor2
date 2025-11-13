@@ -66,6 +66,79 @@ export function startGameLoop() {
         const playerBody = Shared.physWorld.createRigidBody(playerBodyDesc);
         playerBody.userData = { name: "playerBody" };
 
+
+        /**
+         * A character controller for controlling kinematic bodies and parentless colliders by hitting
+         * and sliding against obstacles.
+         */
+        // export class KinematicCharacterController {
+        //     constructor(
+        //         offset: number,
+        //         params: IntegrationParameters,
+        //         bodies: RigidBodySet,
+        //         colliders: ColliderSet,
+        //         queries: QueryPipeline,
+        //     ) {
+
+
+        // 1️⃣ Create physics sets
+        // const bodies = new RAPIER.RigidBodySet();
+        // const colliders = new RAPIER.ColliderSet();
+        // const queries = new RAPIER.QueryPipeline();
+
+        // // 2️⃣ Integration parameters
+        // const params = new RAPIER.IntegrationParameters();
+        // params.dt = 1 / 60; // timestep
+        // params.gravity = new RAPIER.Vector3(0, -Shared.gravity, 0);
+
+        // // 3️⃣ Set an offset for the character (e.g., half the capsule height)
+        // const offset = 1.0;
+
+        // // 4️⃣ Instantiate the KinematicCharacterController
+        // const characterController = new KinematicCharacterController(
+        //     offset,
+        //     params,
+        //     bodies,
+        //     colliders,
+        //     queries
+        // );
+
+        // // const myparams = 
+        // const playerController = new RAPIER.KinematicCharacterController(
+        //         // true,// slide: true,  // Slide along walls instead of stopping
+        //         // 1,// autostep: Some(CharacterAutostep::default()),  // Auto-climb stairs
+        //         // 45.0.to_radians(),// max_slope_climb_angle: 45.0_f32.to_radians(),  // Max climbable slope
+        //         // // ..Default::default()
+        // );
+
+        // const params = Shared.physWorld.integrationParameters; // get the world’s params
+        // const bodies = Shared.physWorld.bodies;                // world’s internal RigidBodySet
+        // const colliders = Shared.physWorld.colliders;         // world’s ColliderSet
+        // const queries = new RAPIER.QueryPipeline();    // new query pipeline for the controller
+
+        // const offset = 1.0; // half the capsule height
+        // const kcc = new RAPIER.KinematicCharacterController(offset, params, bodies, colliders, queries);
+
+            /**
+         * Creates a new character controller.
+         *
+         * @param offset - The artificial gap added between the character’s chape and its environment.
+         */
+        // public createCharacterController(
+        //     offset: number,
+        // ): KinematicCharacterController {
+        const kcc = Shared.physWorld.createCharacterController(Shared.skin); //0.1 is skin distance
+        // const kcc = Shared.physWorld.createCharacterController(0.2); //0.1 is skin distance
+        // Don’t allow climbing slopes larger than 45 degrees.
+        kcc.setMaxSlopeClimbAngle(45 * Math.PI / 180);
+        // Automatically slide down on slopes smaller than 30 degrees.
+        kcc.setMinSlopeSlideAngle(30 * Math.PI / 180);
+        // Autostep if the step height is smaller than 0.5, its width is larger than 0.2,
+        // and allow stepping on dynamic bodies.
+        kcc.enableAutostep(0.5, 0.2, true);
+        // Snap to the ground if the vertical distance to the ground is smaller than 0.5.
+        kcc.enableSnapToGround(0.5);
+
         // --- Create capsule collider ---
         const playerColliderDesc = RAPIER.ColliderDesc.capsule(Shared.halfHeight, Shared.playerRadius)
             .setFriction(0.9)
@@ -84,6 +157,8 @@ export function startGameLoop() {
         );
         Shared.playerMovementState.tweakRot = Math.PI
         Shared.playerMovementState.tweakPos = new THREE.Vector3(0.1,0,0.1);
+
+        Shared.playerMovementState.kcc = kcc;
 
         initHighlightPool(Shared.scene);
 
@@ -516,10 +591,28 @@ function groundCeilingCheck(thisbody, thisCollider) {
 
 }
 
+
+
 /*---------------------------------*/
 /* updateVerticalSpeedAndPos */
 /*---------------------------------*/
 function updateVerticalSpeedAndPos(movementState, deltaTime) {
+
+        let usekcc = false;
+    if (usekcc){
+    const kcc = movementState.kcc;
+    const collider = movementState.collider;
+        const movement = (0,- (Shared.gravity * deltaTime),0);
+    kcc.computeColliderMovement(
+        collider,
+        movement,
+        null,
+        Shared.COL_MASKS.PLAYER,
+        null
+    );
+
+
+    } else {
 
     const checkResult = groundCeilingCheck(movementState.body, movementState.collider);
     movementState.isTouchingGround = checkResult.groundHit;
@@ -534,14 +627,31 @@ function updateVerticalSpeedAndPos(movementState, deltaTime) {
         movementState.verticalSpeed = 0; //cancel speed and snap to floor/ceiling within a skin distance margin
         movementState.newPos.y -= (isTouchingGround ? (checkResult.groundDistance - Shared.skin) : (checkResult.ceilingDistance + Shared.skin));
     }
-
     //jump
     if (isTouchingGround && !isTouchingCeiling && movementState.jumpPressed) {
         movementState.verticalSpeed = Shared.jumpSpeed;
     }
 
     movementState.newPos.y += movementState.verticalSpeed * deltaTime;
+    }
 }
+
+
+// function updatePosWithKcc(movementState, deltaTime) {
+//     const kcc = movementState.kcc;
+//     const collider = movementState.collider;
+//     const desiredMovementVector = new THREE.Vector3();
+//     desiredMovementVector.y -= Shared.gravity * deltaTime;
+//     kcc.computeColliderMovement(collider, desiredMovementVector);
+
+// // After the collider movement calculation is done, we can read the
+// // collision events.
+// for (let i = 0; i < characterController.numComputedCollisions(); i++) {
+//     let collision = characterController.computedCollision(i);
+//     // Do something with that collision information.
+// }
+// }
+
 
 /*---------------------------------*/
 /* updateHorizontalSpeedAndPos */
@@ -565,8 +675,8 @@ function updateHorizontalSpeedAndPos(movementState, deltaTime) {
 
     //3 consecutive collision checks to avoid sliding through collider after the first collision check
     collisionCheck(movementState, 2);
-    collisionCheck(movementState, 3);
-    collisionCheck(movementState, 4);
+    // collisionCheck(movementState, 3);
+    // collisionCheck(movementState, 4);
 
     //update current position
     movementState.curPos = movementState.newPos
@@ -707,6 +817,51 @@ function collisionCheck(movementState, idx = 2) {
     const excludeBodies = [];
     excludeBodies.push(movementState.body);
 
+
+    let usekcc = true;
+    if (usekcc){
+    const kcc = movementState.kcc;
+    const collider = movementState.collider;
+
+    /**
+     * Computes the movement the given collider is able to execute after hitting and sliding on obstacles.
+     *
+     * @param collider - The collider to move.
+     * @param desiredTranslationDelta - The desired collider movement.
+     * @param filterFlags - Flags for excluding whole subsets of colliders from the obstacles taken into account.
+     * @param filterGroups - Groups for excluding colliders with incompatible collision groups from the obstacles
+     *                       taken into account.
+     * @param filterPredicate - Any collider for which this closure returns `false` will be excluded from the
+     *                          obstacles taken into account.
+     */
+    // public computeColliderMovement(
+    //     collider: Collider,
+    //     desiredTranslationDelta: Vector,
+    //     filterFlags?: QueryFilterFlags,
+    //     filterGroups?: InteractionGroups,
+    //     filterPredicate?: (collider: Collider) => boolean,
+    // ) {
+
+
+    kcc.computeColliderMovement(
+        collider,
+        movement,
+        null,
+        Shared.COL_MASKS.PLAYER,
+        null
+    );
+    let correctedMovement = kcc.computedMovement();
+    let grounded = kcc.computedGrounded();
+    console.log(grounded);
+    // for (let i = 0; i < kcc.numComputedCollisions(); i++) {
+    //     let collision = kcc.computedCollision(i);
+    //     // Do something with that collision information.
+    // }
+        const newPos = currentPos.clone().add(correctedMovement);
+        movementState.newPos = newPos.clone();
+
+    } else {
+
     const hit = Shared.physWorld.castShape(
         currentPos,               // shapePos
         movementState.rotation,   // shapeRot
@@ -741,6 +896,7 @@ function collisionCheck(movementState, idx = 2) {
         newPos.add(slideVec) //then slide along the remaining distance projected onto collider
 
         movementState.newPos = newPos.clone();
+    }
     }
 }
 
