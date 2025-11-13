@@ -122,7 +122,17 @@ export function startGameLoop() {
             const enemyCollider = Shared.physWorld.createCollider(enemyColliderDesc, enemyBody);
 
             const enemyMovementState = Shared.newMovementState()
+            enemyMovementState.root = element;
             enemyMovementState.body = enemyBody
+
+            //enemy controller (one controller per enemy/player - avoid sharing them)
+            const e_kcc = Shared.physWorld.createCharacterController(Shared.skin); //0.1 is skin distance
+            e_kcc.setMaxSlopeClimbAngle(45 * Math.PI / 180);
+            e_kcc.setMinSlopeSlideAngle(30 * Math.PI / 180);
+            e_kcc.enableAutostep(0.5, 0.2, true);
+            e_kcc.enableSnapToGround(0.5);
+
+            enemyMovementState.kcc = e_kcc
             enemyMovementState.collisionmask = Shared.COL_MASKS.ENEMY
             enemyMovementState.collider = enemyCollider
             enemyMovementState.colliderDesc = enemyColliderDesc
@@ -276,7 +286,7 @@ function gameLoop(now) {
 /* enemyLoop */
 /*---------------------------------*/
 //TODO: moved in Shared
-const enableEnemy = false;
+const enableEnemy = true;
 // const enemyMoveSpeed = Shared.moveSpeed*0.8;     // Adjust movement speed
 const enemyMoveSpeed = Shared.moveSpeed * 0.1;     // Adjust movement speed
 const enemyAttackDistance = 2;     // Adjust movement speed        
@@ -309,11 +319,14 @@ function enemyLoop() {
                 // const nextPos = enemyPos.add(toPlayer);
                 enemyMovementState.moveVector = toPlayer;
                 enemyMovementState.newPos = enemyMovementState.curPos.clone();
-                updateVerticalSpeedAndPos(enemyMovementState, deltaTime);
-                updateHorizontalSpeedAndPos(enemyMovementState, deltaTime);
+
+                computeNextPos(enemyMovementState, deltaTime);
+                // updateVerticalSpeedAndPos(enemyMovementState, deltaTime);
+                // updateHorizontalSpeedAndPos(enemyMovementState, deltaTime);
 
                 Shared.updateMeshRotPos(enemyMovementState);
-                Shared.updateMovementStatePhysics(enemyMovementState) // schedule enemy rigidbody sync
+                Shared.scheduleSyncBodyFromMovementState(enemyMovementState) // schedule player rigidbody sync
+                // Shared.updateMovementStatePhysics(enemyMovementState) // schedule enemy rigidbody sync
                 // enemyBody.setNextKinematicTranslation(enemyMovementState.newPos);
             }
         });
@@ -391,7 +404,7 @@ function computeNextPos(movementState, deltaTime) {
         collider,
         movement,
         null,
-        Shared.COL_MASKS.PLAYER,
+        movementState.collisionmask,
         null
     );
     let correctedMovement = kcc.computedMovement();
