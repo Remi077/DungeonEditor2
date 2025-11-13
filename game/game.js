@@ -15,7 +15,9 @@ const playerState = {
     health: 100,
     maxHealth: 100,
     inventory: {},
-    weapon: null
+    weapon: null,
+    weaponBody: null,
+    weaponCollider: null
 };
 Object.seal(playerState);
 
@@ -121,6 +123,8 @@ export function startGameLoop() {
 
         //carried weapon
         playerState.weapon = Shared.scene.getObjectByName(Shared.SWORD_NAME);
+        playerState.weaponBody = Shared.BodyNameMap.get("Collider_Kine_"+Shared.SWORD_NAME)
+        playerState.weaponCollider = Shared.colliderNameMap.get("Collider_Kine_"+Shared.SWORD_NAME)
 
         //start enemy loop
         enemyLoop();
@@ -914,13 +918,16 @@ function makePartialClip(clip, boneNames) {
 /* attack */
 /*----------------*/
 let isAttacking = false;
+let attackLoopId;
 function attack() {
 
     if (!isAttacking) {
         isAttacking = true;
 
         playClipOnce(Shared.ANIM_ATTACK_NAME, endAttack);
+        attackLoopId = requestAnimationFrame(attackLoop);
     }
+
 }
 
 /*----------------*/
@@ -929,4 +936,34 @@ function attack() {
 function endAttack() {
     console.log("ENDATTACK");
     isAttacking = false;
+    cancelAnimationFrame(attackLoopId);
+}
+
+function attackLoop() {
+
+    console.log("attackloop")
+    const weaponCollider = playerState.weaponCollider;
+    const weaponBody = playerState.weaponBody;
+    const weaponColliderDesc = weaponBody.userData.colliderDesc;
+    const pos = weaponBody.translation();
+    const rot = weaponBody.rotation();
+
+    Shared.physWorld.intersectionsWithShape(
+        pos, //shapePos: pos,
+        rot, //shapeRot: rot,
+    weaponColliderDesc.shape, //shape: weaponColliderDesc.shape,
+        (otherCollider) =>{
+            console.log('3 Sword overlapping '+ otherCollider.userData?.name);
+        }
+        , //callback: null, // callback: (collider: Collider) => boolean,
+        null, //filterFlags?: QueryFilterFlags,
+        // null, //filterGroups?: InteractionGroups,
+        Shared.COL_MASKS.PLAYERWPN, //filterGroups?: InteractionGroups,
+        weaponCollider, //filterExcludeCollider?: Collider,
+        weaponBody, //filterExcludeRigidBody?: RigidBody,
+        null //filterPredicate?: (collider: Collider) => boolean,
+    )
+
+
+    attackLoopId = requestAnimationFrame(attackLoop);
 }

@@ -590,7 +590,9 @@ export async function loadTest(scene) {
                     const offsetRootToBody = newCenterPosition.clone().sub(p)
                     bodyHandle.userData = { 
                         name: (child.name+"_body"),
-                        offsetRootToBody: offsetRootToBody };
+                        offsetRootToBody: offsetRootToBody,
+                        colliderDesc:colliderDesc,
+                    };
 
 
                     //static collider
@@ -604,11 +606,11 @@ export async function loadTest(scene) {
                 }
 
                 //collision groups
-                if (child.name.startsWith("Collider_Kine_weapon"))
+                if (child.name.startsWith("Collider_Kine_weapon")) {
                     colliderDesc.setCollisionGroups(Shared.COL_MASKS.PLAYERWPN)
-                else
+                } else {
                     colliderDesc.setCollisionGroups(Shared.COL_MASKS.SCENERY)
-
+                }
 
                 const colliderHandle = Shared.physWorld.createCollider(colliderDesc, bodyHandle);
 
