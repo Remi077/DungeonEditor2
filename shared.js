@@ -191,6 +191,7 @@ export function newMovementState() {
         moveSpeed: moveSpeed,
         rotation: new THREE.Quaternion(),
         collisionmask: null,
+        kcc: null,
     }
     Object.seal(newObj);
     return newObj;
@@ -555,7 +556,7 @@ export function setRightMouseDown(val) { rightMouseDown = val; }
 
 export function onMouseMoveEditor(event) {
 
-    console.log("onMouseMove");  
+    // console.log("onMouseMove");  
 
     if (!isMouseOverCanvas) return;
     if (rightMouseDown) {
@@ -727,6 +728,7 @@ export let mainKinematicBody = null;
 export const colliderNameMap = new Map();
 export const BodyNameMap = new Map();
 export const pendingBodyUpdates = [];
+export const usekcc = true;
 
 //update mesh rot/pos from movement state
 export function updateMeshRotPos(movementState) {

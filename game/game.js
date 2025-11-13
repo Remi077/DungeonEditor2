@@ -66,6 +66,20 @@ export function startGameLoop() {
         const playerBody = Shared.physWorld.createRigidBody(playerBodyDesc);
         playerBody.userData = { name: "playerBody" };
 
+        // --- Create character controller ---
+        const kcc = Shared.physWorld.createCharacterController(Shared.skin); //0.1 is skin distance
+        // kcc.setSlideEnabled(true);
+        // Don’t allow climbing slopes larger than 45 degrees.
+        kcc.setMaxSlopeClimbAngle(45 * Math.PI / 180);
+        // Automatically slide down on slopes smaller than 30 degrees.
+        kcc.setMinSlopeSlideAngle(30 * Math.PI / 180);
+        // Autostep if the step height is smaller than 0.5, its width is larger than 0.2,
+        // and allow stepping on dynamic bodies.
+        kcc.enableAutostep(0.5, 0.2, true);
+        // Snap to the ground if the vertical distance to the ground is smaller than 0.5.
+        kcc.enableSnapToGround(0.5);
+        // kcc.disableSnapToGround();
+
         // --- Create capsule collider ---
         const playerColliderDesc = RAPIER.ColliderDesc.capsule(Shared.halfHeight, Shared.playerRadius)
             .setFriction(0.9)
@@ -84,6 +98,8 @@ export function startGameLoop() {
         );
         Shared.playerMovementState.tweakRot = Math.PI
         Shared.playerMovementState.tweakPos = new THREE.Vector3(0.1,0,0.1);
+
+        Shared.playerMovementState.kcc = kcc;
 
         initHighlightPool(Shared.scene);
 
@@ -199,19 +215,15 @@ function gameLoop(now) {
         /* INITIALIZE PLAYER MOVE AND ROTATION BASED ON INPUTS */
         /*-----------------------------------------------------*/
         Shared.playerMovementState.moveVector.applyQuaternion(Shared.yawObject.quaternion);
+        
+        // Shared.playerMovementState.moveVector.applyEuler(
+        //     new THREE.Euler(Shared.pitchObject.rotation.x, Shared.yawObject.rotation.y, 0)
+        // );
+        
         Shared.playerMovementState.rotation.copy(Shared.yawObject.quaternion);
         Shared.playerMovementState.newPos = Shared.playerMovementState.curPos.clone();
 
-        /*-----------------------------------------------*/
-        /* VERTICAL MOVEMENTS + GROUND/CEILING DETECTION */
-        /*-----------------------------------------------*/
-        updateVerticalSpeedAndPos(Shared.playerMovementState, deltaTime);
-        Shared.playerMovementState.jumpPressed = false; //clear jump event
-
-        /*---------------------------------------------*/
-        // HORIZONTAL MOVEMENTS + WALL DETECTION       //
-        /*---------------------------------------------*/
-        updateHorizontalSpeedAndPos(Shared.playerMovementState, deltaTime);
+        computeNextPos(Shared.playerMovementState, deltaTime);
 
         // BODY FINAL UPDATES
         // Shared.playerMovementState.body.setNextKinematicTranslation(Shared.playerMovementState.newPos);
@@ -219,7 +231,6 @@ function gameLoop(now) {
         // movePlayerMesh(Shared.playerMovementState); //move Player Mesh to new position/rotation
         Shared.updateMeshRotPos(Shared.playerMovementState);
         syncCameraTo(Shared.playerMovementState, camPlayerTweak);
-
         //raycast against actionnables
         raycastActionnables();
 
@@ -360,218 +371,58 @@ function executeActions() {
 // jump
 /*---------------------------------*/
 function jump() {
-    if (Shared.playerMovementState.isTouchingGround)
+    // if (Shared.playerMovementState.isTouchingGround)
         Shared.playerMovementState.jumpPressed = true;
 }
 
 /*---------------------------------*/
-// groundCeilingCheck
+// computeNextPos
 /*---------------------------------*/
-let groundDebugArrow = null;
-let ceilingDebugArrow = null;
-let debugCapsuleBottom = null;
-let debugCapsuleUp = null;
-let firstTimeArrow = true;
-function groundCeilingCheck(thisbody, thisCollider) {
+function computeNextPos(movementState, deltaTime) {
 
-    const bodyPos = thisbody.translation();
-    // Y position of the *bottom* of the capsule (the player's feet).
-    // The capsule's center is at bodyPos.y, so we subtract the cylinder half-height
-    // plus the spherical cap radius to reach the very bottom of the capsule.
-    // halfHeight is a bit misleading because it’s not half of the total capsule height, it’s half of the cylindrical part only
-    const capsuleBottomY = bodyPos.y - (Shared.halfHeight + Shared.playerRadius);//TODO: halfheight and playerradius should be inputs of this function
-    const capsuleUpY = bodyPos.y + (Shared.halfHeight + Shared.playerRadius);
+    const kcc = movementState.kcc;
+    const collider = movementState.collider;
+    const movement = movementState.moveVector.clone().multiplyScalar(movementState.moveSpeed);
+    const nextVerticalSpeed = Math.max(-Shared.maxFallSpeed, movementState.verticalSpeed - (Shared.gravity * deltaTime));
+    movement.y += nextVerticalSpeed
+    movement.multiplyScalar(deltaTime);
 
-    // const skinDistance      = 0.01;
-    const aboveFeetDistance = 0.4;
-    const rayLength = 0.2;                          // small margin
-    const totalrayLength = aboveFeetDistance + rayLength;  // small margin
-
-    // GROUND DETECTION
-    const groundRayOrigin = {
-        x: bodyPos.x,
-        y: capsuleBottomY + aboveFeetDistance, // just above feet
-        z: bodyPos.z
-    };
-
-    const groundRayDir = { x: 0, y: -1, z: 0 };
-    const groundRay = new RAPIER.Ray(groundRayOrigin, groundRayDir);
-
-    const groundHit = Shared.physWorld.castRay(
-        groundRay,
-        totalrayLength,
-        true,              // solid
-        undefined,         // filterFlags
-        undefined,         // filterGroups
-        thisCollider,    // exclude this collider
-        undefined,         // exclude rigidbody (optional)
-        undefined          // filterPredicate (optional)
+    kcc.computeColliderMovement(
+        collider,
+        movement,
+        null,
+        Shared.COL_MASKS.PLAYER,
+        null
     );
-
-    let distanceToGround = 0;
-    if (groundHit != null) {
-        const name = Shared.colliderNameMap.get(groundHit.collider);
-        distanceToGround = groundHit.toi - aboveFeetDistance;
-        updateHighlight(groundHit.collider, 0);
-        if (verbose)
-            console.log("GROUND hit ", name, "at distance", distanceToGround);
-    } else {
-        if (verbose)
-            console.log("NOGROUND from origin ", groundRayOrigin);
+    let correctedMovement = kcc.computedMovement();
+    let grounded = kcc.computedGrounded();
+    
+    //collision debug
+    for (let i = 0; i < kcc.numComputedCollisions(); i++) {
+        let collision = kcc.computedCollision(i);
+        let othercollider = collision.collider;
+        console.log("colliding with "+othercollider.userData.name)
+        updateHighlight(othercollider, i);
     }
 
-    // CEILING DETECTION
-    const ceilingRayOrigin = {
-        x: bodyPos.x,
-        y: capsuleUpY - aboveFeetDistance, // just below head
-        z: bodyPos.z
-    };
-
-    const ceilingRayDir = { x: 0, y: 1, z: 0 };
-    const ceilingRay = new RAPIER.Ray(ceilingRayOrigin, ceilingRayDir);
-
-    const ceilingHit = Shared.physWorld.castRay(
-        ceilingRay,
-        totalrayLength,
-        true,              // solid
-        undefined,         // filterFlags
-        undefined,         // filterGroups
-        thisCollider,    // exclude this collider
-        undefined,         // exclude rigidbody (optional)
-        undefined          // filterPredicate (optional)
-    );
-
-    let distanceToCeiling = 0;
-    if (ceilingHit != null) {
-        const name = Shared.colliderNameMap.get(ceilingHit.collider);
-        distanceToCeiling = ceilingHit.toi - aboveFeetDistance;
-        updateHighlight(ceilingHit.collider, 1);
-        if (verbose)
-            console.log("CEILING hit ", name, "at distance", distanceToCeiling);
-    } else {
-        if (verbose)
-            console.log("CEILING from origin ", ceilingRayOrigin);
-    }
-
-
-    /*---------------*/
-    // DRAW A DEBUG LINE
-    /*---------------*/
-    if (firstTimeArrow) {
-        // ground arrow
-        firstTimeArrow = false;
-        {
-            const origin = new THREE.Vector3(groundRayOrigin.x, groundRayOrigin.y, groundRayOrigin.z);
-            const direction = new THREE.Vector3(groundRayDir.x, groundRayDir.y, groundRayDir.z).normalize();
-            const length = totalrayLength;
-            const color = groundHit ? 0x00ff00 : 0xff0000;
-            groundDebugArrow = new THREE.ArrowHelper(direction, origin, length, color);
-            Shared.colliderDebugGroup.add(groundDebugArrow);
-            // Sphere for capsule bottom
-            const sphereGeometry = new THREE.SphereGeometry(0.05, 8, 8); // radius 5 cm
-            const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
-            debugCapsuleBottom = new THREE.Mesh(sphereGeometry, sphereMaterial);
-            debugCapsuleBottom.position.set(groundRayOrigin.x, capsuleBottomY, groundRayOrigin.z);
-            Shared.colliderDebugGroup.add(debugCapsuleBottom);
+    if (grounded) {
+        if (movementState.jumpPressed){
+            movementState.verticalSpeed = Shared.jumpSpeed;
+            movementState.jumpPressed = false;
+            // console.log("jump");
         }
-        {
-            const origin = new THREE.Vector3(ceilingRayOrigin.x, ceilingRayOrigin.y, ceilingRayOrigin.z);
-            const direction = new THREE.Vector3(ceilingRayDir.x, ceilingRayDir.y, ceilingRayDir.z).normalize();
-            const length = totalrayLength;
-            const color = ceilingHit ? 0x00ff00 : 0xff0000;
-            ceilingDebugArrow = new THREE.ArrowHelper(direction, origin, length, color);
-            Shared.colliderDebugGroup.add(ceilingDebugArrow);
-            // Sphere for capsule bottom
-            const sphereGeometry = new THREE.SphereGeometry(0.05, 8, 8); // radius 5 cm
-            const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
-            debugCapsuleUp = new THREE.Mesh(sphereGeometry, sphereMaterial);
-            debugCapsuleUp.position.set(ceilingRayOrigin.x, capsuleUpY, ceilingRayOrigin.z);
-            Shared.colliderDebugGroup.add(debugCapsuleUp);
-        }
-    } else {
-        {        // move/update the arrow
-            groundDebugArrow.position.set(groundRayOrigin.x, groundRayOrigin.y, groundRayOrigin.z);
-            groundDebugArrow.setDirection(new THREE.Vector3(groundRayDir.x, groundRayDir.y, groundRayDir.z).normalize());
-            groundDebugArrow.setLength(totalrayLength);
-            groundDebugArrow.setColor(groundHit ? 0x00ff00 : 0xff0000);
-            // Update capsule bottom sphere
-            debugCapsuleBottom.position.set(groundRayOrigin.x, capsuleBottomY, groundRayOrigin.z);
-        }
-        {        // move/update the arrow
-            ceilingDebugArrow.position.set(ceilingRayOrigin.x, ceilingRayOrigin.y, ceilingRayOrigin.z);
-            ceilingDebugArrow.setDirection(new THREE.Vector3(ceilingRayDir.x, ceilingRayDir.y, ceilingRayDir.z).normalize());
-            ceilingDebugArrow.setLength(totalrayLength);
-            ceilingDebugArrow.setColor(ceilingHit ? 0x00ff00 : 0xff0000);
-            // Update capsule bottom sphere
-            debugCapsuleUp.position.set(ceilingRayOrigin.x, capsuleUpY, ceilingRayOrigin.z);
-        }
-    }
+        // console.log("grounded"+movementState.verticalSpeed );
+        movementState.moveSpeed = Shared.moveSpeed;
+    }else{
+        // console.log("notgrounded"+movementState.verticalSpeed );
+        movementState.verticalSpeed = nextVerticalSpeed;//accumulate vertical speed
+        movementState.moveSpeed = Shared.moveSpeed*0.5;
+    } 
 
-    return {
-        groundHit: (groundHit != null && distanceToGround < Shared.contactThreshold),
-        groundDistance: distanceToGround,
-        ceilingHit: (ceilingHit != null && distanceToCeiling < Shared.contactThreshold),
-        ceilingDistance: distanceToCeiling,
-    };
-
-}
-
-/*---------------------------------*/
-/* updateVerticalSpeedAndPos */
-/*---------------------------------*/
-function updateVerticalSpeedAndPos(movementState, deltaTime) {
-
-    const checkResult = groundCeilingCheck(movementState.body, movementState.collider);
-    movementState.isTouchingGround = checkResult.groundHit;
-    movementState.isTouchingCeiling = checkResult.ceilingHit;
-
-    // check ground and ceiling update vertical speed and snap to floor if close  
-    const isTouchingGround = checkResult.groundHit;
-    const isTouchingCeiling = checkResult.ceilingHit;
-
-    movementState.verticalSpeed = Math.max(-Shared.maxFallSpeed, movementState.verticalSpeed - (Shared.gravity * deltaTime));
-    if (isTouchingGround || isTouchingCeiling) {
-        movementState.verticalSpeed = 0; //cancel speed and snap to floor/ceiling within a skin distance margin
-        movementState.newPos.y -= (isTouchingGround ? (checkResult.groundDistance - Shared.skin) : (checkResult.ceilingDistance + Shared.skin));
-    }
-
-    //jump
-    if (isTouchingGround && !isTouchingCeiling && movementState.jumpPressed) {
-        movementState.verticalSpeed = Shared.jumpSpeed;
-    }
-
-    movementState.newPos.y += movementState.verticalSpeed * deltaTime;
-}
-
-/*---------------------------------*/
-/* updateHorizontalSpeedAndPos */
-/*---------------------------------*/
-function updateHorizontalSpeedAndPos(movementState, deltaTime) {
-
-    movementState.moveSpeed = Shared.moveSpeed;
-    if (!movementState.isTouchingGround &&
-        !movementState.isTouchingCeiling)
-        movementState.moveSpeed *= 0.5; //slower lateral moves when in Air
-
-    //apply moveVector in XZ plane
-    movementState.moveSpeed *= deltaTime;
-    movementState.newPos.x += movementState.moveVector.x * movementState.moveSpeed;
-    movementState.newPos.z += movementState.moveVector.z * movementState.moveSpeed;
-
-    if (verbose) console.log(
-        "newPos", movementState.newPos,
-        "currentPos", movementState.currentPos,
-        "moveVector", movementState.moveVector);
-
-    //3 consecutive collision checks to avoid sliding through collider after the first collision check
-    collisionCheck(movementState, 2);
-    collisionCheck(movementState, 3);
-    collisionCheck(movementState, 4);
-
-    //update current position
+    movementState.newPos = movementState.curPos.clone().add(correctedMovement);
     movementState.curPos = movementState.newPos
-}
 
+}
 
 /*---------------------------------*/
 // interact
@@ -687,61 +538,6 @@ function syncEnemyToBodies() {
         enemy.position.set(t.x, t.y, t.z);
         enemy.quaternion.set(q.x, q.y, q.z, q.w)
     })
-}
-
-/*---------------------------------*/
-// collisionCheck
-/*---------------------------------*/
-function collisionCheck(movementState, idx = 2) {
-
-    const currentPos = movementState.curPos.clone();
-    const movement = movementState.newPos.clone().sub(currentPos);
-    const movementLength = movement.length();
-    const direction = movement.clone().normalize();
-
-    const excludedColliders = new Set([
-        movementState.collider,
-        //   someOtherCollider,
-        //   yetAnotherCollider,
-    ]);
-    const excludeBodies = [];
-    excludeBodies.push(movementState.body);
-
-    const hit = Shared.physWorld.castShape(
-        currentPos,               // shapePos
-        movementState.rotation,   // shapeRot
-        movement,                 // shapeVel
-        movementState.colliderDesc.shape, // shape
-        1.0,                      // maxToi (distance multiplier)
-        true,                     // stopAtPenetration
-        null,                     // filterFlags
-        movementState.collisionmask,     // filterGroups
-        null,                     // exclude this collider
-        movementState.body,     // exclude this rigidbody
-
-    );
-
-    if (hit && hit.toi < 1.0) { //toi<=0: penetration, 0<toi<1: collision within movement, 1<toi: collision beyond movement
-        let collidername = Shared.colliderNameMap.get(hit.collider);
-        updateHighlight(hit.collider, idx); //colour colliding collider
-        console.log("check" + idx + " hit", collidername, "at fractional distance", hit.toi);
-
-        //calculate movement to contact and remaining of the movement after contact
-        const distToContact = movementLength * hit.toi;
-        const distRemaining = movementLength - distToContact;
-        const movementToContact = direction.clone().multiplyScalar(distToContact)
-        const movementRemaining = direction.clone().multiplyScalar(distRemaining)
-        // Project movementRemaining onto plane (remove movement component along hit normal)
-        const normal = new THREE.Vector3(hit.normal1.x, hit.normal1.y, hit.normal1.z);//convert hit normal to threejs vector3
-        const dotRem = movementRemaining.dot(normal);
-        let slideVec = movementRemaining.clone().sub(normal.clone().multiplyScalar(dotRem));
-        //move to contact point then nudge slighly away along normal by skin distance
-        const newPos = currentPos.clone().add(movementToContact)
-        newPos.add(normal.multiplyScalar(Shared.skin))
-        newPos.add(slideVec) //then slide along the remaining distance projected onto collider
-
-        movementState.newPos = newPos.clone();
-    }
 }
 
 /*---------------------------------*/
