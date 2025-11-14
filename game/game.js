@@ -672,20 +672,19 @@ function playClip(movementState,clipName) {
     movementState.currentAction = nextAction;
 }
 
-function activateMixer(mixer) {
-    if (!mixer._isActive) {
-        mixer._isActive = true;
-        inactiveMixers.delete(mixer);
-        activeMixers.add(mixer);
-    }
+function activateMixer(mixer, single=false) {
+    if (!single) mixer._isActive = true;
+    else mixer._isSingleActive = true;
+    inactiveMixers.delete(mixer);
+    activeMixers.add(mixer);
 }
 
-function deactivateMixer(mixer) {
-    if (mixer._isActive) {
-        mixer._isActive = false;
-        activeMixers.delete(mixer);
-        inactiveMixers.add(mixer);
-    }
+function deactivateMixer(mixer, single=false) {
+    if (!single) mixer._isActive = false;
+    else mixer._isSingleActive = false;
+    if (mixer._isActive || mixer._isSingleActive) return;
+    activeMixers.delete(mixer);
+    inactiveMixers.add(mixer);
 }
 
 /*----------------*/
@@ -695,7 +694,7 @@ function playClipOnce(movementState,clipName, endAction = null) {
     // const clipInfo = Shared.clipActions.get(clipName);
     const nextAction = movementState.actionClips.get(clipName);
     const currentMixer = movementState.mixer;
-    activateMixer(currentMixer);
+    activateMixer(currentMixer, true);
     nextAction.reset();
     nextAction.setLoop(THREE.LoopOnce, 1);
     nextAction.clampWhenFinished = true;
@@ -707,7 +706,7 @@ function playClipOnce(movementState,clipName, endAction = null) {
     currentMixer._onFinishListener = (e) => {
         if (e.action === nextAction) {  // check which action finished
             console.log('Animation finished!');
-            deactivateMixer(currentMixer);
+            deactivateMixer(currentMixer, true);
             if (endAction) endAction();
         }
     };
