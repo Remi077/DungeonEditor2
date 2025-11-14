@@ -2,7 +2,6 @@
 /*-----------------------------------------------------*/
 // IMPORTS //
 /*-----------------------------------------------------*/
-
 import * as Shared from './shared.js';
 import * as Editor from './editor/editor.js';
 import * as EditorUI from './editor/editorUI.js';

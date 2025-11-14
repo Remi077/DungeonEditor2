@@ -1,7 +1,7 @@
 // @ts-nocheck
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
-import RAPIER from 'https://esm.sh/@dimforge/rapier3d-compat@0.12.0';
-import seedrandom from 'https://cdn.skypack.dev/seedrandom';
+import * as THREE from 'three';
+import * as RAPIER from 'rapier';
+import seedrandom from 'seedrandom';
 //OTHER IMPORTS FORBIDDEN! CIRCULAR DEPENDENCIES
 
 /*-------------------------*/
@@ -157,9 +157,9 @@ export const lowerBodyBones = [//define bone whitelist for an animation
     'mixamorigLeftFoot',
     'mixamorigRightArm',  //for walk cycle, weapon is in left hand so leave right arm go with walk
 ];
-export const ANIM_ATTACK_NAME = "Armature_Man_Attack_two";
-export const ANIM_WALK_NAME = "Armature_Man_Walking";
-export const ANIM_WALK_NAME_L = "Armature_Man_Walking_Lower";
+export const ANIM_ATTACK_NAME = "Attack_two";
+export const ANIM_WALK_NAME = "Walk";
+export const ANIM_WALK_NAME_L = "Walk_Lower";
 export const WEAPON_BONE_NAME = "mixamorigLeftHand";
 export const SWORD_NAME = "weapon_sword";
 export function makePartialClip(clip, boneNames) {
@@ -168,10 +168,10 @@ export function makePartialClip(clip, boneNames) {
     });
     return new THREE.AnimationClip(clip.name + '_partial', clip.duration, filteredTracks);
 }
-export const mixerDictionary = new Map();
 export const clipActions = new Map();
-export function newMovementState() {
+export function newMovementState(name) {
     const newObj = {
+        name: name,
         root: null,
         skeleton: null,
         weaponBone: null,
@@ -192,11 +192,15 @@ export function newMovementState() {
         rotation: new THREE.Quaternion(),
         collisionmask: null,
         kcc: null,
+        actionClips: new Map(),
+        currentAction: null,
+        mixer: null,
     }
     Object.seal(newObj);
     return newObj;
 }
-export const playerMovementState = newMovementState()
+export const playerMovementState = newMovementState("playerMovementState")
+export const EnemyTemplateMovementState = newMovementState("EnemyTemplateMovementState")
 
 /*------------------------*/
 // ACTIONNABLE VARIABLES //

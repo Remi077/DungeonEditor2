@@ -1,12 +1,9 @@
 // @ts-nocheck
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
-// import RAPIER from 'https://cdn.skypack.dev/@dimforge/rapier3d-compat';
-import RAPIER from 'https://esm.sh/@dimforge/rapier3d-compat@0.12.0';
+import * as THREE from 'three';
+import * as RAPIER from 'rapier';
 import * as Shared from '../shared.js';
 import * as Stats from '../Stats.js';
 import * as GameHUD from './gameHUD.js';
-
-
 
 /*-----------*/
 // inventory //
@@ -121,7 +118,7 @@ export function startGameLoop() {
 
             const enemyCollider = Shared.physWorld.createCollider(enemyColliderDesc, enemyBody);
 
-            const enemyMovementState = Shared.newMovementState()
+            const enemyMovementState = Shared.newMovementState(element.name+"MovementState")
             enemyMovementState.root = element;
             enemyMovementState.body = enemyBody
 
@@ -286,7 +283,7 @@ function gameLoop(now) {
 /* enemyLoop */
 /*---------------------------------*/
 //TODO: moved in Shared
-const enableEnemy = true;
+const enableEnemy = false;
 // const enemyMoveSpeed = Shared.moveSpeed*0.8;     // Adjust movement speed
 const enemyMoveSpeed = Shared.moveSpeed * 0.1;     // Adjust movement speed
 const enemyAttackDistance = 2;     // Adjust movement speed        
@@ -371,8 +368,8 @@ function executeActions() {
             Actions.moveCamRight ||
             Actions.moveCamFront ||
             Actions.moveCamBack
-        ) playClip(Shared.ANIM_WALK_NAME_L);
-        else stopClip();
+        ) playClip(Shared.playerMovementState,Shared.ANIM_WALK_NAME_L);
+        else stopClip(Shared.playerMovementState);
 
     } else {
         //unpauseable actions
@@ -647,41 +644,58 @@ function hideAllHighlights() {
 /*----------------*/
 /* animateLoop */
 /*----------------*/
-let currentAction = null;
-let currentSingleAction = null;
-let currentMixer = null;
+const activeMixers = new Set();
+const inactiveMixers = new Set();
 
 function animateLoop() {
-    if ((currentSingleAction || currentAction)
-        && currentMixer) {
-        currentMixer.update(deltaTime);
+    for (const mixer of activeMixers) {
+        mixer.update(deltaTime);
     }
     requestAnimationFrame(animateLoop);
 }
 
+
 /*----------------*/
 /* playClip */
 /*----------------*/
-function playClip(clipName) {
-    const clipInfo = Shared.clipActions.get(clipName);
-    const nextAction = clipInfo?.clipAction;
-    if (!nextAction || (nextAction === currentAction)) return;
-    currentMixer = clipInfo.mixer;
-    if (currentAction && currentAction !== nextAction) {
-        currentAction.crossFadeTo(nextAction, 0.3, true);
+function playClip(movementState,clipName) {
+    // const clipInfo = Shared.clipActions.get(clipName);
+    const nextAction = movementState.actionClips.get(clipName);
+    const currentMixer = movementState.mixer;
+    if (!nextAction || (nextAction === movementState.currentAction)) return;
+    activateMixer(currentMixer);
+    if (movementState.currentAction && movementState.currentAction !== nextAction) {
+        movementState.currentAction.crossFadeTo(nextAction, 0.3, true);
     }
     //   console.log("SETACTION TO ",clipName);
     nextAction.reset().play();
-    currentAction = nextAction;
+    movementState.currentAction = nextAction;
+}
+
+function activateMixer(mixer) {
+    if (!mixer._isActive) {
+        mixer._isActive = true;
+        inactiveMixers.delete(mixer);
+        activeMixers.add(mixer);
+    }
+}
+
+function deactivateMixer(mixer) {
+    if (mixer._isActive) {
+        mixer._isActive = false;
+        activeMixers.delete(mixer);
+        inactiveMixers.add(mixer);
+    }
 }
 
 /*----------------*/
 /* playClipOnce */
 /*----------------*/
-function playClipOnce(clipName, endAction = null) {
-    const clipInfo = Shared.clipActions.get(clipName);
-    const nextAction = clipInfo?.clipAction;
-    currentMixer = clipInfo.mixer;
+function playClipOnce(movementState,clipName, endAction = null) {
+    // const clipInfo = Shared.clipActions.get(clipName);
+    const nextAction = movementState.actionClips.get(clipName);
+    const currentMixer = movementState.mixer;
+    activateMixer(currentMixer);
     nextAction.reset();
     nextAction.setLoop(THREE.LoopOnce, 1);
     nextAction.clampWhenFinished = true;
@@ -693,23 +707,27 @@ function playClipOnce(clipName, endAction = null) {
     currentMixer._onFinishListener = (e) => {
         if (e.action === nextAction) {  // check which action finished
             console.log('Animation finished!');
+            deactivateMixer(currentMixer);
             if (endAction) endAction();
         }
     };
     currentMixer.addEventListener('finished', currentMixer._onFinishListener);
 
     nextAction.play();
-    currentSingleAction = nextAction;
 }
 
 /*----------------*/
 /* stopClip */
 /*----------------*/
-function stopClip() {
+function stopClip(movementState) {
     // return;
-    if (!currentAction) return;
-    currentAction.fadeOut(0.3); // fades over 0.3s
-    currentAction = null;
+    if (!movementState.currentAction) return;
+    movementState.currentAction.fadeOut(0.3); // fades over 0.3s
+    movementState.currentAction = null;
+    // OPTIONAL — if no action is running anymore
+    setTimeout(() => {
+        deactivateMixer(movementState.mixer);
+    }, 300);
 }
 
 /*----------------*/
@@ -733,7 +751,7 @@ function attack() {
     if (!isAttacking) {
         isAttacking = true;
 
-        playClipOnce(Shared.ANIM_ATTACK_NAME, endAttack);
+        playClipOnce(Shared.playerMovementState,Shared.ANIM_ATTACK_NAME, endAttack);
         attackLoopId = requestAnimationFrame(attackLoop);
     }
 

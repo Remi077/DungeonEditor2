@@ -1,4 +1,3 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
 import * as Shared from '../shared.js';
 //OTHER IMPORTS FORBIDDEN! CIRCULAR DEPENDENCIES
 

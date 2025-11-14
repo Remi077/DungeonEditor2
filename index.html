@@ -254,8 +254,21 @@
 
         <div id="revision-info">Version: 0.1</div>
 
+        <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js",
+                "GLTFLoader": "https://unpkg.com/three@0.158.0/examples/jsm/loaders/GLTFLoader.js",
+                "SkeletonUtils": "https://unpkg.com/three@0.158.0/examples/jsm/utils/SkeletonUtils.js",
+                "rapier": "https://esm.sh/@dimforge/rapier3d-compat@0.12.0",
+                "seedrandom": "https://cdn.skypack.dev/seedrandom"
+            }
+        }
+        </script>
+
         <!-- Your Three.js app -->
         <script type="module" src="main.js"></script>
+        
         <!-- FPS counter -->
         <script src="https://cdn.jsdelivr.net/npm/stats.js@0.17.0/build/stats.min.js"></script>
 

@@ -1,12 +1,13 @@
 // @ts-nocheck
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js';
-import RAPIER from 'https://esm.sh/@dimforge/rapier3d-compat@0.12.0';
+import * as THREE from 'three';
+import { GLTFLoader } from 'GLTFLoader';
+import * as SkeletonUtils from 'SkeletonUtils';
+
+import * as RAPIER from 'rapier';
+
 import * as Shared from '../shared.js';
 import * as Stats from '../Stats.js';
 import * as GameHUD from '../game/gameHUD.js';
-// import {mergeBufferGeometries} from '../utils/BufferGeometryUtils.js';
-import { mergeGeometries } from '../utils/BufferGeometryUtils.js';
-import { GLTFLoader } from '../utils/GLTFLoader.js'
 
 /*-----------------------------------------------------*/
 // EDITOR CONSTANTS
@@ -448,13 +449,17 @@ export async function loadTest(scene) {
                 child.userData["actionnableData"] = Shared.actionnableUserData["enemy"];
             } else if (child.name.startsWith("Armature")) {
 
-                Shared.playerMovementState.root = child;//TEMP
+                let isPlayer=child.name.startsWith("Armature_Player"); 
+                const movementState = isPlayer ? Shared.playerMovementState : Shared.EnemyTemplateMovementState;
+
+                movementState.root = child;//TEMP
 
                 child.traverse(obj => {
                     if (obj.isSkinnedMesh) {
-                        Shared.playerMovementState.skeleton = obj.skeleton;//TEMP
-                        Shared.playerMovementState.weaponBone = obj.skeleton.getBoneByName(Shared.WEAPON_BONE_NAME);;//TEMP
-                        if (!Shared.playerMovementState.weaponBone) throw new Error("weapon bone not defined");
+                        movementState.skeleton = obj.skeleton;//TEMP
+                        // movementState.weaponBone = obj.skeleton.getBoneByName(Shared.WEAPON_BONE_NAME);;//TEMP
+                        movementState.weaponBone = getBoneByPrefix(obj.skeleton,Shared.WEAPON_BONE_NAME);;//TEMP
+                        if (!movementState.weaponBone && isPlayer) throw new Error("weapon bone not defined");
                         if (obj.name.startsWith("weapon")) {
                             //do this only for sword, body can be frustrum culled
                             obj.frustumCulled = false; //this prevents sword in first person view to be culled when camera tilts and get too close
@@ -462,28 +467,22 @@ export async function loadTest(scene) {
                         }
                     }
                 });
-                if (!Shared.playerMovementState.weaponBone) throw new Error("weapon bone not defined");
+                if (!movementState.weaponBone && isPlayer) throw new Error("weapon bone not defined");
 
                 //create mixer on the armature root
                 const mixer = new THREE.AnimationMixer(child)
-                Shared.mixerDictionary.set(child.name, mixer);
+                movementState.mixer = mixer;
                 rigArray.push(child);
 
                 // extract animations
                 gltf.animations.forEach(clip => {
                     if (clip.name.startsWith(child.name)) {
-                        Shared.clipActions.set(clip.name,
-                            {
-                                mixer: mixer,
-                                clipAction: mixer.clipAction(clip),
-                            });
-                        if (clip.name === Shared.ANIM_WALK_NAME) {
+                        const match = clip.name.match(new RegExp(`${child.name}_(.*)$`));
+                        const newClipName = match ? match[1] : null;
+                        movementState.actionClips.set(newClipName,mixer.clipAction(clip));
+                        if (newClipName === Shared.ANIM_WALK_NAME) {
                             const walkLowerClip = Shared.makePartialClip(clip, Shared.lowerBodyBones);
-                            Shared.clipActions.set(Shared.ANIM_WALK_NAME_L,
-                                {
-                                    mixer: mixer,
-                                    clipAction: mixer.clipAction(walkLowerClip),
-                                });
+                            movementState.actionClips.set(Shared.ANIM_WALK_NAME_L,mixer.clipAction(walkLowerClip));
                         }
                     }
                 });
@@ -626,12 +625,10 @@ export async function loadTest(scene) {
     }
 }
 
-
-/*---------------------------------*/
-// loadPlanesIntoScene
-/*---------------------------------*/
-async function loadPlanesIntoScene(jsondata) {
+function getBoneByPrefix(skeleton, prefix) {
+  return skeleton.bones.find(bone => bone.name.startsWith(prefix)) || null;
 }
+
 
 /*---------------------------------*/
 // updateLoadProgression
