@@ -82,7 +82,8 @@ export const clock = new THREE.Clock();
 /*-------------------------*/
 // ambient light in editor and game mode
 export const AMBIENTLIGHTEDITCOLOR = new THREE.Color(1, 1, 1).multiplyScalar(0.45);
-export const AMBIENTLIGHTGAMECOLOR = new THREE.Color(0.5, 0.5, 1).multiplyScalar(0.30);
+// export const AMBIENTLIGHTGAMECOLOR = new THREE.Color(0.5, 0.5, 1).multiplyScalar(0.30);
+export const AMBIENTLIGHTGAMECOLOR = new THREE.Color(0.5, 0.5, 1).multiplyScalar(2);
 export let ambientLight = new THREE.AmbientLight(AMBIENTLIGHTEDITCOLOR); // Soft light;
 
 /*------------------*/

@@ -169,6 +169,8 @@ function gameLoopFirstFrame() {
     Shared.playerMovementState.body.setNextKinematicTranslation(Shared.playerMovementState.curPos);
     Shared.physWorld.step();
     gameId = requestAnimationFrame(gameLoop);
+
+    playClip(Shared.EnemyTemplateMovementState,"Idle");
 }
 
 /*---------------------------------*/
@@ -254,6 +256,8 @@ function gameLoop(now) {
             worldstep(); // step the physic world
 
             syncEnemyToBodies(); //sync enemy mesh to enemy body
+            //TEMP: sync enemy template mesh
+            syncObjectTo(Shared.EnemyTemplateMovementState,Shared.enemyGroup.children[0])
 
             Shared.rapierDebug.update();
 
@@ -411,7 +415,7 @@ function computeNextPos(movementState, deltaTime) {
     for (let i = 0; i < kcc.numComputedCollisions(); i++) {
         let collision = kcc.computedCollision(i);
         let othercollider = collision.collider;
-        console.log("colliding with "+othercollider.userData.name)
+        // console.log("colliding with "+othercollider.userData.name)
         updateHighlight(othercollider, i);
     }
 
@@ -515,6 +519,19 @@ function syncCameraTo(movementState, tweak=null) {
         t.x + (tweak ? tweak.x : 0), 
         t.y + (tweak ? tweak.y : 0), 
         t.z + (tweak ? tweak.z : 0) );
+}
+
+const psyncObjectTo = new THREE.Vector3();
+const qsyncObjectTo = new THREE.Quaternion();
+function syncObjectTo(movementState, targetObj) {
+    const p = targetObj.getWorldPosition(psyncObjectTo);
+    const q = targetObj.getWorldQuaternion(qsyncObjectTo);
+    movementState.root.position.set(
+        p.x, p.y, p.z
+    )
+    movementState.root.rotation.set(
+        q.x, q.y, q.z, q.w
+    )
 }
 
 /*---------------------------------*/
@@ -767,7 +784,7 @@ function endAttack() {
 
 function attackLoop() {
 
-    console.log("attackloop")
+    // console.log("attackloop")
     const weaponCollider = playerState.weaponCollider;
     const weaponBody = playerState.weaponBody;
     const weaponColliderDesc = weaponBody.userData.colliderDesc;
