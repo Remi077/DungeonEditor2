@@ -53,12 +53,12 @@ import * as Shared from '../shared.js';
 
 export async function loadTest(scene) {
     loadLevel(scene);
-    await(loadCharacter(Shared.playerMovementState, scene, './assets/glb/player.glb'));
-    await(loadCharacter(Shared.EnemyTemplateMovementState, scene, './assets/glb/zombie.glb'));
+    await(loadCharacter(Shared.playerState, scene, './assets/glb/player.glb'));
+    await(loadCharacter(Shared.EnemyTemplateState, scene, './assets/glb/zombie.glb'));
 
     //add player to the level
-    Shared.rigGroup.add(Shared.playerMovementState.root);
-    Shared.rigGroup.add(Shared.EnemyTemplateMovementState.root);
+    Shared.rigGroup.add(Shared.playerState.root);
+    // Shared.rigGroup.add(Shared.EnemyTemplateState.root);
 }
 
 async function loadLevel(scene) {
@@ -103,23 +103,23 @@ async function loadLevel(scene) {
                 }
                 if (exitLoop) return; // exit current traverse iteration
 
-            } else if (child.name.startsWith("Enemy")) {
-                enemyArray.push(child);
-                child.userData.type = "enemy";
-                child.userData["actionnableData"] = Shared.actionnableUserData["enemy"];
+            // } else if (child.name.startsWith("Enemy")) {
+            //     enemyArray.push(child);
+            //     child.userData.type = "enemy";
+            //     child.userData["actionnableData"] = Shared.actionnableUserData["enemy"];
             } else if (child.name.startsWith("Armature")) {
 
                 let isPlayer=child.name.startsWith("Armature_Player"); 
-                const movementState = isPlayer ? Shared.playerMovementState : Shared.EnemyTemplateMovementState;
+                const characterState = isPlayer ? Shared.playerState : Shared.EnemyTemplateState;
 
-                movementState.root = child;//TEMP
+                characterState.root = child;//TEMP
 
                 child.traverse(obj => {
                     if (obj.isSkinnedMesh) {
-                        movementState.skeleton = obj.skeleton;//TEMP
-                        // movementState.weaponBone = obj.skeleton.getBoneByName(Shared.WEAPON_BONE_NAME);;//TEMP
-                        movementState.weaponBone = getBoneByPrefix(obj.skeleton,Shared.WEAPON_BONE_NAME);;//TEMP
-                        if (!movementState.weaponBone && isPlayer) throw new Error("weapon bone not defined");
+                        characterState.skeleton = obj.skeleton;//TEMP
+                        // characterState.weaponBone = obj.skeleton.getBoneByName(Shared.WEAPON_BONE_NAME);;//TEMP
+                        characterState.weaponBone = getBoneByPrefix(obj.skeleton,Shared.WEAPON_BONE_NAME);;//TEMP
+                        if (!characterState.weaponBone && isPlayer) throw new Error("weapon bone not defined");
                         if (obj.name.startsWith("weapon")) {
                             //do this only for sword, body can be frustrum culled
                             obj.frustumCulled = false; //this prevents sword in first person view to be culled when camera tilts and get too close
@@ -127,11 +127,11 @@ async function loadLevel(scene) {
                         }
                     }
                 });
-                if (!movementState.weaponBone && isPlayer) throw new Error("weapon bone not defined");
+                if (!characterState.weaponBone && isPlayer) throw new Error("weapon bone not defined");
 
                 //create mixer on the armature root
                 const mixer = new THREE.AnimationMixer(child)
-                movementState.mixer = mixer;
+                characterState.mixer = mixer;
                 rigArray.push(child);
 
                 // extract animations
@@ -139,10 +139,12 @@ async function loadLevel(scene) {
                     if (clip.name.startsWith(child.name)) {
                         const match = clip.name.match(new RegExp(`${child.name}_(.*)$`));
                         const newClipName = match ? match[1] : null;
-                        movementState.actionClips.set(newClipName,mixer.clipAction(clip));
+                        characterState.animationClips.set(newClipName,clip);
+                        characterState.animationActions.set(newClipName,clip);
                         if (newClipName === Shared.ANIM_WALK_NAME) {
                             const walkLowerClip = Shared.makePartialClip(clip, Shared.lowerBodyBones);
-                            movementState.actionClips.set(Shared.ANIM_WALK_NAME_L,mixer.clipAction(walkLowerClip));
+                            characterState.animationClips.set(Shared.ANIM_WALK_NAME_L,walkLowerClip);
+                            characterState.animationActions.set(Shared.ANIM_WALK_NAME_L,mixer.clipAction(walkLowerClip));
                         }
                     }
                 });
@@ -399,7 +401,7 @@ export function resetLevel() {
 
 
 
-async function loadCharacter(movementState, scene, pathToGlb) {
+async function loadCharacter(characterState, scene, pathToGlb) {
     try {
         // const response = await fetch('./assets/glb/player.glb');
         const response = await fetch(pathToGlb);
@@ -410,32 +412,33 @@ async function loadCharacter(movementState, scene, pathToGlb) {
         const weaponArray = [];
         // const rigArray = [];
 
-        // const movementState = Shared.playerMovementState;
+        // const characterState = Shared.playerState;
 
         gltf.scene.children.forEach((child) => {
 
             if (child.name.startsWith("Armature")) {
-                movementState.root = child;//TEMP
+                characterState.root = child;//TEMP
 
                 child.traverse(obj => {
                     if (obj.isSkinnedMesh) {
-                        movementState.skeleton = obj.skeleton;//TEMP
-                        // movementState.weaponBone = obj.skeleton.getBoneByName(Shared.WEAPON_BONE_NAME);;//TEMP
-                        movementState.weaponBone = getBoneByPrefix(obj.skeleton, Shared.WEAPON_BONE_NAME);;//TEMP
-                        if (!movementState.weaponBone && isPlayer) throw new Error("weapon bone not defined");
-                        if (obj.name.startsWith("weapon")) {
-                            //do this only for sword, body can be frustrum culled
-                            obj.frustumCulled = false; //this prevents sword in first person view to be culled when camera tilts and get too close
-                            weaponArray.push(obj);
-                        }
+                        characterState.skeleton = obj.skeleton;//TEMP
+                        // characterState.weaponBone = obj.skeleton.getBoneByName(Shared.WEAPON_BONE_NAME);;//TEMP
+                        characterState.weaponBone = getBoneByPrefix(obj.skeleton, Shared.WEAPON_BONE_NAME);;//TEMP
+                        if (!characterState.weaponBone && isPlayer) throw new Error("weapon bone not defined");
+                        obj.frustumCulled = false;//temp
+                    } else if ( obj.isMesh && obj.name.startsWith("weapon")) {
+                        characterState.weapon = obj;
+                        //do this only for sword, body can be frustrum culled
+                        obj.frustumCulled = false; //this prevents sword in first person view to be culled when camera tilts and get too close
+                        weaponArray.push(obj);
                     }
                 });
-                if (!movementState.weaponBone && isPlayer) throw new Error("weapon bone not defined");
+                if (!characterState.weaponBone && isPlayer) throw new Error("weapon bone not defined");
 
                 //create mixer on the armature root
                 const mixer = new THREE.AnimationMixer(child)
                 mixer.name = child.name+"_mixer";
-                movementState.mixer = mixer;
+                characterState.mixer = mixer;
                 // rigArray.push(child);
 
                 // extract animations
@@ -444,10 +447,12 @@ async function loadCharacter(movementState, scene, pathToGlb) {
                     //     const match = clip.name.match(new RegExp(`${child.name}_(.*)$`));
                     //     const newClipName = match ? match[1] : null;
                         const newClipName = clip.name;
-                        movementState.actionClips.set(newClipName, mixer.clipAction(clip));
+                        characterState.animationClips.set(newClipName, clip);
+                        characterState.animationActions.set(newClipName, mixer.clipAction(clip));
                         if (newClipName === Shared.ANIM_WALK_NAME) {
                             const walkLowerClip = Shared.makePartialClip(clip, Shared.lowerBodyBones);
-                            movementState.actionClips.set(Shared.ANIM_WALK_NAME_L, mixer.clipAction(walkLowerClip));
+                            characterState.animationClips.set(Shared.ANIM_WALK_NAME_L, walkLowerClip);
+                            characterState.animationActions.set(Shared.ANIM_WALK_NAME_L, mixer.clipAction(walkLowerClip));
                         }
                     // }
                 });
@@ -510,6 +515,8 @@ async function loadCharacter(movementState, scene, pathToGlb) {
                 bodyHandle = Shared.physWorld.createRigidBody(bodyDesc);
                 bodyHandle.userData = { name: "Body_" + child.name };
 
+                characterState.weaponBody = bodyHandle;
+
                 //add corresponding mesh offset
                 // const relatedName = child.name.substring(child.name.lastIndexOf("_") + 1);
                 const [, relatedName] = child.name.match(/Collider_Kine_(.*)$/);
@@ -525,10 +532,10 @@ async function loadCharacter(movementState, scene, pathToGlb) {
                     colliderDesc: colliderDesc,
                 };
 
-
                 colliderDesc.setCollisionGroups(Shared.COL_MASKS.PLAYERWPN)
 
                 const colliderHandle = Shared.physWorld.createCollider(colliderDesc, bodyHandle);
+                characterState.weaponCollider = colliderHandle;
 
                 colliderHandle.userData = { name: child.name };
                 Shared.colliderNameMap.set(child.name, colliderHandle);

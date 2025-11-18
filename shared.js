@@ -1,6 +1,7 @@
 // @ts-nocheck
 import * as THREE from 'three';
 import * as RAPIER from 'rapier';
+import * as SkeletonUtils from 'SkeletonUtils';
 import seedrandom from 'seedrandom';
 //OTHER IMPORTS FORBIDDEN! CIRCULAR DEPENDENCIES
 
@@ -170,38 +171,163 @@ export function makePartialClip(clip, boneNames) {
     return new THREE.AnimationClip(clip.name + '_partial', clip.duration, filteredTracks);
 }
 export const clipActions = new Map();
-export function newMovementState(name) {
-    const newObj = {
-        name: name,
+
+const characterStateProto = {
+    clone(spawnPos = null, spawnRot = null) {
+        const copy = newcharacterState(this.name);
+        //name        
+        copy.name = this.name;
+        //main mesh/armature root
+        copy.root = SkeletonUtils.clone(this.root); // Clone skinned mesh + skeleton
+        //position+rotation
+        if (spawnPos) {
+            copy.curPos = spawnPos.clone();
+            copy.newPos = spawnPos.clone();
+        } else {
+            copy.curPos = this.curPos;
+            copy.newPos = this.newPos;
+        }
+        if (spawnRot) {
+            copy.rotation.copy(spawnRot);
+        } else {
+            copy.rotation.copy(this.rotation);
+        }
+        //rapier collision
+        copy.bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased();
+        if (spawnPos) copy.bodyDesc.setTranslation(spawnPos.x, spawnPos.y, spawnPos.z);
+        if (spawnRot) copy.bodyDesc.setRotation(spawnRot);
+
+        copy.body = physWorld.createRigidBody(copy.bodyDesc);
+        copy.colliderDesc = this.colliderDesc; //can be safely shared
+        copy.collider = physWorld.createCollider(copy.colliderDesc, copy.body);
+        copy.collisionmask = this.collisionmask;
+        copy.kcc = cloneKCC(this.kcc, physWorld, skin);
+        copy.offsetRootToBody = this.offsetRootToBody;
+        //physics
+        copy.verticalSpeed = this.verticalSpeed;
+        copy.jumpPressed = this.jumpPressed;
+        copy.isTouchingGround = this.isTouchingGround;
+        copy.isTouchingCeiling = this.isTouchingCeiling;
+        copy.moveVector.copy(this.moveVector);
+        copy.moveSpeed = this.moveSpeed;
+        //animation
+        copy.skeleton = copy.root.skeleton;
+        copy.weaponBone = copy.root.getObjectByName(this.weaponBone.name);
+        copy.mixer = new THREE.AnimationMixer(copy.root); // one new mixer per character
+        for (const [k, v] of this.animationClips) {
+            copy.animationClips.set(k, v);
+            copy.animationActions.set(k, copy.mixer.clipAction(v));
+        } // shallow copy of clips (clips are immutable)
+        copy.currentAction = this.currentAction;
+        //weapon
+        if (this.weapon){
+            throw new Error("weapon cloning not supported yet") //TODO
+        }
+        //gameplay
+        copy.health = this.health;
+        copy.maxHealth = this.maxHealth;
+        copy.inventory = { ...this.inventory };
+        //misc
+        copy.tweakRot = this.tweakRot;
+        copy.tweakPos = this.tweakPos;       
+        return copy;
+    }
+};
+
+function cloneKCC(templateKCC, physWorld, skin) {
+    // 1️⃣ Create a new KCC instance
+    const kcc = physWorld.createCharacterController(skin);
+
+    // 2️⃣ Copy configuration from the template
+    kcc.setMaxSlopeClimbAngle(templateKCC.maxSlopeClimbAngle());
+    kcc.setMinSlopeSlideAngle(templateKCC.minSlopeSlideAngle());
+
+    // 3️⃣ Copy autostep settings
+    // const autostep = templateKCC.getAutostepSettings(); // pseudo-method
+    kcc.enableAutostep(
+        templateKCC.autostepMaxHeight(),
+        templateKCC.autostepMinWidth(),
+        templateKCC.autostepIncludesDynamicBodies());
+
+    // 4️⃣ Copy snap-to-ground settings
+    // const snap = templateKCC.getSnapSettings(); // pseudo-method
+    kcc.enableSnapToGround(templateKCC.snapToGroundDistance());
+
+    return kcc;
+}
+
+/**
+ * Clone a Rapier rigid body + collider for a new enemy.
+ * @param {RAPIER.World} world - The physics world.
+ * @param {RAPIER.RigidBody} templateBody - The original body to copy.
+ * @param {RAPIER.Collider} templateCollider - The original collider to copy.
+ * @returns {{body: RAPIER.RigidBody, collider: RAPIER.Collider}}
+ */
+function cloneRapierBody(world, templateBodyDesc, templateColliderDesc) {
+    const newBody = world.createRigidBody(bodyDesc);
+    const newCollider = world.createCollider(colliderDesc, newBody);
+
+    return {
+        body: newBody,
+        collider: newCollider
+    };
+}
+
+
+export function newcharacterState(name) {
+    const newObj = Object.create(characterStateProto);
+
+    Object.assign(newObj, {
+        //name
+        name,
+        //main mesh/armature root
         root: null,
-        skeleton: null,
-        weaponBone: null,
+        //position+rotation
+        curPos: new THREE.Vector3(),
+        newPos: new THREE.Vector3(),
+        rotation: new THREE.Quaternion(),        
+        //rapier collision
+        bodyDesc: null,
         body: null,
-        offsetRootToBody: null,
-        tweakRot: null,
-        tweakPos: null,
-        collider: null,
         colliderDesc: null,
+        collider: null,        
+        collisionmask: null,
+        kcc: null,
+        offsetRootToBody: null,
+        //physics
         verticalSpeed: 0,
-        curPos: 0,
-        newPos: 0,
         jumpPressed: false,
         isTouchingGround: false,
         isTouchingCeiling: false,
         moveVector: new THREE.Vector3(),
         moveSpeed: moveSpeed,
-        rotation: new THREE.Quaternion(),
-        collisionmask: null,
-        kcc: null,
-        actionClips: new Map(),
-        currentAction: null,
+        //animation
+        skeleton: null,
+        weaponBone: null,
         mixer: null,
-    }
+        animationClips: new Map(),
+        animationActions: new Map(), //tied to mixer
+        currentAction: null,
+        //weapon
+        weapon: null, 
+        weaponBody: null,
+        weaponCollider: null,
+        //gameplay
+        health: 100,
+        maxHealth: 100,
+        inventory: {},
+        //misc
+        tweakRot: null,
+        tweakPos: null,        
+    });
+
+    // Seal AFTER prototype + properties exist
     Object.seal(newObj);
     return newObj;
 }
-export const playerMovementState = newMovementState("playerMovementState")
-export const EnemyTemplateMovementState = newMovementState("EnemyTemplateMovementState")
+
+export const playerState = newcharacterState("playerState")
+export const EnemyTemplateState = newcharacterState("EnemyTemplateState")
 
 /*------------------------*/
 // ACTIONNABLE VARIABLES //
@@ -736,18 +862,18 @@ export const pendingBodyUpdates = [];
 export const usekcc = true;
 
 //update mesh rot/pos from movement state
-export function updateMeshRotPos(movementState) {
-    const root = movementState.root;
-    const rot = movementState.rotation;
+export function updateMeshRotPos(characterState) {
+    const root = characterState.root;
+    const rot = characterState.rotation;
     root.quaternion.set(rot.x, rot.y, rot.z, rot.w);
-    if (movementState.tweakRot) root.rotation.y += movementState.tweakRot; // optional 180° turn if needed
+    if (characterState.tweakRot) root.rotation.y += characterState.tweakRot; // optional 180° turn if needed
     
-    const newRootPos = movementState.newPos.clone();
-    if (movementState.offsetRootToBody)
-        newRootPos.sub(movementState.offsetRootToBody);
-    if (movementState.tweakPos){
+    const newRootPos = characterState.newPos.clone();
+    if (characterState.offsetRootToBody)
+        newRootPos.sub(characterState.offsetRootToBody);
+    if (characterState.tweakPos){
         const forward = new THREE.Vector3(0, 0, 1).applyQuaternion(root.quaternion); // compute forward vector in world space
-        newRootPos.sub(forward.multiply(movementState.tweakPos));}
+        newRootPos.sub(forward.multiply(characterState.tweakPos));}
     root.position.set(newRootPos.x,newRootPos.y,newRootPos.z);    
 }
 
@@ -772,11 +898,11 @@ export function scheduleSyncBodyToMesh(mesh, body = null){
     });
 }
 
-export function scheduleSyncBodyFromMovementState(movementState){
-    // scheduleSyncBodyToMesh(movementState.root, movementState.body)
-    const p = movementState.newPos;
-    const q = movementState.rotation;
-    const body = movementState.body;
+export function scheduleSyncBodyFromcharacterState(characterState){
+    // scheduleSyncBodyToMesh(characterState.root, characterState.body)
+    const p = characterState.newPos;
+    const q = characterState.rotation;
+    const body = characterState.body;
     pendingBodyUpdates.push({
         body: body,
         pos: p,
