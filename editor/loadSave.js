@@ -533,11 +533,12 @@ async function loadCharacter(characterState, scene, pathToGlb) {
                 };
 
                 colliderDesc.setCollisionGroups(Shared.COL_MASKS.PLAYERWPN)
+                // colliderDesc.setSensor(true);
 
                 const colliderHandle = Shared.physWorld.createCollider(colliderDesc, bodyHandle);
                 characterState.weaponCollider = colliderHandle;
 
-                colliderHandle.userData = { name: child.name };
+                colliderHandle.userData = { name: child.name, characterState: characterState };
                 Shared.colliderNameMap.set(child.name, colliderHandle);
                 Shared.BodyNameMap.set(child.name, bodyHandle);
             }
