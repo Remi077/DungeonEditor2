@@ -28,7 +28,7 @@ export let ActionToKeyMap = {
 /* startGameLoop */
 /*---------------------------------*/
 let firstInit = true;
-// let myClonedEnemyHandle = null;
+let myClonedEnemyHandle = null;
 export function startGameLoop() {
 
     Shared.resetAllActions();
@@ -75,7 +75,7 @@ export function startGameLoop() {
             
         const playerCollider = Shared.physWorld.createCollider(playerColliderDesc, playerBody);
         Shared.colliderNameMap.set(playerCollider, "playerCollider");
-        playerCollider.userData = { name: "playerCollider" };
+        playerCollider.userData = { name: "playerCollider", characterState: Shared.playerState};
 
         Shared.playerState.body = playerBody;
         Shared.playerState.collider = playerCollider;
@@ -125,9 +125,10 @@ export function startGameLoop() {
         const myClonedEnemy = Shared.EnemyTemplateState.clone(new THREE.Vector3(4,2,4));
         myClonedEnemy.name="myClonedEnemy";
         // myClonedEnemy.root.position.set(4,0,4);
+        myClonedEnemy.root.userData.name = "myClonedEnemy";
         myClonedEnemy.root.userData.characterState = myClonedEnemy;
         Shared.enemyGroup.add(myClonedEnemy.root);
-        // myClonedEnemyHandle = myClonedEnemy;
+        myClonedEnemyHandle = myClonedEnemy;
 
         //carried weapon
         // playerState.weapon = Shared.scene.getObjectByName(Shared.SWORD_NAME);
@@ -317,8 +318,9 @@ function enemyLoop() {
 
             //if within reach attack, otherwise move towards player
             if (enemyPos.distanceTo(targetPos) < enemyAttackDistance) {
-                console.log("ATTACK");
+                // console.log("ATTACK");
                 playClip(enemycharacterState,"Idle",true);
+                enemycharacterState.moveVector.set(0,0,0);
             } else {
                 // const toPlayer = targetPos.clone().sub(enemyPos);
                 // toPlayer.y = 0;//unless enemy is flying movement along Y is prohibited                
@@ -327,18 +329,18 @@ function enemyLoop() {
                 // const nextPos = enemyPos.add(toPlayer);
                 enemycharacterState.moveVector = toPlayer;
                 enemycharacterState.newPos = enemycharacterState.curPos.clone();
-
-                computeNextPos(enemycharacterState, deltaTime);
-                // updateVerticalSpeedAndPos(enemycharacterState, deltaTime);
-                // updateHorizontalSpeedAndPos(enemycharacterState, deltaTime);
-
-                Shared.updateMeshRotPos(enemycharacterState);
-                Shared.scheduleSyncBodyFromcharacterState(enemycharacterState) // schedule player rigidbody sync
-                // Shared.updatecharacterStatePhysics(enemycharacterState) // schedule enemy rigidbody sync
-                // enemyBody.setNextKinematicTranslation(enemycharacterState.newPos);
                 playClip(enemycharacterState,"Walk",true);
-
             }
+            
+            computeNextPos(enemycharacterState, deltaTime);
+            // updateVerticalSpeedAndPos(enemycharacterState, deltaTime);
+            // updateHorizontalSpeedAndPos(enemycharacterState, deltaTime);
+
+            Shared.updateMeshRotPos(enemycharacterState);
+            Shared.scheduleSyncBodyFromcharacterState(enemycharacterState) // schedule player rigidbody sync
+            // Shared.updatecharacterStatePhysics(enemycharacterState) // schedule enemy rigidbody sync
+            // enemyBody.setNextKinematicTranslation(enemycharacterState.newPos);
+
         });
     }
     enemyId = requestAnimationFrame(enemyLoop);
@@ -408,6 +410,12 @@ function computeNextPos(characterState, deltaTime) {
     const movement = characterState.moveVector.clone().multiplyScalar(characterState.moveSpeed);
     const nextVerticalSpeed = Math.max(-Shared.maxFallSpeed, characterState.verticalSpeed - (Shared.gravity * deltaTime));
     movement.y += nextVerticalSpeed
+    
+    //add repulsion forces from hit
+    movement.add(characterState.hitRepulsionForce);
+    // console.log(characterState.name,characterState.hitRepulsionForce);
+
+    //decorrelate from framerate
     movement.multiplyScalar(deltaTime);
 
     kcc.computeColliderMovement(
@@ -802,22 +810,70 @@ function attackLoop() {
     const pos = weaponBody.translation();
     const rot = weaponBody.rotation();
 
+    // return;
+
     Shared.physWorld.intersectionsWithShape(
         pos, //shapePos: pos,
         rot, //shapeRot: rot,
     weaponColliderDesc.shape, //shape: weaponColliderDesc.shape,
         (otherCollider) =>{
-            console.log('3 Sword overlapping '+ otherCollider.userData?.name);
+            const hitCharacter = otherCollider.userData?.characterState
+            // hitCharacter.hitRepulsionForce.set(6,6,6);
+            // console.log(myClonedEnemyHandle);
+            // const hitC
+            if (hitCharacter) hitCollider(hitCharacter, Shared.playerState);
         }
         , //callback: null, // callback: (collider: Collider) => boolean,
         null, //filterFlags?: QueryFilterFlags,
-        // null, //filterGroups?: InteractionGroups,
-        Shared.COL_MASKS.PLAYERWPN, //filterGroups?: InteractionGroups,
+        null, //filterGroups?: InteractionGroups,
+        // Shared.COL_MASKS.PLAYERWPN, //filterGroups?: InteractionGroups,
         weaponCollider, //filterExcludeCollider?: Collider,
-        weaponBody, //filterExcludeRigidBody?: RigidBody,
+        Shared.playerState.body,
+        // weaponBody, //filterExcludeRigidBody?: RigidBody,
         null //filterPredicate?: (collider: Collider) => boolean,
     )
 
 
     attackLoopId = requestAnimationFrame(attackLoop);
+}
+
+//make the enemy invincible for a few frames after being hit
+const invincibleDuration = 0.3;//1s
+const maxHitRepulsionForce = 5;//1s
+function hitCollider(hitCharacter, hitter){
+
+    if (hitCharacter.invincibility) {
+        // console.log("hitCollider skip")
+        return;
+    }
+
+    hitCharacter.invincibility = true;
+    console.log("hitCharacter ", hitCharacter.name)
+    hitCharacter.health -= 25;
+    const hitRepulsionForce = hitCharacter.root.position.clone().sub(hitter.root.position);
+    hitRepulsionForce.y = 0;
+    hitRepulsionForce.normalize().multiplyScalar(maxHitRepulsionForce);
+    hitCharacter.hitRepulsionForce.copy(hitRepulsionForce);
+    if (hitCharacter.health <= 0) {
+        console.log("character dead");
+    }
+    // invincibleFrames(hitCharacter);
+    requestAnimationFrame(() => invincibleFrames(hitCharacter));
+    
+}
+
+function invincibleFrames(hitCharacter){
+    hitCharacter.timeSinceLastHit += deltaTime;
+    if (hitCharacter.timeSinceLastHit > invincibleDuration) {
+        hitCharacter.timeSinceLastHit = 0;
+        hitCharacter.invincibility = false;
+        // hitCharacter.hitRepulsionForce.set(0, 0, 0);
+        hitCharacter.hitRepulsionForce.set(0, 0, 0);
+        console.log("last invincibleFrames call",hitCharacter.timeSinceLastHit)
+    } else {
+        // hitRepulsionForce.
+        console.log("new invincibleFrames call",hitCharacter.timeSinceLastHit)
+        // requestAnimationFrame(hitCollider);
+        requestAnimationFrame(() => invincibleFrames(hitCharacter));
+    }
 }
