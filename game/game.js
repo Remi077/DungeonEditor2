@@ -299,12 +299,14 @@ function enemyLoop() {
             // Compute the quaternion that makes the enemy look at the target
             const enemyPos = enemy.position.clone();
 
+            const isAlive = enemycharacterState.health > 0;
             //method 1: calculate pitch+yaw+roll
             // const m = new THREE.Matrix4().lookAt(enemyPos, targetPos, up);
             // const q = new THREE.Quaternion().setFromRotationMatrix(m);
             
             //method 2: yaw only
             // Compute direction but ignore vertical difference:
+            if (isAlive){
             const toPlayer = targetPos.clone().sub(enemyPos);
             toPlayer.y = 0;                  // <-- remove pitch
             toPlayer.normalize();
@@ -319,7 +321,8 @@ function enemyLoop() {
             //if within reach attack, otherwise move towards player
             if (enemyPos.distanceTo(targetPos) < enemyAttackDistance) {
                 // console.log("ATTACK");
-                playClip(enemycharacterState,"Idle",true);
+                // playClip(enemycharacterState,"Idle",true);
+                playClip(enemycharacterState,"Attack",true);
                 enemycharacterState.moveVector.set(0,0,0);
             } else {
                 // const toPlayer = targetPos.clone().sub(enemyPos);
@@ -338,6 +341,7 @@ function enemyLoop() {
 
             Shared.updateMeshRotPos(enemycharacterState);
             Shared.scheduleSyncBodyFromcharacterState(enemycharacterState) // schedule player rigidbody sync
+            }
             // Shared.updatecharacterStatePhysics(enemycharacterState) // schedule enemy rigidbody sync
             // enemyBody.setNextKinematicTranslation(enemycharacterState.newPos);
 
@@ -744,7 +748,7 @@ function playClipOnce(characterState,clipName, endAction = null) {
         if (e.action === nextAction) {  // check which action finished
             console.log('Animation finished!');
             deactivateMixer(currentMixer, true);
-            if (endAction) endAction();
+            if (endAction) endAction(characterState);
         }
     };
     currentMixer.addEventListener('finished', currentMixer._onFinishListener);
@@ -765,6 +769,18 @@ function stopClip(characterState) {
         deactivateMixer(characterState.mixer);
     }, 300);
 }
+
+
+function stopAllActions(characterState, exceptAction = null) {
+    characterState.animationActions.forEach((action) => {
+        if (action !== exceptAction) {
+            action.stop();
+            // action.enabled = false;
+            // action.setEffectiveWeight(0);
+        }
+    });
+}
+
 
 /*----------------*/
 /* makePartialClip */
@@ -815,12 +831,9 @@ function attackLoop() {
     Shared.physWorld.intersectionsWithShape(
         pos, //shapePos: pos,
         rot, //shapeRot: rot,
-    weaponColliderDesc.shape, //shape: weaponColliderDesc.shape,
+        weaponColliderDesc.shape, //shape: weaponColliderDesc.shape,
         (otherCollider) =>{
             const hitCharacter = otherCollider.userData?.characterState
-            // hitCharacter.hitRepulsionForce.set(6,6,6);
-            // console.log(myClonedEnemyHandle);
-            // const hitC
             if (hitCharacter) hitCollider(hitCharacter, Shared.playerState);
         }
         , //callback: null, // callback: (collider: Collider) => boolean,
@@ -842,23 +855,36 @@ const invincibleDuration = 0.3;//1s
 const maxHitRepulsionForce = 5;//1s
 function hitCollider(hitCharacter, hitter){
 
-    if (hitCharacter.invincibility) {
+    if (hitCharacter.invincibility || hitCharacter.health <= 0) {
         // console.log("hitCollider skip")
         return;
     }
 
     hitCharacter.invincibility = true;
     console.log("hitCharacter ", hitCharacter.name)
-    hitCharacter.health -= 25;
+    // hitCharacter.health -= 25;
+    hitCharacter.health -= 50;
+    // hitCharacter.health -= 100;
     const hitRepulsionForce = hitCharacter.root.position.clone().sub(hitter.root.position);
     hitRepulsionForce.y = 0;
     hitRepulsionForce.normalize().multiplyScalar(maxHitRepulsionForce);
     hitCharacter.hitRepulsionForce.copy(hitRepulsionForce);
+
     if (hitCharacter.health <= 0) {
         console.log("character dead");
+        // stopClip(hitCharacter);
+        stopAllActions(hitCharacter);
+        playClipOnce(hitCharacter,"Die",die);
+    } else {
+        hitCharacter.root.traverse((child) =>{
+            if (child.isMesh){
+                child.material?.color?.set(0xff0000);
+            }}
+        )        
+        playClipOnce(hitCharacter,"Hurt");
+        requestAnimationFrame(() => invincibleFrames(hitCharacter));
     }
     // invincibleFrames(hitCharacter);
-    requestAnimationFrame(() => invincibleFrames(hitCharacter));
     
 }
 
@@ -869,6 +895,11 @@ function invincibleFrames(hitCharacter){
         hitCharacter.invincibility = false;
         // hitCharacter.hitRepulsionForce.set(0, 0, 0);
         hitCharacter.hitRepulsionForce.set(0, 0, 0);
+        hitCharacter.root.traverse((child) =>{
+            if (child.isMesh){
+                child.material?.color?.set(0xffffff);
+            }}
+        )
         console.log("last invincibleFrames call",hitCharacter.timeSinceLastHit)
     } else {
         // hitRepulsionForce.
@@ -876,4 +907,9 @@ function invincibleFrames(hitCharacter){
         // requestAnimationFrame(hitCollider);
         requestAnimationFrame(() => invincibleFrames(hitCharacter));
     }
+}
+
+function die(thisCharacter){
+    thisCharacter.body.setEnabled(false);
+    Shared.physWorld.removeCollider(thisCharacter.collider, true);
 }
