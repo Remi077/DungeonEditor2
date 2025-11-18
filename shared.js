@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import * as RAPIER from 'rapier';
 import * as SkeletonUtils from 'SkeletonUtils';
-import seedrandom from 'seedrandom';
+// import seedrandom from 'seedrandom';
 //OTHER IMPORTS FORBIDDEN! CIRCULAR DEPENDENCIES
 
 /*-------------------------*/
@@ -19,7 +19,7 @@ if (cellSize != 1) {
 // PSEUDO RANDOMNESS
 /*-----------------------------------------------------*/
 // pseudoseed
-export let rng = seedrandom(); // Create a seeded random generator
+// export let rng = seedrandom(); // Create a seeded random generator
 
 // Reset RNG with a new seed
 export function setSeed(newSeed) {
@@ -200,6 +200,7 @@ const characterStateProto = {
         copy.body = physWorld.createRigidBody(copy.bodyDesc);
         copy.colliderDesc = this.colliderDesc; //can be safely shared
         copy.collider = physWorld.createCollider(copy.colliderDesc, copy.body);
+        copy.collider.userData = {name: copy.name, characterState: copy};
         copy.collisionmask = this.collisionmask;
         copy.kcc = cloneKCC(this.kcc, physWorld, skin);
         copy.offsetRootToBody = this.offsetRootToBody;
@@ -316,6 +317,9 @@ export function newcharacterState(name) {
         health: 100,
         maxHealth: 100,
         inventory: {},
+        invincibility: false,
+        timeSinceLastHit: 0,
+        hitRepulsionForce: new THREE.Vector3(),
         //misc
         tweakRot: null,
         tweakPos: null,        
@@ -959,7 +963,7 @@ export const COL_MASKS = {
 
     ENEMY: makeMask(
         COL_LAYERS.ENEMY,
-        COL_LAYERS.PLAYER | COL_LAYERS.PLAYERWPN | COL_LAYERS.SCENERY
+        COL_LAYERS.PLAYER | COL_LAYERS.SCENERY //| COL_LAYERS.PLAYERWPN | 
     ),
 
     ENEMYWPN: makeMask(
