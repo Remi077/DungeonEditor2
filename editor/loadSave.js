@@ -63,7 +63,7 @@ export async function loadTest(scene) {
 
 async function loadLevel(scene) {
     try {
-        const response = await fetch('./assets/glb/Level0.glb');
+        const response = await fetch('./assets/glb/Level1.glb');
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const arrayBuffer = await response.arrayBuffer();
@@ -73,7 +73,7 @@ async function loadLevel(scene) {
         const weaponArray = [];
         const actionnablesArray = [];
         const lightsArray = [];
-        const enemyArray = [];
+        const enemySpawnArray = [];
         const rigArray = [];
 
         gltf.scene.children.forEach((child) => {
@@ -103,9 +103,9 @@ async function loadLevel(scene) {
                 }
                 if (exitLoop) return; // exit current traverse iteration
 
-            // } else if (child.name.startsWith("Enemy")) {
-            //     enemyArray.push(child);
-            //     child.userData.type = "enemy";
+            } else if (child.name.startsWith("Enemy")) {
+                enemySpawnArray.push(child);
+                // child.userData.type = "enemy";
             //     child.userData["actionnableData"] = Shared.actionnableUserData["enemy"];
             } else if (child.name.startsWith("Armature")) {
 
@@ -159,12 +159,14 @@ async function loadLevel(scene) {
         actionnablesArray.forEach(mesh => Shared.actionnablesGroup.add(mesh));
         staticArray.forEach(mesh => Shared.staticGroup.add(mesh));
         lightsArray.forEach(light => Shared.lightGroup.add(light));
-        enemyArray.forEach(ene => Shared.enemyGroup.add(ene));
+        enemySpawnArray.forEach(ene => Shared.enemySpawnGroup.add(ene));
         rigArray.forEach(rig => Shared.rigGroup.add(rig));
         scene.add(Shared.staticGroup);
         scene.add(Shared.actionnablesGroup);
         scene.add(Shared.lightGroup);
+        scene.add(Shared.enemySpawnGroup);
         scene.add(Shared.enemyGroup);
+        Shared.enemySpawnGroup.visible = false;
         scene.add(Shared.rigGroup);
 
 

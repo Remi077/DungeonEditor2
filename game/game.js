@@ -63,6 +63,7 @@ export function startGameLoop() {
         // Autostep if the step height is smaller than 0.5, its width is larger than 0.2,
         // and allow stepping on dynamic bodies.
         kcc.enableAutostep(0.5, 0.2, true);
+        // kcc.enableAutostep(1.5, 0.2, true);
         // Snap to the ground if the vertical distance to the ground is smaller than 0.5.
         kcc.enableSnapToGround(0.5);
         // kcc.disableSnapToGround();
@@ -108,8 +109,11 @@ export function startGameLoop() {
         e_kcc.setMaxSlopeClimbAngle(45 * Math.PI / 180);
         e_kcc.setMinSlopeSlideAngle(30 * Math.PI / 180);
         e_kcc.enableAutostep(0.5, 0.2, true);
+        // e_kcc.enableAutostep(1.5, 0.2, true);
+        // e_kcc.enableAutostep(40, 0, true);
         e_kcc.enableSnapToGround(0.5);
         EnemyTemplateState.kcc = e_kcc
+        EnemyTemplateState.moveSpeed = 0.8;
         EnemyTemplateState.collisionmask = Shared.COL_MASKS.ENEMY
         // EnemyTemplateState.collider = enemyCollider
         EnemyTemplateState.colliderDesc = enemyColliderDesc
@@ -122,13 +126,33 @@ export function startGameLoop() {
 
 
         //TEMP : clone enemy test
-        const myClonedEnemy = Shared.EnemyTemplateState.clone(new THREE.Vector3(4,2,4));
-        myClonedEnemy.name="myClonedEnemy";
-        // myClonedEnemy.root.position.set(4,0,4);
-        myClonedEnemy.root.userData.name = "myClonedEnemy";
-        myClonedEnemy.root.userData.characterState = myClonedEnemy;
-        Shared.enemyGroup.add(myClonedEnemy.root);
-        myClonedEnemyHandle = myClonedEnemy;
+        // const myClonedEnemy = Shared.EnemyTemplateState.clone(
+        //     "myClonedEnemy",
+        //     new THREE.Vector3(4,2,4)
+        // );
+        // Shared.enemyGroup.add(myClonedEnemy.root);
+
+        Shared.enemySpawnGroup.children.forEach(
+            child => {
+                const p = child.getWorldPosition(new THREE.Vector3());
+                const q = child.getWorldQuaternion(new THREE.Quaternion());
+                const myClonedEnemy = Shared.EnemyTemplateState.clone(
+                    child.name, p, //q
+                );
+                Shared.enemyGroup.add(myClonedEnemy.root);                
+            }
+        )
+    //     for (let i = 0; i < 5; i++) {
+    //     for (let j = 0; j < 2; j++) {
+    //         const myClonedEnemy2 = Shared.EnemyTemplateState.clone(new THREE.Vector3(2+i,2,2+j));
+    //         myClonedEnemy2.moveSpeed = Shared.getRandom(0.5,1.3);
+    //         // myClonedEnemy2.moveSpeed = 20;
+    //         myClonedEnemy2.root.userData.characterState = myClonedEnemy2;
+    //         myClonedEnemy2.name="myClonedEnemy"+i+""+j;
+    //         Shared.enemyGroup.add(myClonedEnemy2.root);
+    //     }
+    // }
+
 
         //carried weapon
         // playerState.weapon = Shared.scene.getObjectByName(Shared.SWORD_NAME);
@@ -328,7 +352,7 @@ function enemyLoop() {
                 // const toPlayer = targetPos.clone().sub(enemyPos);
                 // toPlayer.y = 0;//unless enemy is flying movement along Y is prohibited                
                 // toPlayer.normalize().multiplyScalar(enemyMoveSpeed);
-                toPlayer.multiplyScalar(enemyMoveSpeed);
+                toPlayer.multiplyScalar(enemycharacterState.moveSpeed);
                 // const nextPos = enemyPos.add(toPlayer);
                 enemycharacterState.moveVector = toPlayer;
                 enemycharacterState.newPos = enemycharacterState.curPos.clone();
@@ -447,11 +471,11 @@ function computeNextPos(characterState, deltaTime) {
             // console.log("jump");
         }
         // console.log("grounded"+characterState.verticalSpeed );
-        characterState.moveSpeed = Shared.moveSpeed;
+        // characterState.moveSpeed = Shared.moveSpeed; //TOFIX
     }else{
         // console.log("notgrounded"+characterState.verticalSpeed );
         characterState.verticalSpeed = nextVerticalSpeed;//accumulate vertical speed
-        characterState.moveSpeed = Shared.moveSpeed*0.5;
+        // characterState.moveSpeed = Shared.moveSpeed*0.5; //TOFIX
     } 
 
     characterState.newPos = characterState.curPos.clone().add(correctedMovement);
@@ -696,13 +720,25 @@ function animateLoop() {
 /*----------------*/
 /* playClip */
 /*----------------*/
-function playClip(characterState,clipName,v=false) {
+function playClip(characterState,clipName,r=false, v=false) {
     // const clipInfo = Shared.clipActions.get(clipName);
     const nextAction = characterState.animationActions.get(clipName);
     const currentMixer = characterState.mixer;
     if (!nextAction || (nextAction === characterState.currentAction)) return;
     activateMixer(currentMixer);
-    nextAction.reset().play();//start next action before fading out previous one
+
+    if (!r)
+        nextAction.reset().play();//start next action before fading out previous one
+
+    if (r){
+    //start at random point in the anim
+        const clip = nextAction.getClip();
+        const randomOffset = Math.random() * clip.duration;
+        nextAction.reset();
+        nextAction.time = randomOffset;   // <-- start at a random point
+        nextAction.play();
+    }
+
     if (characterState.currentAction && characterState.currentAction !== nextAction) {
         characterState.currentAction.crossFadeTo(nextAction, 0.3, true);
         // characterState.currentAction.crossFadeTo(nextAction, 0.9, true);

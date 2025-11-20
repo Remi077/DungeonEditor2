@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import * as RAPIER from 'rapier';
 import * as SkeletonUtils from 'SkeletonUtils';
-// import seedrandom from 'seedrandom';
+import seedrandom from 'seedrandom';
 //OTHER IMPORTS FORBIDDEN! CIRCULAR DEPENDENCIES
 
 /*-------------------------*/
@@ -19,7 +19,7 @@ if (cellSize != 1) {
 // PSEUDO RANDOMNESS
 /*-----------------------------------------------------*/
 // pseudoseed
-// export let rng = seedrandom(); // Create a seeded random generator
+export let rng = seedrandom(); // Create a seeded random generator
 
 // Reset RNG with a new seed
 export function setSeed(newSeed) {
@@ -84,7 +84,7 @@ export const clock = new THREE.Clock();
 // ambient light in editor and game mode
 export const AMBIENTLIGHTEDITCOLOR = new THREE.Color(1, 1, 1).multiplyScalar(0.45);
 // export const AMBIENTLIGHTGAMECOLOR = new THREE.Color(0.5, 0.5, 1).multiplyScalar(0.30);
-export const AMBIENTLIGHTGAMECOLOR = new THREE.Color(0.5, 0.5, 1).multiplyScalar(2);
+export const AMBIENTLIGHTGAMECOLOR = new THREE.Color(0.5, 0.5, 1).multiplyScalar(1);
 export let ambientLight = new THREE.AmbientLight(AMBIENTLIGHTEDITCOLOR); // Soft light;
 
 /*------------------*/
@@ -173,12 +173,18 @@ export function makePartialClip(clip, boneNames) {
 export const clipActions = new Map();
 
 const characterStateProto = {
-    clone(spawnPos = null, spawnRot = null) {
+    clone(
+        name = null,
+        spawnPos = null, 
+        spawnRot = null,
+    ) {
         const copy = newcharacterState(this.name);
         //name        
-        copy.name = this.name;
+        copy.name = name || this.name;
         //main mesh/armature root
         copy.root = SkeletonUtils.clone(this.root); // Clone skinned mesh + skeleton
+        copy.root.userData.name = name || this.name;
+        copy.root.userData.characterState = copy;//circular dependency if we try to stringify this
         //position+rotation
         if (spawnPos) {
             copy.curPos = spawnPos.clone();
@@ -364,6 +370,8 @@ export const actionnablesGroup = new THREE.Group();
 actionnablesGroup.name = "actionnablesGroup";
 export const lightGroup = new THREE.Group();
 lightGroup.name = "lightGroup";
+export const enemySpawnGroup = new THREE.Group();
+enemySpawnGroup.name = "enemySpawnGroup";
 export const enemyGroup = new THREE.Group();
 enemyGroup.name = "enemyGroup";
 export const rigGroup = new THREE.Group();
@@ -963,7 +971,7 @@ export const COL_MASKS = {
 
     ENEMY: makeMask(
         COL_LAYERS.ENEMY,
-        COL_LAYERS.PLAYER | COL_LAYERS.SCENERY //| COL_LAYERS.PLAYERWPN | 
+        COL_LAYERS.PLAYER | COL_LAYERS.SCENERY | COL_LAYERS.ENEMY //| COL_LAYERS.PLAYERWPN | 
     ),
 
     ENEMYWPN: makeMask(
