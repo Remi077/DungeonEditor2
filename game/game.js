@@ -50,8 +50,7 @@ export function startGameLoop() {
         const playerBodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
             .setTranslation(campos.x, campos.y + Shared.cameraHeightFromCapsuleCenter, campos.z); // initial position where camera is
 
-        const playerBody = Shared.physWorld.createRigidBody(playerBodyDesc);
-        playerBody.userData = { name: "playerBody" };
+        const playerBody = Shared.createRigidBodyCustom(playerBodyDesc,"playerBody");
 
         // --- Create character controller ---
         const kcc = Shared.physWorld.createCharacterController(Shared.skin); //0.1 is skin distance
@@ -74,9 +73,7 @@ export function startGameLoop() {
             .setRestitution(0)
             .setCollisionGroups(Shared.COL_MASKS.PLAYER);
             
-        const playerCollider = Shared.physWorld.createCollider(playerColliderDesc, playerBody);
-        Shared.colliderNameMap.set(playerCollider, "playerCollider");
-        playerCollider.userData = { name: "playerCollider", characterState: Shared.playerState};
+        const playerCollider = Shared.createColliderCustom(playerColliderDesc, playerBody, "playerCollider");
 
         Shared.playerState.body = playerBody;
         Shared.playerState.collider = playerCollider;
@@ -91,46 +88,22 @@ export function startGameLoop() {
 
         initHighlightPool(Shared.scene);
 
-
         //initialize enemy template rapier primitives
         const EnemyTemplateState = Shared.EnemyTemplateState;
-        // const enemyBodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(0, 0, 0)
-        // const enemyBody = Shared.physWorld.createRigidBody(enemyBodyDesc);
-        // enemyBody.userData = { name: "enemyBody_" + EnemyTemplateState.name };
         const enemyColliderDesc = RAPIER.ColliderDesc.capsule(Shared.halfHeight, Shared.playerRadius)
             .setFriction(0.9)
             .setRestitution(0)
             .setCollisionGroups(Shared.COL_MASKS.ENEMY);
-        // const enemyCollider = Shared.physWorld.createCollider(enemyColliderDesc, enemyBody);
-        // EnemyTemplateState.bodyDesc = enemyBodyDesc
-        // EnemyTemplateState.body = enemyBody
-        //enemy controller (one controller per enemy/player - avoid sharing them)
         const e_kcc = Shared.physWorld.createCharacterController(Shared.skin); //0.1 is skin distance
         e_kcc.setMaxSlopeClimbAngle(45 * Math.PI / 180);
         e_kcc.setMinSlopeSlideAngle(30 * Math.PI / 180);
         e_kcc.enableAutostep(0.5, 0.2, true);
-        // e_kcc.enableAutostep(1.5, 0.2, true);
-        // e_kcc.enableAutostep(40, 0, true);
         e_kcc.enableSnapToGround(0.5);
         EnemyTemplateState.kcc = e_kcc
         EnemyTemplateState.moveSpeed = 0.8;
         EnemyTemplateState.collisionmask = Shared.COL_MASKS.ENEMY
-        // EnemyTemplateState.collider = enemyCollider
         EnemyTemplateState.colliderDesc = enemyColliderDesc
         EnemyTemplateState.offsetRootToBody = new THREE.Vector3(0, Shared.halfHeight + Shared.playerRadius, 0);
-        // Shared.colliderNameMap.set(enemyCollider, "enemyCollider_" + EnemyTemplateState.name);
-        // enemyCollider.userData = { name: "enemyCollider_" + EnemyTemplateState.name };
-        // element.userData.characterState = EnemyTemplateState; //cant do that, cyclic dependency
-
-        // Shared.scene.add(EnemyTemplateState.root);//temp
-
-
-        //TEMP : clone enemy test
-        // const myClonedEnemy = Shared.EnemyTemplateState.clone(
-        //     "myClonedEnemy",
-        //     new THREE.Vector3(4,2,4)
-        // );
-        // Shared.enemyGroup.add(myClonedEnemy.root);
 
         Shared.enemySpawnGroup.children.forEach(
             child => {
@@ -142,22 +115,6 @@ export function startGameLoop() {
                 Shared.enemyGroup.add(myClonedEnemy.root);                
             }
         )
-    //     for (let i = 0; i < 5; i++) {
-    //     for (let j = 0; j < 2; j++) {
-    //         const myClonedEnemy2 = Shared.EnemyTemplateState.clone(new THREE.Vector3(2+i,2,2+j));
-    //         myClonedEnemy2.moveSpeed = Shared.getRandom(0.5,1.3);
-    //         // myClonedEnemy2.moveSpeed = 20;
-    //         myClonedEnemy2.root.userData.characterState = myClonedEnemy2;
-    //         myClonedEnemy2.name="myClonedEnemy"+i+""+j;
-    //         Shared.enemyGroup.add(myClonedEnemy2.root);
-    //     }
-    // }
-
-
-        //carried weapon
-        // playerState.weapon = Shared.scene.getObjectByName(Shared.SWORD_NAME);
-        // playerState.weaponBody = Shared.BodyNameMap.get("Collider_Kine_"+Shared.SWORD_NAME)
-        // playerState.weaponCollider = Shared.colliderNameMap.get("Collider_Kine_"+Shared.SWORD_NAME)
 
         //start enemy loop
         enemyLoop();
@@ -237,44 +194,29 @@ function gameLoop(now) {
         /* INITIALIZE PLAYER MOVE AND ROTATION BASED ON INPUTS */
         /*-----------------------------------------------------*/
         Shared.playerState.moveVector.applyQuaternion(Shared.yawObject.quaternion);
-        
-        // Shared.playerState.moveVector.applyEuler(
-        //     new THREE.Euler(Shared.pitchObject.rotation.x, Shared.yawObject.rotation.y, 0)
-        // );
-        
         Shared.playerState.rotation.copy(Shared.yawObject.quaternion);
         Shared.playerState.newPos = Shared.playerState.curPos.clone();
 
-        computeNextPos(Shared.playerState, deltaTime);
+        computeNextPos(Shared.playerState, deltaTime); // compute next position based on movement and collisions
 
         // BODY FINAL UPDATES
-        // Shared.playerState.body.setNextKinematicTranslation(Shared.playerState.newPos);
-        // Shared.playerState.body.setNextKinematicRotation(Shared.playerState.rotation);
-        // movePlayerMesh(Shared.playerState); //move Player Mesh to new position/rotation
-        Shared.updateMeshRotPos(Shared.playerState);
-        syncCameraTo(Shared.playerState, camPlayerTweak);
-        //raycast against actionnables
-        raycastActionnables();
+        Shared.updateMeshRotPos(Shared.playerState); // update the mesh position
+        syncCameraTo(Shared.playerState, camPlayerTweak); // update the camera position
+
+        raycastActionnables();        //raycast against actionnables
 
         //consistent approach: 
         //we update the mesh/rendered models based on movement/collision data
         //then in last step we sync the rigidbodies to the rendered models
-        if (Shared.physWorld) {
 
-            Shared.scheduleSyncBodyFromcharacterState(Shared.playerState) // schedule player rigidbody sync
-            Shared.scheduleSyncBodyToMesh(Shared.playerState.weapon) // schedule weapon rigidbody sync
+        Shared.scheduleSyncBodyFromcharacterState(Shared.playerState) // schedule player rigidbody sync
+        Shared.scheduleSyncBodyToMesh(Shared.playerState.weapon, Shared.playerState.weaponBody, Shared.playerState.weaponOffsetRootToBody) // schedule weapon rigidbody sync
 
-            updatePhysics(); // update all the kinematic rigidbodies
+        updatePhysics(); // update all the scene kinematic rigidbodies. Player/enemies/weapons/doors etc...
 
-            worldstep(); // step the physic world
+        worldstep(); // step the physic world
 
-            // syncEnemyToBodies(); //sync enemy mesh to enemy body
-            //TEMP: sync enemy template mesh
-            // syncObjectTo(Shared.EnemyTemplateState,Shared.enemyGroup.children[0])
-
-            Shared.rapierDebug.update();
-
-        }
+        Shared.rapierDebug.update(); // update collider debug logic
 
         //render scene
         Shared.renderer.setViewport(0, 0, Shared.container.clientWidth, Shared.container.clientHeight);//TODO: you just need to do that once?
@@ -317,57 +259,53 @@ function enemyLoop() {
         const targetPos = Shared.yawObject.position.clone();
         Shared.enemyGroup.children.forEach(enemy => {
 
-            const enemycharacterState = enemy.userData.characterState;
-            // const enemyBody = enemycharacterState.body;
+            const enemycharacterState = Shared.characterStateNameMap.get(enemy.userData.name);
 
             // Compute the quaternion that makes the enemy look at the target
             const enemyPos = enemy.position.clone();
 
             const isAlive = enemycharacterState.health > 0;
-            //method 1: calculate pitch+yaw+roll
-            // const m = new THREE.Matrix4().lookAt(enemyPos, targetPos, up);
-            // const q = new THREE.Quaternion().setFromRotationMatrix(m);
             
-            //method 2: yaw only
             // Compute direction but ignore vertical difference:
             if (isAlive){
-            const toPlayer = targetPos.clone().sub(enemyPos);
-            toPlayer.y = 0;                  // <-- remove pitch
-            toPlayer.normalize();
-            const yaw = Math.atan2(toPlayer.x, toPlayer.z); // Compute yaw angle from direction (THREE uses Z-forward)
-            const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0, "YXZ"));// Build quaternion with yaw only
-            
-            // const rapierQuat = { x: q.x, y: q.y, z: q.z, w: q.w };// ✅ Convert to Rapier format
-            enemycharacterState.rotation = q;
 
-            // enemyBody.setNextKinematicRotation(rapierQuat);
+                // same as player loop:
+                // 1) compute desired movement (enemy goes to player)
+                // 2) compute next position based on movement+collisions+gravity
+                // 3) update mesh position
+                // 4) schedule body and weaponbody sync
 
-            //if within reach attack, otherwise move towards player
-            if (enemyPos.distanceTo(targetPos) < enemyAttackDistance) {
-                // console.log("ATTACK");
-                // playClip(enemycharacterState,"Idle",true);
-                playClip(enemycharacterState,"Attack",true);
-                enemycharacterState.moveVector.set(0,0,0);
-            } else {
-                // const toPlayer = targetPos.clone().sub(enemyPos);
-                // toPlayer.y = 0;//unless enemy is flying movement along Y is prohibited                
-                // toPlayer.normalize().multiplyScalar(enemyMoveSpeed);
-                toPlayer.multiplyScalar(enemycharacterState.moveSpeed);
-                // const nextPos = enemyPos.add(toPlayer);
-                enemycharacterState.moveVector = toPlayer;
-                enemycharacterState.newPos = enemycharacterState.curPos.clone();
-                playClip(enemycharacterState,"Walk",true);
+                const toPlayer = targetPos.clone().sub(enemyPos);
+                toPlayer.y = 0;                  // <-- remove pitch
+                toPlayer.normalize();
+                const yaw = Math.atan2(toPlayer.x, toPlayer.z); // Compute yaw angle from direction (THREE uses Z-forward)
+                const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0, "YXZ"));// Build quaternion with yaw only
+                
+                enemycharacterState.rotation = q;
+
+                //if within reach attack, otherwise move towards player
+                if (enemyPos.distanceTo(targetPos) < enemyAttackDistance) {
+                    // console.log("ATTACK");
+                    // playClip(enemycharacterState,"Idle",true);
+                    playClip(enemycharacterState,"Attack",true);
+                    enemycharacterState.moveVector.set(0,0,0);
+                } else {
+                    // const toPlayer = targetPos.clone().sub(enemyPos);
+                    // toPlayer.y = 0;//unless enemy is flying movement along Y is prohibited                
+                    // toPlayer.normalize().multiplyScalar(enemyMoveSpeed);
+                    toPlayer.multiplyScalar(enemycharacterState.moveSpeed);
+                    // const nextPos = enemyPos.add(toPlayer);
+                    enemycharacterState.moveVector = toPlayer;
+                    enemycharacterState.newPos = enemycharacterState.curPos.clone();
+                    playClip(enemycharacterState,"Walk",true);
+                }
+                
+                computeNextPos(enemycharacterState, deltaTime); //compute next position based on movement and collisions
+
+                Shared.updateMeshRotPos(enemycharacterState); //update mesh position
+                Shared.scheduleSyncBodyFromcharacterState(enemycharacterState) // schedule player rigidbody sync
+                Shared.scheduleSyncBodyToMesh(enemycharacterState.weapon, enemycharacterState.weaponBody, enemycharacterState.weaponOffsetRootToBody) // schedule weapon rigidbody sync
             }
-            
-            computeNextPos(enemycharacterState, deltaTime);
-            // updateVerticalSpeedAndPos(enemycharacterState, deltaTime);
-            // updateHorizontalSpeedAndPos(enemycharacterState, deltaTime);
-
-            Shared.updateMeshRotPos(enemycharacterState);
-            Shared.scheduleSyncBodyFromcharacterState(enemycharacterState) // schedule player rigidbody sync
-            }
-            // Shared.updatecharacterStatePhysics(enemycharacterState) // schedule enemy rigidbody sync
-            // enemyBody.setNextKinematicTranslation(enemycharacterState.newPos);
 
         });
     }
@@ -858,7 +796,7 @@ function attackLoop() {
     // console.log("attackloop")
     const weaponCollider = Shared.playerState.weaponCollider;
     const weaponBody = Shared.playerState.weaponBody;
-    const weaponColliderDesc = weaponBody.userData.colliderDesc;
+    const weaponColliderDesc = Shared.playerState.colliderDesc;
     const pos = weaponBody.translation();
     const rot = weaponBody.rotation();
 
@@ -869,7 +807,8 @@ function attackLoop() {
         rot, //shapeRot: rot,
         weaponColliderDesc.shape, //shape: weaponColliderDesc.shape,
         (otherCollider) =>{
-            const hitCharacter = otherCollider.userData?.characterState
+            // const hitCharacter = otherCollider.userData?.characterState
+            const hitCharacter = Shared.characterStateNameMap.get(otherCollider.name);
             if (hitCharacter) hitCollider(hitCharacter, Shared.playerState);
         }
         , //callback: null, // callback: (collider: Collider) => boolean,
@@ -929,7 +868,6 @@ function invincibleFrames(hitCharacter){
     if (hitCharacter.timeSinceLastHit > invincibleDuration) {
         hitCharacter.timeSinceLastHit = 0;
         hitCharacter.invincibility = false;
-        // hitCharacter.hitRepulsionForce.set(0, 0, 0);
         hitCharacter.hitRepulsionForce.set(0, 0, 0);
         hitCharacter.root.traverse((child) =>{
             if (child.isMesh){

@@ -172,19 +172,28 @@ export function makePartialClip(clip, boneNames) {
 }
 export const clipActions = new Map();
 
+//name->characterState
+export const characterStateNameMap = new Map();
+
+export function registerCharacter(name,copy){
+    if (characterStateNameMap.has(name)) throw new Error(name + " has duplicate characterState");
+    characterStateNameMap.set(name,copy);
+}
+
+
 const characterStateProto = {
     clone(
-        name = null,
+        name,
         spawnPos = null, 
         spawnRot = null,
     ) {
-        const copy = newcharacterState(this.name);
+        const copy = newcharacterState(name);
         //name        
         copy.name = name || this.name;
         //main mesh/armature root
         copy.root = SkeletonUtils.clone(this.root); // Clone skinned mesh + skeleton
         copy.root.userData.name = name || this.name;
-        copy.root.userData.characterState = copy;//circular dependency if we try to stringify this
+        // copy.root.userData.characterState = copy;//circular dependency if we try to stringify this
         //position+rotation
         if (spawnPos) {
             copy.curPos = spawnPos.clone();
@@ -203,10 +212,9 @@ const characterStateProto = {
         if (spawnPos) copy.bodyDesc.setTranslation(spawnPos.x, spawnPos.y, spawnPos.z);
         if (spawnRot) copy.bodyDesc.setRotation(spawnRot);
 
-        copy.body = physWorld.createRigidBody(copy.bodyDesc);
+        copy.body = createRigidBodyCustom(copy.bodyDesc,name);
         copy.colliderDesc = this.colliderDesc; //can be safely shared
-        copy.collider = physWorld.createCollider(copy.colliderDesc, copy.body);
-        copy.collider.userData = {name: copy.name, characterState: copy};
+        copy.collider = createColliderCustom(copy.colliderDesc, copy.body,name);
         copy.collisionmask = this.collisionmask;
         copy.kcc = cloneKCC(this.kcc, physWorld, skin);
         copy.offsetRootToBody = this.offsetRootToBody;
@@ -227,9 +235,15 @@ const characterStateProto = {
         } // shallow copy of clips (clips are immutable)
         copy.currentAction = this.currentAction;
         //weapon
-        if (this.weapon){
-            throw new Error("weapon cloning not supported yet") //TODO
-        }
+        copy.weapon = getObjectByPrefix(copy.root,"weapon");
+        copy.weaponBodyDesc = structuredClone(this.weaponBodyDesc);
+        // const t = this.weaponBodyDesc.translation();
+        // const q = this.weaponBodyDesc.rotation();
+        // copy.weaponBodyDesc.setTranslation(t.x+spawnPos.x,t.y+spawnPos.y,t.z+spawnPos.z);
+        copy.weaponBody = createRigidBodyCustom(copy.weaponBodyDesc,copy.weapon.name);
+        copy.weaponColliderDesc = this.weaponColliderDesc //can be safely shared
+        copy.weaponCollider = createColliderCustom(copy.weaponColliderDesc, copy.weaponBody,copy.weapon.name);
+        copy.weaponOffsetRootToBody = this.weaponOffsetRootToBody;
         //gameplay
         copy.health = this.health;
         copy.maxHealth = this.maxHealth;
@@ -237,9 +251,20 @@ const characterStateProto = {
         //misc
         copy.tweakRot = this.tweakRot;
         copy.tweakPos = this.tweakPos;       
+
         return copy;
     }
 };
+
+function getObjectByPrefix(root, prefix) {
+    let result = null;
+    root.traverse(obj => {
+        if (!result && typeof obj.name === "string" && obj.name.startsWith(prefix)) {
+            result = obj;
+        }
+    });
+    return result;
+}
 
 function cloneKCC(templateKCC, physWorld, skin) {
     // 1️⃣ Create a new KCC instance
@@ -261,23 +286,6 @@ function cloneKCC(templateKCC, physWorld, skin) {
     kcc.enableSnapToGround(templateKCC.snapToGroundDistance());
 
     return kcc;
-}
-
-/**
- * Clone a Rapier rigid body + collider for a new enemy.
- * @param {RAPIER.World} world - The physics world.
- * @param {RAPIER.RigidBody} templateBody - The original body to copy.
- * @param {RAPIER.Collider} templateCollider - The original collider to copy.
- * @returns {{body: RAPIER.RigidBody, collider: RAPIER.Collider}}
- */
-function cloneRapierBody(world, templateBodyDesc, templateColliderDesc) {
-    const newBody = world.createRigidBody(bodyDesc);
-    const newCollider = world.createCollider(colliderDesc, newBody);
-
-    return {
-        body: newBody,
-        collider: newCollider
-    };
 }
 
 
@@ -317,8 +325,11 @@ export function newcharacterState(name) {
         currentAction: null,
         //weapon
         weapon: null, 
+        weaponBodyDesc: null,
         weaponBody: null,
+        weaponColliderDesc: null,
         weaponCollider: null,
+        weaponOffsetRootToBody: null,
         //gameplay
         health: 100,
         maxHealth: 100,
@@ -333,6 +344,9 @@ export function newcharacterState(name) {
 
     // Seal AFTER prototype + properties exist
     Object.seal(newObj);
+
+    registerCharacter(name,newObj);
+
     return newObj;
 }
 
@@ -355,10 +369,6 @@ export const actionnableUserData = {
         action: openChest,
         isOpen: false
     },
-    "enemy": {
-        action: hitEnemy,
-        hp: 100
-    }
 }
 
 /*------------------*/
@@ -805,7 +815,7 @@ function rotatePivot(pivot, axis, targetAngle, duration = 1, updateBody = false)
         accumulatedAngle += angleToApply;
 
         if (updateBody)
-            scheduleSyncBodyToMesh(pivot); //have the body follow the mesh (pivot)
+            scheduleSyncBodyToMesh(pivot, pivot.userData.body, pivot.userData.offsetRootToBody); //have the body follow the mesh (pivot)
 
         if (t < 1) {
             requestAnimationFrame(animate);
@@ -845,19 +855,6 @@ export function openChest(self, playerState) {
     rotatePivot(doorPivot, new THREE.Vector3(1, 0, 0), dir * ninetyDeg, 0.6); //local rotation axis
 }
 
-/*----------------------------*/
-// hitEnemy
-/*----------------------------*/
-export function hitEnemy(self) {
-    console.log("HITENEMY");
-    self.userData.actionnableData.hp -= 25;
-    if (self.userData.actionnableData.hp <= 0) {
-        console.log("ENEMYDEAD");
-        enemyGroup.remove(self);
-    }
-}
-
-
 /*------------------*/
 /*------------------*/
 // RAPIER VARIABLES //
@@ -866,12 +863,33 @@ export function hitEnemy(self) {
 
 export let physWorld = null;
 export let rapierDebug = null;
-export let mainRigidBody = null;
-export let mainKinematicBody = null;
-export const colliderNameMap = new Map();
-export const BodyNameMap = new Map();
 export const pendingBodyUpdates = [];
 export const usekcc = true;
+
+//name->body
+// export const bodyNameMap = new Map();
+//name->collider
+// export const colliderNameMap = new Map();
+
+export function createRigidBodyCustom(rigidbodydesc, name){
+    if (!name) throw new Error("name not defined")
+    // if (bodyNameMap.has(name)) throw new Error(name+" has duplicate bodies")
+    const r = physWorld.createRigidBody(rigidbodydesc);
+    r.userData={name:name};
+    // bodyNameMap.set(name, r);
+    return r;
+}
+
+export function createColliderCustom(colliderDesc, body, name){
+    if (!name) throw new Error("name not defined")
+    // if (colliderNameMap.has(name)) throw new Error(name+" has duplicate colliders")
+    const c = physWorld.createCollider(colliderDesc, body);
+    c.userData={name:name};
+    // colliderNameMap.set(name, c);
+    return c;
+}
+
+
 
 //update mesh rot/pos from movement state
 export function updateMeshRotPos(characterState) {
@@ -889,18 +907,12 @@ export function updateMeshRotPos(characterState) {
     root.position.set(newRootPos.x,newRootPos.y,newRootPos.z);    
 }
 
-export function getKineBodyFromMesh(mesh) {
-    return BodyNameMap.get("Collider_Kine_" + mesh.name);
-}
 
 //schedule the body physics change
 //so this is executed in main loop before world.step (avoid race conditions)
-export function scheduleSyncBodyToMesh(mesh, body = null){
-    if (!body) body = getKineBodyFromMesh(mesh);
+export function scheduleSyncBodyToMesh(mesh, body, off){
     const p = mesh.getWorldPosition(new THREE.Vector3());
     const q = mesh.getWorldQuaternion(new THREE.Quaternion());
-    const off = body.userData.offsetRootToBody
-    if (off === undefined) throw new Error("offsetBodyToMesh not defined")
     const offrot = off.clone().applyQuaternion(q)
     const finalp = p.add(offrot);
     pendingBodyUpdates.push({
@@ -932,13 +944,6 @@ export async function initRapier() {
     console.log('Rapier initialized', physWorld);
 
     rapierDebug = addRapierDebug(physWorld);
-
-
-    mainRigidBody = physWorld.createRigidBody(RAPIER.RigidBodyDesc.fixed());
-    mainRigidBody.userData = { name: "mainRigidBody" };
-
-    mainKinematicBody = physWorld.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased());
-    mainKinematicBody.userData = { name: "mainKinematicBody" };
 
     //add collider debug group to scene
     scene.add(colliderDebugGroup);

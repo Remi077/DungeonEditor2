@@ -58,7 +58,6 @@ export async function loadTest(scene) {
 
     //add player to the level
     Shared.rigGroup.add(Shared.playerState.root);
-    // Shared.rigGroup.add(Shared.EnemyTemplateState.root);
 }
 
 async function loadLevel(scene) {
@@ -70,7 +69,6 @@ async function loadLevel(scene) {
         const gltf = await loadLevelGlb(arrayBuffer);
 
         const staticArray = [];
-        const weaponArray = [];
         const actionnablesArray = [];
         const lightsArray = [];
         const enemySpawnArray = [];
@@ -105,49 +103,6 @@ async function loadLevel(scene) {
 
             } else if (child.name.startsWith("Enemy")) {
                 enemySpawnArray.push(child);
-                // child.userData.type = "enemy";
-            //     child.userData["actionnableData"] = Shared.actionnableUserData["enemy"];
-            } else if (child.name.startsWith("Armature")) {
-
-                let isPlayer=child.name.startsWith("Armature_Player"); 
-                const characterState = isPlayer ? Shared.playerState : Shared.EnemyTemplateState;
-
-                characterState.root = child;//TEMP
-
-                child.traverse(obj => {
-                    if (obj.isSkinnedMesh) {
-                        characterState.skeleton = obj.skeleton;//TEMP
-                        // characterState.weaponBone = obj.skeleton.getBoneByName(Shared.WEAPON_BONE_NAME);;//TEMP
-                        characterState.weaponBone = getBoneByPrefix(obj.skeleton,Shared.WEAPON_BONE_NAME);;//TEMP
-                        if (!characterState.weaponBone && isPlayer) throw new Error("weapon bone not defined");
-                        if (obj.name.startsWith("weapon")) {
-                            //do this only for sword, body can be frustrum culled
-                            obj.frustumCulled = false; //this prevents sword in first person view to be culled when camera tilts and get too close
-                            weaponArray.push(obj);
-                        }
-                    }
-                });
-                if (!characterState.weaponBone && isPlayer) throw new Error("weapon bone not defined");
-
-                //create mixer on the armature root
-                const mixer = new THREE.AnimationMixer(child)
-                characterState.mixer = mixer;
-                rigArray.push(child);
-
-                // extract animations
-                gltf.animations.forEach(clip => {
-                    if (clip.name.startsWith(child.name)) {
-                        const match = clip.name.match(new RegExp(`${child.name}_(.*)$`));
-                        const newClipName = match ? match[1] : null;
-                        characterState.animationClips.set(newClipName,clip);
-                        characterState.animationActions.set(newClipName,clip);
-                        if (newClipName === Shared.ANIM_WALK_NAME) {
-                            const walkLowerClip = Shared.makePartialClip(clip, Shared.lowerBodyBones);
-                            characterState.animationClips.set(Shared.ANIM_WALK_NAME_L,walkLowerClip);
-                            characterState.animationActions.set(Shared.ANIM_WALK_NAME_L,mixer.clipAction(walkLowerClip));
-                        }
-                    }
-                });
 
             } else {
                 staticArray.push(child);
@@ -170,7 +125,7 @@ async function loadLevel(scene) {
         scene.add(Shared.rigGroup);
 
 
-        //enable shadows
+        //enable shadows //TODO: move elsewhere
         if (Shared.shadowEnabled) {
             scene.traverse((obj) => {
                 if (obj.isLight) {
@@ -234,30 +189,29 @@ async function loadLevel(scene) {
 
                 let bodyHandle = null; // null is default for static collider
 
+                let collidername = child.name;
+
                 //kinematic collider
                 if (child.name.startsWith("Collider_Kine_")) {
 
+                    const [, relatedName] = child.name.match(/Collider_Kine_(.*)$/);
+                    collidername = relatedName;
                     const bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
                         .setTranslation(newCenterPosition.x, newCenterPosition.y, newCenterPosition.z)
                         .setRotation(childquaternion); // must be a RAPIER.Quaternion
-                    bodyHandle = Shared.physWorld.createRigidBody(bodyDesc);
-                    bodyHandle.userData = { name: "Body_" + child.name };
+                    bodyHandle = Shared.createRigidBodyCustom(bodyDesc,relatedName);
 
                     //add corresponding mesh offset
-                    // const relatedName = child.name.substring(child.name.lastIndexOf("_") + 1);
-                    const [, relatedName] = child.name.match(/Collider_Kine_(.*)$/);
-                    // const relatedMesh = Shared.scene.getObjectByName(relatedName)
                     const relatedMesh = Shared.scene.getObjectByName(relatedName)
                     const p = relatedMesh.getWorldPosition(new THREE.Vector3());
                     const q = relatedMesh.getWorldQuaternion(new THREE.Quaternion());
-                    // const offsetRootToBody = newCenterPosition.clone().sub(relatedMesh.position)
                     const offsetRootToBody = newCenterPosition.clone().sub(p)
-                    bodyHandle.userData = { 
-                        name: (child.name+"_body"),
-                        offsetRootToBody: offsetRootToBody,
-                        colliderDesc:colliderDesc,
-                    };
 
+                    //TOIMPROVE: for simple scene kinematic colliders (like doors)
+                    //just attach body and offset to mesh
+                    //ideally all of these including characters and weapons would have a common structure
+                    relatedMesh.userData.body = bodyHandle;
+                    relatedMesh.userData.offsetRootToBody = offsetRootToBody;
 
                     //static collider
                 } else {
@@ -269,18 +223,9 @@ async function loadLevel(scene) {
 
                 }
 
-                //collision groups
-                if (child.name.startsWith("Collider_Kine_weapon")) {
-                    colliderDesc.setCollisionGroups(Shared.COL_MASKS.PLAYERWPN)
-                } else {
-                    colliderDesc.setCollisionGroups(Shared.COL_MASKS.SCENERY)
-                }
+                colliderDesc.setCollisionGroups(Shared.COL_MASKS.SCENERY)
 
-                const colliderHandle = Shared.physWorld.createCollider(colliderDesc, bodyHandle);
-
-                colliderHandle.userData = { name: child.name };
-                Shared.colliderNameMap.set(child.name, colliderHandle);
-                Shared.BodyNameMap.set(child.name, bodyHandle);
+                const colliderHandle = Shared.createColliderCustom(colliderDesc, bodyHandle, collidername);
 
             }
         });
@@ -405,34 +350,27 @@ export function resetLevel() {
 
 async function loadCharacter(characterState, scene, pathToGlb) {
     try {
-        // const response = await fetch('./assets/glb/player.glb');
         const response = await fetch(pathToGlb);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const arrayBuffer = await response.arrayBuffer();
         const gltf = await loadLevelGlb(arrayBuffer);
-        const weaponArray = [];
-        // const rigArray = [];
 
-        // const characterState = Shared.playerState;
-
+        let isPlayer=false;
         gltf.scene.children.forEach((child) => {
 
             if (child.name.startsWith("Armature")) {
-                characterState.root = child;//TEMP
+                characterState.root = child;
+                isPlayer=child.name.startsWith("Armature_Player"); 
 
                 child.traverse(obj => {
                     if (obj.isSkinnedMesh) {
                         characterState.skeleton = obj.skeleton;//TEMP
-                        // characterState.weaponBone = obj.skeleton.getBoneByName(Shared.WEAPON_BONE_NAME);;//TEMP
-                        characterState.weaponBone = getBoneByPrefix(obj.skeleton, Shared.WEAPON_BONE_NAME);;//TEMP
-                        if (!characterState.weaponBone && isPlayer) throw new Error("weapon bone not defined");
-                        obj.frustumCulled = false;//temp
+                        obj.frustumCulled = !isPlayer; //dont frustrum cull player body
                     } else if ( obj.isMesh && obj.name.startsWith("weapon")) {
+                        characterState.weaponBone = obj.parent;//TEMP
                         characterState.weapon = obj;
-                        //do this only for sword, body can be frustrum culled
-                        obj.frustumCulled = false; //this prevents sword in first person view to be culled when camera tilts and get too close
-                        weaponArray.push(obj);
+                        obj.frustumCulled = !isPlayer; //this prevents sword in first person view to be culled when camera tilts and get too close
                     }
                 });
                 if (!characterState.weaponBone && isPlayer) throw new Error("weapon bone not defined");
@@ -441,29 +379,20 @@ async function loadCharacter(characterState, scene, pathToGlb) {
                 const mixer = new THREE.AnimationMixer(child)
                 mixer.name = child.name+"_mixer";
                 characterState.mixer = mixer;
-                // rigArray.push(child);
 
                 // extract animations
                 gltf.animations.forEach(clip => {
-                    // if (clip.name.startsWith(child.name)) {
-                    //     const match = clip.name.match(new RegExp(`${child.name}_(.*)$`));
-                    //     const newClipName = match ? match[1] : null;
-                        const newClipName = clip.name;
-                        characterState.animationClips.set(newClipName, clip);
-                        characterState.animationActions.set(newClipName, mixer.clipAction(clip));
-                        if (newClipName === Shared.ANIM_WALK_NAME) {
-                            const walkLowerClip = Shared.makePartialClip(clip, Shared.lowerBodyBones);
-                            characterState.animationClips.set(Shared.ANIM_WALK_NAME_L, walkLowerClip);
-                            characterState.animationActions.set(Shared.ANIM_WALK_NAME_L, mixer.clipAction(walkLowerClip));
-                        }
-                    // }
+                    const newClipName = clip.name;
+                    characterState.animationClips.set(newClipName, clip);
+                    characterState.animationActions.set(newClipName, mixer.clipAction(clip));
+                    if (newClipName === Shared.ANIM_WALK_NAME) {
+                        const walkLowerClip = Shared.makePartialClip(clip, Shared.lowerBodyBones);
+                        characterState.animationClips.set(Shared.ANIM_WALK_NAME_L, walkLowerClip);
+                        characterState.animationActions.set(Shared.ANIM_WALK_NAME_L, mixer.clipAction(walkLowerClip));
+                    }
                 });
             }
         });
-
-        // Now safely add to your scene
-        // rigArray.forEach(rig => Shared.rigGroup.add(rig));
-        // scene.add(Shared.rigGroup);
 
         // Now process colliders
         gltf.scene.traverse((child) => {
@@ -510,39 +439,32 @@ async function loadCharacter(characterState, scene, pathToGlb) {
 
                 let bodyHandle = null; // null is default for static collider
 
+                const [, relatedName] = child.name.match(/Collider_Kine_(.*)$/);
 
                 const bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
                     .setTranslation(newCenterPosition.x, newCenterPosition.y, newCenterPosition.z)
                     .setRotation(childquaternion); // must be a RAPIER.Quaternion
-                bodyHandle = Shared.physWorld.createRigidBody(bodyDesc);
-                bodyHandle.userData = { name: "Body_" + child.name };
-
-                characterState.weaponBody = bodyHandle;
+                bodyHandle = Shared.createRigidBodyCustom(bodyDesc,relatedName);
 
                 //add corresponding mesh offset
-                // const relatedName = child.name.substring(child.name.lastIndexOf("_") + 1);
-                const [, relatedName] = child.name.match(/Collider_Kine_(.*)$/);
-                // const relatedMesh = Shared.scene.getObjectByName(relatedName)
                 const relatedMesh = gltf.scene.getObjectByName(relatedName)
                 const p = relatedMesh.getWorldPosition(new THREE.Vector3());
                 const q = relatedMesh.getWorldQuaternion(new THREE.Quaternion());
-                // const offsetRootToBody = newCenterPosition.clone().sub(relatedMesh.position)
                 const offsetRootToBody = newCenterPosition.clone().sub(p)
-                bodyHandle.userData = {
-                    name: (child.name + "_body"),
-                    offsetRootToBody: offsetRootToBody,
-                    colliderDesc: colliderDesc,
-                };
 
-                colliderDesc.setCollisionGroups(Shared.COL_MASKS.PLAYERWPN)
-                // colliderDesc.setSensor(true);
+                if (isPlayer)
+                    colliderDesc.setCollisionGroups(Shared.COL_MASKS.PLAYERWPN)
+                else
+                    colliderDesc.setCollisionGroups(Shared.COL_MASKS.ENEMYWPN)
 
-                const colliderHandle = Shared.physWorld.createCollider(colliderDesc, bodyHandle);
+                const colliderHandle = Shared.createColliderCustom(colliderDesc, bodyHandle, relatedName);
+                
+                characterState.weaponBodyDesc = bodyDesc;
+                characterState.weaponBody = bodyHandle;
+                characterState.weaponColliderDesc = colliderDesc;
                 characterState.weaponCollider = colliderHandle;
+                characterState.weaponOffsetRootToBody = offsetRootToBody
 
-                colliderHandle.userData = { name: child.name, characterState: characterState };
-                Shared.colliderNameMap.set(child.name, colliderHandle);
-                Shared.BodyNameMap.set(child.name, bodyHandle);
             }
         });
 
