@@ -444,7 +444,8 @@ async function loadCharacter(characterState, scene, pathToGlb) {
                 const bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
                     .setTranslation(newCenterPosition.x, newCenterPosition.y, newCenterPosition.z)
                     .setRotation(childquaternion); // must be a RAPIER.Quaternion
-                bodyHandle = Shared.createRigidBodyCustom(bodyDesc,relatedName);
+                if (isPlayer)
+                    bodyHandle = Shared.createRigidBodyCustom(bodyDesc,relatedName); //create in clone
 
                 //add corresponding mesh offset
                 const relatedMesh = gltf.scene.getObjectByName(relatedName)
@@ -457,7 +458,9 @@ async function loadCharacter(characterState, scene, pathToGlb) {
                 else
                     colliderDesc.setCollisionGroups(Shared.COL_MASKS.ENEMYWPN)
 
-                const colliderHandle = Shared.createColliderCustom(colliderDesc, bodyHandle, relatedName);
+                let colliderHandle = null;//create in clone
+                if (isPlayer)
+                    colliderHandle = Shared.createColliderCustom(colliderDesc, bodyHandle, relatedName);
                 
                 characterState.weaponBodyDesc = bodyDesc;
                 characterState.weaponBody = bodyHandle;

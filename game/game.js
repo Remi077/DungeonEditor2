@@ -105,14 +105,17 @@ export function startGameLoop() {
         EnemyTemplateState.colliderDesc = enemyColliderDesc
         EnemyTemplateState.offsetRootToBody = new THREE.Vector3(0, Shared.halfHeight + Shared.playerRadius, 0);
 
+        let num = 1;
         Shared.enemySpawnGroup.children.forEach(
             child => {
+                num --;
+                // if (num<0) return;
                 const p = child.getWorldPosition(new THREE.Vector3());
                 const q = child.getWorldQuaternion(new THREE.Quaternion());
                 const myClonedEnemy = Shared.EnemyTemplateState.clone(
                     child.name, p, //q
                 );
-                Shared.enemyGroup.add(myClonedEnemy.root);                
+                Shared.enemyGroup.add(myClonedEnemy.root);
             }
         )
 
@@ -807,9 +810,11 @@ function attackLoop() {
         rot, //shapeRot: rot,
         weaponColliderDesc.shape, //shape: weaponColliderDesc.shape,
         (otherCollider) =>{
-            // const hitCharacter = otherCollider.userData?.characterState
-            const hitCharacter = Shared.characterStateNameMap.get(otherCollider.name);
-            if (hitCharacter) hitCollider(hitCharacter, Shared.playerState);
+            const hitCharacter = otherCollider.userData?.characterState
+            // const hitCharacter = Shared.characterStateNameMap.get(otherCollider.name);
+            if (hitCharacter) {
+                console.log("HIT",hitCharacter.name);
+                hitCollider(hitCharacter, Shared.playerState);}
         }
         , //callback: null, // callback: (collider: Collider) => boolean,
         null, //filterFlags?: QueryFilterFlags,
@@ -826,7 +831,8 @@ function attackLoop() {
 }
 
 //make the enemy invincible for a few frames after being hit
-const invincibleDuration = 0.3;//1s
+const invincibleDuration = 1;//1s
+const repulsionDuration = 0.3;//1s
 const maxHitRepulsionForce = 5;//1s
 function hitCollider(hitCharacter, hitter){
 
@@ -865,15 +871,18 @@ function hitCollider(hitCharacter, hitter){
 
 function invincibleFrames(hitCharacter){
     hitCharacter.timeSinceLastHit += deltaTime;
-    if (hitCharacter.timeSinceLastHit > invincibleDuration) {
-        hitCharacter.timeSinceLastHit = 0;
-        hitCharacter.invincibility = false;
+    if (hitCharacter.timeSinceLastHit > repulsionDuration) {
         hitCharacter.hitRepulsionForce.set(0, 0, 0);
         hitCharacter.root.traverse((child) =>{
             if (child.isMesh){
                 child.material?.color?.set(0xffffff);
             }}
         )
+    }
+    if (hitCharacter.timeSinceLastHit > invincibleDuration) {
+        hitCharacter.timeSinceLastHit = 0;
+        hitCharacter.invincibility = false;
+
         console.log("last invincibleFrames call",hitCharacter.timeSinceLastHit)
     } else {
         // hitRepulsionForce.
@@ -886,4 +895,5 @@ function invincibleFrames(hitCharacter){
 function die(thisCharacter){
     thisCharacter.body.setEnabled(false);
     Shared.physWorld.removeCollider(thisCharacter.collider, true);
+    Shared.physWorld.removeCollider(thisCharacter.weaponCollider, true);
 }

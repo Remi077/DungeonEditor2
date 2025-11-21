@@ -192,6 +192,17 @@ const characterStateProto = {
         copy.name = name || this.name;
         //main mesh/armature root
         copy.root = SkeletonUtils.clone(this.root); // Clone skinned mesh + skeleton
+
+        //uniquify material here?
+        copy.root.traverse(
+            (obj)=>{
+                if (obj.isSkinnedMesh){
+                    const materialClone = obj.material.clone();
+                    obj.material = materialClone;
+                }
+            }
+        )
+
         copy.root.userData.name = name || this.name;
         // copy.root.userData.characterState = copy;//circular dependency if we try to stringify this
         //position+rotation
@@ -215,6 +226,7 @@ const characterStateProto = {
         copy.body = createRigidBodyCustom(copy.bodyDesc,name);
         copy.colliderDesc = this.colliderDesc; //can be safely shared
         copy.collider = createColliderCustom(copy.colliderDesc, copy.body,name);
+        copy.collider.userData.characterState = copy;
         copy.collisionmask = this.collisionmask;
         copy.kcc = cloneKCC(this.kcc, physWorld, skin);
         copy.offsetRootToBody = this.offsetRootToBody;
@@ -244,6 +256,7 @@ const characterStateProto = {
         copy.weaponColliderDesc = this.weaponColliderDesc //can be safely shared
         copy.weaponCollider = createColliderCustom(copy.weaponColliderDesc, copy.weaponBody,copy.weapon.name);
         copy.weaponOffsetRootToBody = this.weaponOffsetRootToBody;
+        copy.weaponCollider.userData.characterState = copy;
         //gameplay
         copy.health = this.health;
         copy.maxHealth = this.maxHealth;
@@ -981,7 +994,7 @@ export const COL_MASKS = {
 
     ENEMYWPN: makeMask(
         COL_LAYERS.ENEMYWPN,
-        COL_LAYERS.PLAYER | COL_LAYERS.SCENERY
+         COL_LAYERS.SCENERY  //| COL_LAYERS.PLAYER
     ),
 
     SCENERY: makeMask(
