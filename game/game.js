@@ -11,7 +11,6 @@ import * as GameHUD from './gameHUD.js';
 export let Actions = {};
 let gameId = null;
 let enemyId = null;
-let attackLoopId = null;
 
 export let ActionToKeyMap = {
     moveCamRight: { key: 'KeyD' },
@@ -151,7 +150,9 @@ export function stopGameLoop() {
     Shared.editorState.gameRunning = false;
     cancelAnimationFrame(gameId);
     cancelAnimationFrame(enemyId);
-    cancelAnimationFrame(attackLoopId);
+    for (const characterState of Shared.characterStateNameMap.values()) {
+        cancelAnimationFrame(characterState.attackLoopId);
+    }
     document.removeEventListener("mousedown", onMouseClick, false);
     // document.removeEventListener("mouseup", onMouseUp, false);
 }
@@ -491,7 +492,7 @@ function onMouseClick(event) {
     if (selectObject) {
         selectObject?.userData?.actionnableData?.action(selectObject, Shared.playerState);
     }
-    attack();
+    attack(Shared.playerState);
 }
 
 /*---------------------------------*/
@@ -774,13 +775,13 @@ function makePartialClip(clip, boneNames) {
 /* attack */
 /*----------------*/
 let isAttacking = false;
-function attack() {
+function attack(characterState) {
 
-    if (!isAttacking) {
-        isAttacking = true;
+    if (!characterState.isAttacking) {
+        characterState.isAttacking = true;
 
-        playClipOnce(Shared.playerState,Shared.ANIM_ATTACK_NAME, endAttack);
-        attackLoopId = requestAnimationFrame(attackLoop);
+        playClipOnce(characterState,Shared.ANIM_ATTACK_NAME, ()=>endAttack(characterState));
+        characterState.attackLoopId = requestAnimationFrame(() => attackLoop(characterState));
     }
 
 }
@@ -788,18 +789,18 @@ function attack() {
 /*----------------*/
 /* endAttack */
 /*----------------*/
-function endAttack() {
-    console.log("ENDATTACK");
-    isAttacking = false;
-    cancelAnimationFrame(attackLoopId);
+function endAttack(characterState) {
+    console.log(characterState.name+"ENDATTACK");
+    characterState.isAttacking = false;
+    cancelAnimationFrame(characterState.attackLoopId);
 }
 
-function attackLoop() {
+function attackLoop(characterState) {
 
     // console.log("attackloop")
-    const weaponCollider = Shared.playerState.weaponCollider;
-    const weaponBody = Shared.playerState.weaponBody;
-    const weaponColliderDesc = Shared.playerState.colliderDesc;
+    const weaponCollider = characterState.weaponCollider;
+    const weaponBody = characterState.weaponBody;
+    const weaponColliderDesc = characterState.colliderDesc;
     const pos = weaponBody.translation();
     const rot = weaponBody.rotation();
 
@@ -814,20 +815,20 @@ function attackLoop() {
             // const hitCharacter = Shared.characterStateNameMap.get(otherCollider.name);
             if (hitCharacter) {
                 console.log("HIT",hitCharacter.name);
-                hitCollider(hitCharacter, Shared.playerState);}
+                hitCollider(hitCharacter, characterState);}
         }
         , //callback: null, // callback: (collider: Collider) => boolean,
         null, //filterFlags?: QueryFilterFlags,
         null, //filterGroups?: InteractionGroups,
         // Shared.COL_MASKS.PLAYERWPN, //filterGroups?: InteractionGroups,
         weaponCollider, //filterExcludeCollider?: Collider,
-        Shared.playerState.body,
+        characterState.body,
         // weaponBody, //filterExcludeRigidBody?: RigidBody,
         null //filterPredicate?: (collider: Collider) => boolean,
     )
 
 
-    attackLoopId = requestAnimationFrame(attackLoop);
+    characterState.attackLoopId = requestAnimationFrame(() => attackLoop(characterState));
 }
 
 //make the enemy invincible for a few frames after being hit

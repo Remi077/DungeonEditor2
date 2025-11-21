@@ -159,7 +159,7 @@ export const lowerBodyBones = [//define bone whitelist for an animation
     'mixamorigLeftFoot',
     'mixamorigRightArm',  //for walk cycle, weapon is in left hand so leave right arm go with walk
 ];
-export const ANIM_ATTACK_NAME = "Attack_two";
+export const ANIM_ATTACK_NAME = "Attack";
 export const ANIM_WALK_NAME = "Walk";
 export const ANIM_WALK_NAME_L = "Walk_Lower";
 export const WEAPON_BONE_NAME = "mixamorigLeftHand";
@@ -263,7 +263,7 @@ const characterStateProto = {
         copy.inventory = { ...this.inventory };
         //misc
         copy.tweakRot = this.tweakRot;
-        copy.tweakPos = this.tweakPos;       
+        copy.tweakPos = this.tweakPos;
 
         return copy;
     }
@@ -352,7 +352,9 @@ export function newcharacterState(name) {
         hitRepulsionForce: new THREE.Vector3(),
         //misc
         tweakRot: null,
-        tweakPos: null,        
+        tweakPos: null,
+        isAttacking: false,
+        attackLoopId: null
     });
 
     // Seal AFTER prototype + properties exist
