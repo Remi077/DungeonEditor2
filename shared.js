@@ -443,6 +443,7 @@ export const LoadBtnProgress = document.getElementById('LoadBtnProgress'); //TOM
 export const MODEMENU = 0;
 export const MODEEDITOR = 1;
 export const MODEGAME = 2;
+export const MODEGAMEOVER = 3;
 
 // editor variables
 export const editorState = {
@@ -520,6 +521,15 @@ export function setMode(mode) {
             generateKeyToActionMaps();
             startGameLoop();
             startGameLoopUI();
+            break;
+        case MODEGAMEOVER:
+            stopGameLoop();
+            stopGameLoopUI();
+            // ActionToKeyMap = {};
+            // Actions = null;
+            clearKeyToActionMaps();
+            // startGameOverLoop();
+            // startGameOverLoopUI();
             break;
         case MODEEDITOR:
             StartBtn.textContent = "Start Game (G)";
@@ -644,6 +654,15 @@ export function generateKeyToActionMaps() {
             keyPressToActionMap[mapping.key] = Action;
         }
     }
+}
+
+/*---------------------------------*/
+// clearKeyToActionMaps
+/*---------------------------------*/
+export function clearKeyToActionMaps(){
+    keyPressToActionMap = {};
+    keyPressOnceToActionMap = {};
+    keyReleaseToActionMap = {};
 }
 
 /*---------------------------------*/

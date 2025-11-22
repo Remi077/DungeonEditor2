@@ -7,6 +7,7 @@ import * as Editor from './editor/editor.js';
 import * as EditorUI from './editor/editorUI.js';
 import * as MenuUI from './menu/menuUI.js';
 import * as Game from './game/game.js';
+import * as GameOver from './game/gameover.js';
 
 /*-----------------------------------------------------*/
 // REVISION NUMBER
@@ -51,8 +52,8 @@ main
  │    ├──> stats ─────> shared
  │    ├──> shared
  │    └──> gameHUD
- └── menuUI ──────────> shared
-
+ ├── menuUI ──────────> shared
+ └── gameOver ────────> shared
 */
 
 //main->editor
@@ -70,6 +71,8 @@ main
 //editor->gameHUD
 
 //menuUI->shared
+
+//gameOver->shared
 
 //game->stats
 //game->shared

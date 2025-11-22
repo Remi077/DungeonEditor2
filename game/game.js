@@ -868,8 +868,8 @@ function hitCollider(hitCharacter, hitter){
     hitCharacter.invincibility = true;
     console.log("hitCharacter ", hitCharacter.name)
     // hitCharacter.health -= 25;
-    // hitCharacter.health -= 50;
-    hitCharacter.health -= 2;
+    hitCharacter.health -= 50;
+    // hitCharacter.health -= 2;
     // hitCharacter.health -= 100;
     const hitRepulsionForce = hitCharacter.root.position.clone().sub(hitter.root.position);
     hitRepulsionForce.y = 0;
@@ -879,8 +879,11 @@ function hitCollider(hitCharacter, hitter){
     if (hitCharacter.health <= 0) {
         console.log("character dead");
         // stopClip(hitCharacter);
-        stopAllActions(hitCharacter);
-        playClipOnce(hitCharacter,"Die",true,die);
+        if (hitCharacter.isPlayer) {
+            Shared.setMode(Shared.MODEGAMEOVER);
+        }else{
+            stopAllActions(hitCharacter);
+            playClipOnce(hitCharacter,"Die",true,die);}
     } else {
         hitCharacter.root.traverse((child) =>{
             if (child.isMesh){

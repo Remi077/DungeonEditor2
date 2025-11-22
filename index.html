@@ -100,6 +100,11 @@
             display: none !important;
         }
 
+        .hiddenMenu {
+            display: none !important;
+        }
+
+
         .tab {
             border-bottom: 1px solid #333;
             background-color: #333;
@@ -185,7 +190,7 @@
 <body>
 
     <!-- Menu overlay -->
-    <div id="menu" style="
+    <div id="menu" class="hidden" style="
         position: absolute;
         top: 0; left: 0;
         width: 100%;
@@ -205,6 +210,26 @@
         <button id="menu-editor" style="margin:10px; padding:15px 40px; font-size: 1.5em;">Editor</button>
     </div>
 
+    <!-- GameOver overlay -->
+    <div id="gameOver" class="hidden" style="
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.85);
+        color: white;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-family: sans-serif;
+        z-index: 1000;
+    ">
+        <h1 style="font-size: 4em; margin-bottom: 50px;">GAME OVER</h1>
+        <!-- <button id="menu-start" style="margin:10px; padding:15px 40px; font-size: 1.5em;">Start Game</button> -->
+        <!-- <button id="menu-load" style="margin:10px; padding:15px 40px; font-size: 1.5em;">Load</button> -->
+        <!-- <button id="menu-editor" style="margin:10px; padding:15px 40px; font-size: 1.5em;">Editor</button> -->
+    </div>
 
     <!-- Main container for the canvas and UI panel -->
     <div id="main-container">

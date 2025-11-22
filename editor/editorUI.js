@@ -99,7 +99,7 @@ document.addEventListener("UIChange", (e) => {
     switch (field) {
         case "gameModeChange":
             switch (value) {
-                case Shared.MODEMENU:
+                case Shared.MODEMENU || Shared.MODEGAMEOVER:
                     //hide the uipanel in game mode and resize renderer
                     Shared.uipanel.classList.add("hidden");
                     break;
