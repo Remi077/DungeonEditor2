@@ -76,6 +76,7 @@ export function startGameLoop() {
 
         Shared.playerState.body = playerBody;
         Shared.playerState.collider = playerCollider;
+        Shared.playerState.collider.userData.characterState = Shared.playerState;
         Shared.playerState.colliderDesc = playerColliderDesc;
         Shared.playerState.offsetRootToBody = new THREE.Vector3(
             0,Shared.halfHeight + Shared.playerRadius,0
@@ -84,6 +85,8 @@ export function startGameLoop() {
         Shared.playerState.tweakPos = new THREE.Vector3(0.1,0,0.1);
 
         Shared.playerState.kcc = kcc;
+        Shared.playerState.attackDamageStart = 0.2;
+        Shared.playerState.attackDamageEnd = null;//0.2+0.2;
 
         initHighlightPool(Shared.scene);
 
@@ -103,12 +106,14 @@ export function startGameLoop() {
         EnemyTemplateState.collisionmask = Shared.COL_MASKS.ENEMY
         EnemyTemplateState.colliderDesc = enemyColliderDesc
         EnemyTemplateState.offsetRootToBody = new THREE.Vector3(0, Shared.halfHeight + Shared.playerRadius, 0);
+        EnemyTemplateState.attackDamageStart = 0.5;
+        EnemyTemplateState.attackDamageEnd = 0.5+0.3;
 
         let num = 1;
         Shared.enemySpawnGroup.children.forEach(
             child => {
-                num --;
-                // if (num<0) return;
+                num--;
+                if (num<0) return;
                 const p = child.getWorldPosition(new THREE.Vector3());
                 const q = child.getWorldQuaternion(new THREE.Quaternion());
                 const myClonedEnemy = Shared.EnemyTemplateState.clone(
@@ -161,7 +166,6 @@ export function stopGameLoop() {
 // gameLoop
 /*---------------------------------*/
 let lastUVUpdate = 0;
-let isPlayerTouchingGround = false;
 const verbose = false;
 let deltaTime = 0;
 
@@ -249,7 +253,7 @@ function gameLoop(now) {
 const enableEnemy = true;
 // const enemyMoveSpeed = Shared.moveSpeed*0.8;     // Adjust movement speed
 const enemyMoveSpeed = Shared.moveSpeed * 0.02;     // Adjust movement speed
-const enemyAttackDistance = 2.4;     // Adjust movement speed        
+const enemyAttackDistance = 2;     // Adjust movement speed        
 const up = new THREE.Vector3(0, 1, 0);
 // let oneFrameOnly = false;
 function enemyLoop() {
@@ -291,8 +295,10 @@ function enemyLoop() {
                 if (enemyPos.distanceTo(targetPos) < enemyAttackDistance) {
                     // console.log("ATTACK");
                     // playClip(enemycharacterState,"Idle",true);
-                    playClip(enemycharacterState,"Attack",true);
+                    // playClip(enemycharacterState,"Attack",true);
                     enemycharacterState.moveVector.set(0,0,0);
+                    // stopClip(enemycharacterState);
+                    attack(enemycharacterState);
                 } else {
                     // const toPlayer = targetPos.clone().sub(enemyPos);
                     // toPlayer.y = 0;//unless enemy is flying movement along Y is prohibited                
@@ -709,14 +715,18 @@ function deactivateMixer(mixer, single=false) {
 /*----------------*/
 /* playClipOnce */
 /*----------------*/
-function playClipOnce(characterState,clipName, endAction = null) {
+function playClipOnce(characterState,clipName, clamp = true, endAction = null) {
     // const clipInfo = Shared.clipActions.get(clipName);
     const nextAction = characterState.animationActions.get(clipName);
+    if (nextAction === undefined){
+        console.warn(clipName+" is not a valid clip for character "+characterState.name);
+        return;
+    }
     const currentMixer = characterState.mixer;
     activateMixer(currentMixer, true);
     nextAction.reset();
     nextAction.setLoop(THREE.LoopOnce, 1);
-    nextAction.clampWhenFinished = true;
+    nextAction.clampWhenFinished = clamp;
 
     // Remove previous listener to prevent stacking
     currentMixer.removeEventListener('finished', currentMixer._onFinishListener);
@@ -726,6 +736,9 @@ function playClipOnce(characterState,clipName, endAction = null) {
         if (e.action === nextAction) {  // check which action finished
             console.log('Animation finished!');
             deactivateMixer(currentMixer, true);
+            // if (!clamp) nextAction.stop();
+            // if (!clamp) e.action.stop();
+            // nextAction.stop();  
             if (endAction) endAction(characterState);
         }
     };
@@ -780,8 +793,10 @@ function attack(characterState) {
     if (!characterState.isAttacking) {
         characterState.isAttacking = true;
 
-        playClipOnce(characterState,Shared.ANIM_ATTACK_NAME, ()=>endAttack(characterState));
+        const clampAttackAnimation = characterState.isPlayer; //clamp attack last frame if player
+        playClipOnce(characterState,Shared.ANIM_ATTACK_NAME, clampAttackAnimation, ()=>endAttack(characterState));
         characterState.attackLoopId = requestAnimationFrame(() => attackLoop(characterState));
+        characterState.timeSinceStartAttack = 0;
     }
 
 }
@@ -797,36 +812,44 @@ function endAttack(characterState) {
 
 function attackLoop(characterState) {
 
-    // console.log("attackloop")
-    const weaponCollider = characterState.weaponCollider;
-    const weaponBody = characterState.weaponBody;
-    const weaponColliderDesc = characterState.colliderDesc;
-    const pos = weaponBody.translation();
-    const rot = weaponBody.rotation();
+    characterState.timeSinceStartAttack += deltaTime;
+    if (
+        characterState.timeSinceStartAttack >= characterState.attackDamageStart &&
+        ( characterState.attackDamageEnd ?
+            (characterState.timeSinceStartAttack < characterState.attackDamageEnd) : true )
+    ) {
 
-    // return;
+        // console.log("attackloop")
+        const weaponCollider = characterState.weaponCollider;
+        const weaponBody = characterState.weaponBody;
+        const weaponColliderDesc = characterState.colliderDesc;
+        const pos = weaponBody.translation();
+        const rot = weaponBody.rotation();
 
-    Shared.physWorld.intersectionsWithShape(
-        pos, //shapePos: pos,
-        rot, //shapeRot: rot,
-        weaponColliderDesc.shape, //shape: weaponColliderDesc.shape,
-        (otherCollider) =>{
-            const hitCharacter = otherCollider.userData?.characterState
-            // const hitCharacter = Shared.characterStateNameMap.get(otherCollider.name);
-            if (hitCharacter) {
-                console.log("HIT",hitCharacter.name);
-                hitCollider(hitCharacter, characterState);}
-        }
-        , //callback: null, // callback: (collider: Collider) => boolean,
-        null, //filterFlags?: QueryFilterFlags,
-        null, //filterGroups?: InteractionGroups,
-        // Shared.COL_MASKS.PLAYERWPN, //filterGroups?: InteractionGroups,
-        weaponCollider, //filterExcludeCollider?: Collider,
-        characterState.body,
-        // weaponBody, //filterExcludeRigidBody?: RigidBody,
-        null //filterPredicate?: (collider: Collider) => boolean,
-    )
+        // return;
 
+        Shared.physWorld.intersectionsWithShape(
+            pos, //shapePos: pos,
+            rot, //shapeRot: rot,
+            weaponColliderDesc.shape, //shape: weaponColliderDesc.shape,
+            (otherCollider) =>{
+                const hitCharacter = otherCollider.userData?.characterState
+                console.log("enemy hit something",otherCollider.userData?.name)
+                // const hitCharacter = Shared.characterStateNameMap.get(otherCollider.name);
+                if (hitCharacter) {
+                    console.log("HIT",hitCharacter.name);
+                    hitCollider(hitCharacter, characterState);}
+            }
+            , //callback: null, // callback: (collider: Collider) => boolean,
+            null, //filterFlags?: QueryFilterFlags,
+            null, //filterGroups?: InteractionGroups,
+            // Shared.COL_MASKS.PLAYERWPN, //filterGroups?: InteractionGroups,
+            weaponCollider, //filterExcludeCollider?: Collider,
+            characterState.body,
+            // weaponBody, //filterExcludeRigidBody?: RigidBody,
+            null //filterPredicate?: (collider: Collider) => boolean,
+        )
+    }
 
     characterState.attackLoopId = requestAnimationFrame(() => attackLoop(characterState));
 }
@@ -845,7 +868,8 @@ function hitCollider(hitCharacter, hitter){
     hitCharacter.invincibility = true;
     console.log("hitCharacter ", hitCharacter.name)
     // hitCharacter.health -= 25;
-    hitCharacter.health -= 50;
+    // hitCharacter.health -= 50;
+    hitCharacter.health -= 2;
     // hitCharacter.health -= 100;
     const hitRepulsionForce = hitCharacter.root.position.clone().sub(hitter.root.position);
     hitRepulsionForce.y = 0;
@@ -856,14 +880,15 @@ function hitCollider(hitCharacter, hitter){
         console.log("character dead");
         // stopClip(hitCharacter);
         stopAllActions(hitCharacter);
-        playClipOnce(hitCharacter,"Die",die);
+        playClipOnce(hitCharacter,"Die",true,die);
     } else {
         hitCharacter.root.traverse((child) =>{
             if (child.isMesh){
                 child.material?.color?.set(0xff0000);
             }}
         )        
-        playClipOnce(hitCharacter,"Hurt");
+        playClipOnce(hitCharacter,"Hurt",false);
+        endAttack(hitCharacter); //character cancels his attack when hurt
         requestAnimationFrame(() => invincibleFrames(hitCharacter));
     }
     // invincibleFrames(hitCharacter);
@@ -884,10 +909,10 @@ function invincibleFrames(hitCharacter){
         hitCharacter.timeSinceLastHit = 0;
         hitCharacter.invincibility = false;
 
-        console.log("last invincibleFrames call",hitCharacter.timeSinceLastHit)
+        // console.log("last invincibleFrames call",hitCharacter.timeSinceLastHit)
     } else {
         // hitRepulsionForce.
-        console.log("new invincibleFrames call",hitCharacter.timeSinceLastHit)
+        // console.log("new invincibleFrames call",hitCharacter.timeSinceLastHit)
         // requestAnimationFrame(hitCollider);
         requestAnimationFrame(() => invincibleFrames(hitCharacter));
     }

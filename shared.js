@@ -261,6 +261,9 @@ const characterStateProto = {
         copy.health = this.health;
         copy.maxHealth = this.maxHealth;
         copy.inventory = { ...this.inventory };
+        //attack
+        copy.attackDamageStart = this.attackDamageStart;
+        copy.attackDamageEnd   = this.attackDamageEnd;
         //misc
         copy.tweakRot = this.tweakRot;
         copy.tweakPos = this.tweakPos;
@@ -308,6 +311,7 @@ export function newcharacterState(name) {
     Object.assign(newObj, {
         //name
         name,
+        isPlayer: false,
         //main mesh/armature root
         root: null,
         //position+rotation
@@ -350,11 +354,15 @@ export function newcharacterState(name) {
         invincibility: false,
         timeSinceLastHit: 0,
         hitRepulsionForce: new THREE.Vector3(),
+        //attack
+        isAttacking: false,
+        attackLoopId: null,
+        timeSinceStartAttack: null,
+        attackDamageStart: 0,
+        attackDamageEnd: null,//end of animation if null
         //misc
         tweakRot: null,
         tweakPos: null,
-        isAttacking: false,
-        attackLoopId: null
     });
 
     // Seal AFTER prototype + properties exist
@@ -981,7 +989,7 @@ export const makeMask = (layer, collidesWith) =>
 export const COL_MASKS = {
     PLAYER: makeMask(
         COL_LAYERS.PLAYER,
-        COL_LAYERS.ENEMY | COL_LAYERS.ENEMYWPN | COL_LAYERS.SCENERY
+        COL_LAYERS.ENEMY | COL_LAYERS.SCENERY //| COL_LAYERS.ENEMYWPN
     ),
 
     PLAYERWPN: makeMask(
@@ -996,7 +1004,7 @@ export const COL_MASKS = {
 
     ENEMYWPN: makeMask(
         COL_LAYERS.ENEMYWPN,
-         COL_LAYERS.SCENERY  //| COL_LAYERS.PLAYER
+        COL_LAYERS.PLAYER | COL_LAYERS.SCENERY
     ),
 
     SCENERY: makeMask(

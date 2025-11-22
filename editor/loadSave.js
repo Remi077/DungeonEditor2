@@ -358,11 +358,12 @@ async function loadCharacter(characterState, scene, pathToGlb) {
 
         let isPlayer=false;
         gltf.scene.children.forEach((child) => {
-
+            
             if (child.name.startsWith("Armature")) {
                 characterState.root = child;
                 isPlayer=child.name.startsWith("Armature_Player"); 
-
+                characterState.isPlayer = isPlayer;
+                
                 child.traverse(obj => {
                     if (obj.isSkinnedMesh) {
                         characterState.skeleton = obj.skeleton;//TEMP
