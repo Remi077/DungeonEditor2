@@ -108,12 +108,15 @@ export function startGameLoop() {
         EnemyTemplateState.offsetRootToBody = new THREE.Vector3(0, Shared.halfHeight + Shared.playerRadius, 0);
         EnemyTemplateState.attackDamageStart = 0.5;
         EnemyTemplateState.attackDamageEnd = 0.5+0.3;
+        EnemyTemplateState.healthBar = GameHUD.createHealthBar(0.5, 0.05)
+        EnemyTemplateState.healthBar.position.y = Shared.playerHeight+0.3;
+        EnemyTemplateState.root.add(EnemyTemplateState.healthBar);
 
         let num = 1;
         Shared.enemySpawnGroup.children.forEach(
             child => {
                 num--;
-                if (num<0) return;
+                // if (num<0) return;
                 const p = child.getWorldPosition(new THREE.Vector3());
                 const q = child.getWorldQuaternion(new THREE.Quaternion());
                 const myClonedEnemy = Shared.EnemyTemplateState.clone(
@@ -298,7 +301,8 @@ function enemyLoop() {
                     // playClip(enemycharacterState,"Attack",true);
                     enemycharacterState.moveVector.set(0,0,0);
                     // stopClip(enemycharacterState);
-                    attack(enemycharacterState);
+                    if (!enemycharacterState.invincibility) //enemy just got hurt and cannot attack
+                        attack(enemycharacterState);
                 } else {
                     // const toPlayer = targetPos.clone().sub(enemyPos);
                     // toPlayer.y = 0;//unless enemy is flying movement along Y is prohibited                
@@ -315,6 +319,14 @@ function enemyLoop() {
                 Shared.updateMeshRotPos(enemycharacterState); //update mesh position
                 Shared.scheduleSyncBodyFromcharacterState(enemycharacterState) // schedule player rigidbody sync
                 Shared.scheduleSyncBodyToMesh(enemycharacterState.weapon, enemycharacterState.weaponBody, enemycharacterState.weaponOffsetRootToBody) // schedule weapon rigidbody sync
+
+                //disappear the health bar after a certain time showing up
+                if (enemycharacterState.healthBar.visible){
+                    enemycharacterState.timeSinceHealthBarShowedUp += deltaTime;
+                    if (enemycharacterState.timeSinceHealthBarShowedUp > healthBarDuration)
+                        enemycharacterState.healthBar.visible = false;
+                }
+
             }
 
         });
@@ -814,6 +826,7 @@ function attackLoop(characterState) {
 
     characterState.timeSinceStartAttack += deltaTime;
     if (
+        characterState.isAttacking && 
         characterState.timeSinceStartAttack >= characterState.attackDamageStart &&
         ( characterState.attackDamageEnd ?
             (characterState.timeSinceStartAttack < characterState.attackDamageEnd) : true )
@@ -858,6 +871,7 @@ function attackLoop(characterState) {
 const invincibleDuration = 1;//1s
 const repulsionDuration = 0.3;//1s
 const maxHitRepulsionForce = 5;//1s
+const healthBarDuration = 3;//time showing health bar after hit
 function hitCollider(hitCharacter, hitter){
 
     if (hitCharacter.invincibility || hitCharacter.health <= 0) {
@@ -867,8 +881,13 @@ function hitCollider(hitCharacter, hitter){
 
     hitCharacter.invincibility = true;
     console.log("hitCharacter ", hitCharacter.name)
-    // hitCharacter.health -= 25;
-    hitCharacter.health -= 50;
+    hitCharacter.health -= 10;
+    // hitCharacter.health -= 50;
+    if (hitCharacter.isPlayer){
+        GameHUD.updateHealthBar(hitCharacter.health, hitCharacter.maxHealth);
+    } else {
+        GameHUD.updateFloatingHealthBar(hitCharacter);
+    }
     // hitCharacter.health -= 2;
     // hitCharacter.health -= 100;
     const hitRepulsionForce = hitCharacter.root.position.clone().sub(hitter.root.position);
@@ -886,7 +905,10 @@ function hitCollider(hitCharacter, hitter){
             playClipOnce(hitCharacter,"Die",true,die);}
     } else {
         hitCharacter.root.traverse((child) =>{
-            if (child.isMesh){
+            // if (child.isSkinnedMesh){
+            if (child.isMesh && 
+                (child.name !== "hp_bg") && (child.name !== "hp_fg")
+            ){
                 child.material?.color?.set(0xff0000);
             }}
         )        
@@ -903,7 +925,9 @@ function invincibleFrames(hitCharacter){
     if (hitCharacter.timeSinceLastHit > repulsionDuration) {
         hitCharacter.hitRepulsionForce.set(0, 0, 0);
         hitCharacter.root.traverse((child) =>{
-            if (child.isMesh){
+            // if (child.isSkinnedMesh){
+            if (child.isMesh && 
+                (child.name !== "hp_bg") && (child.name !== "hp_fg")){
                 child.material?.color?.set(0xffffff);
             }}
         )
@@ -923,6 +947,7 @@ function invincibleFrames(hitCharacter){
 
 function die(thisCharacter){
     thisCharacter.body.setEnabled(false);
+    thisCharacter.healthBar.visible = false;
     Shared.physWorld.removeCollider(thisCharacter.collider, true);
     Shared.physWorld.removeCollider(thisCharacter.weaponCollider, true);
 }

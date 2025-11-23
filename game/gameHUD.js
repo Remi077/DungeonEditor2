@@ -1,4 +1,5 @@
 import * as Shared from '../shared.js';
+import * as THREE from 'three';
 //OTHER IMPORTS FORBIDDEN! CIRCULAR DEPENDENCIES
 
 // HUD variables
@@ -12,6 +13,7 @@ let messageScaleSpeed    = messageTargetScale / messageScaleDuration;
 export const hudCanvas = document.getElementById('hud-canvas');
 hudCanvas.width = Shared.container.clientWidth;
 hudCanvas.height = Shared.container.clientHeight;
+
 
 const hudContext = hudCanvas.getContext('2d');
 
@@ -78,5 +80,56 @@ export function drawHUD(delta = 1) {
     hudContext.fillStyle = 'rgba(255, 0, 0, 0.9)';
     hudContext.fillText(messageScreen, 0, 20); // Text is now centered and scaled
     hudContext.restore(); // Restore the original canvas state
+
+}
+
+const healthBar = document.getElementById("health-bar")
+
+// Update the health UI:
+export function updateHealthBar(currentHealth, maxHealth) {
+  const hpPercent = (currentHealth / maxHealth) * 100;
+  document.getElementById("health-bar").style.width = hpPercent + "%";
+}
+
+
+export function createHealthBar(width = 1, height = 0.15, backgroundColor = 0x550000, foregroundColor = 0x00ff00) {
+    const group = new THREE.Group();
+    group.name="healthbar";
+
+    // Background
+    const bgGeom = new THREE.PlaneGeometry(width, height);
+    const bgMat = new THREE.MeshBasicMaterial({ color: backgroundColor });
+    const bg = new THREE.Mesh(bgGeom, bgMat);
+    bg.name= "hp_bg";
+    group.add(bg);
+
+    // Foreground (actual health)
+    const fgGeom = new THREE.PlaneGeometry(width, height);
+    const fgMat = new THREE.MeshBasicMaterial({ color: foregroundColor });
+    const fg = new THREE.Mesh(fgGeom, fgMat);
+    fg.position.z = 0.001; // avoid z-fighting
+    fg.name= "hp_fg";
+    group.add(fg);
+
+    // Store for later updates
+    group.healthForeground = fg;
+    group.fullWidth = width;
+
+    group.visible = false;
+
+    return group;
+}
+
+export function updateFloatingHealthBar(enemyCharacterState) {
+
+    const percent = enemyCharacterState.health / enemyCharacterState.maxHealth;
+    const fg = enemyCharacterState.healthBar.healthForeground;
+    const bg = enemyCharacterState.healthBar.children[0];
+
+    fg.scale.x = percent;
+    fg.position.x = -(enemyCharacterState.healthBar.fullWidth * (1 - percent)) / 2;
+
+    enemyCharacterState.healthBar.visible = true;
+    enemyCharacterState.timeSinceHealthBarShowedUp = 0;
 
 }

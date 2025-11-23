@@ -261,6 +261,10 @@ const characterStateProto = {
         copy.health = this.health;
         copy.maxHealth = this.maxHealth;
         copy.inventory = { ...this.inventory };
+        // copy.healthBar = this.healthBar.clone();
+        copy.healthBar = copy.root.getObjectByName("healthbar");
+        copy.healthBar.healthForeground = copy.healthBar.children[1];
+        copy.healthBar.fullWidth = this.healthBar.fullWidth;
         //attack
         copy.attackDamageStart = this.attackDamageStart;
         copy.attackDamageEnd   = this.attackDamageEnd;
@@ -354,6 +358,8 @@ export function newcharacterState(name) {
         invincibility: false,
         timeSinceLastHit: 0,
         hitRepulsionForce: new THREE.Vector3(),
+        healthBar: null,
+        timeSinceHealthBarShowedUp: 0,
         //attack
         isAttacking: false,
         attackLoopId: null,
