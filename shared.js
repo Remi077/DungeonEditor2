@@ -97,6 +97,14 @@ if (shadowEnabled) {
 }
 
 /*---------------------------------*/
+// NAVMESH VARIABLES
+/*---------------------------------*/
+export let navmesh = null;
+export function setNavMesh(n){
+    navmesh = n;
+}
+
+/*---------------------------------*/
 // PHYSICS VARIABLES
 /*---------------------------------*/
 // speeds

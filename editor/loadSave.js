@@ -6,7 +6,7 @@ import * as SkeletonUtils from 'SkeletonUtils';
 import * as RAPIER from 'rapier';
 
 import * as Shared from '../shared.js';
-
+import { Pathfinding } from 'three-pathfinding';
 
 /*------*/
 // LOAD //
@@ -55,6 +55,7 @@ export async function loadTest(scene) {
     loadLevel(scene);
     await(loadCharacter(Shared.playerState, scene, './assets/glb/player.glb'));
     await(loadCharacter(Shared.EnemyTemplateState, scene, './assets/glb/zombie.glb'));
+    await(loadNavMesh(scene, './assets/glb/navmesh.glb'));
 
     //add player to the level
     Shared.rigGroup.add(Shared.playerState.root);
@@ -475,5 +476,29 @@ async function loadCharacter(characterState, scene, pathToGlb) {
 
     } catch (err) {
         console.error("Failed to load GLB:", err);
+    }
+}
+
+
+async function loadNavMesh(scene, pathToGlb) {
+    try {
+        const response = await fetch(pathToGlb);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const arrayBuffer = await response.arrayBuffer();
+        const gltf = await loadLevelGlb(arrayBuffer);
+
+        gltf.scene.children.forEach((navmesh) => {
+            Shared.setNavMesh(navmesh);
+            scene.add(navmesh);
+            navmesh.visible=false;
+            
+            const pathfinder = new Pathfinding();
+            const zoneData = Pathfinding.createZone(navmesh.geometry);
+            pathfinder.setZoneData("level", zoneData);
+        })
+
+    } catch (err) {
+        console.error("Failed to load navmesh GLB:", err);
     }
 }

@@ -4,6 +4,7 @@ import * as RAPIER from 'rapier';
 import * as Shared from '../shared.js';
 import * as Stats from '../Stats.js';
 import * as GameHUD from './gameHUD.js';
+import Pathfinding from "three-pathfinding";
 
 /*---------------------------------*/
 // actions variables
