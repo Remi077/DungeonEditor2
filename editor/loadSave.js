@@ -488,6 +488,7 @@ async function loadNavMesh(scene, pathToGlb) {
         const arrayBuffer = await response.arrayBuffer();
         const gltf = await loadLevelGlb(arrayBuffer);
 
+        const pathfinder = new Pathfinding();
         gltf.scene.children.forEach((navmesh) => {
             Shared.setNavMesh(navmesh);
             scene.add(navmesh);
@@ -496,6 +497,7 @@ async function loadNavMesh(scene, pathToGlb) {
             const pathfinder = new Pathfinding();
             const zoneData = Pathfinding.createZone(navmesh.geometry);
             pathfinder.setZoneData("level", zoneData);
+            Shared.setPathFinder(pathfinder);
         })
 
     } catch (err) {

@@ -100,9 +100,9 @@ if (shadowEnabled) {
 // NAVMESH VARIABLES
 /*---------------------------------*/
 export let navmesh = null;
-export function setNavMesh(n){
-    navmesh = n;
-}
+export function setNavMesh(n){ navmesh = n; }
+export let pathfinder = null;
+export function setPathFinder(p){pathfinder = p;}
 
 /*---------------------------------*/
 // PHYSICS VARIABLES
@@ -215,6 +215,7 @@ const characterStateProto = {
         // copy.root.userData.characterState = copy;//circular dependency if we try to stringify this
         //position+rotation
         if (spawnPos) {
+            copy.root.position.set(spawnPos.x,spawnPos.y,spawnPos.z);
             copy.curPos = spawnPos.clone();
             copy.newPos = spawnPos.clone();
         } else {
@@ -231,6 +232,9 @@ const characterStateProto = {
         if (spawnPos) copy.bodyDesc.setTranslation(spawnPos.x, spawnPos.y, spawnPos.z);
         if (spawnRot) copy.bodyDesc.setRotation(spawnRot);
 
+        copy.capsuleTotalHeight = this.capsuleTotalHeight;
+        copy.capsuleRadius = this.capsuleRadius;
+        copy.capsuleCylinderhalfHeight = this.capsuleCylinderhalfHeight;
         copy.body = createRigidBodyCustom(copy.bodyDesc,name);
         copy.colliderDesc = this.colliderDesc; //can be safely shared
         copy.collider = createColliderCustom(copy.colliderDesc, copy.body,name);
@@ -248,6 +252,7 @@ const characterStateProto = {
         //animation
         copy.skeleton = copy.root.skeleton;
         copy.weaponBone = copy.root.getObjectByName(this.weaponBone.name);
+        copy.headBone = copy.root.getObjectByName("mixamorigHead");
         copy.mixer = new THREE.AnimationMixer(copy.root); // one new mixer per character
         for (const [k, v] of this.animationClips) {
             copy.animationClips.set(k, v);
@@ -331,6 +336,9 @@ export function newcharacterState(name) {
         newPos: new THREE.Vector3(),
         rotation: new THREE.Quaternion(),        
         //rapier collision
+        capsuleTotalHeight: null,
+        capsuleRadius: null,
+        capsuleCylinderhalfHeight: null,
         bodyDesc: null,
         body: null,
         colliderDesc: null,
@@ -348,6 +356,7 @@ export function newcharacterState(name) {
         //animation
         skeleton: null,
         weaponBone: null,
+        headBone: null,
         mixer: null,
         animationClips: new Map(),
         animationActions: new Map(), //tied to mixer
@@ -948,10 +957,13 @@ export function createColliderCustom(colliderDesc, body, name){
 
 
 //update mesh rot/pos from movement state
-export function updateMeshRotPos(characterState) {
+export function updateMeshRotPos(characterState, lerpRot = false) {
     const root = characterState.root;
     const rot = characterState.rotation;
-    root.quaternion.set(rot.x, rot.y, rot.z, rot.w);
+    if (lerpRot)
+        root.quaternion.slerp(rot, 0.1);
+    else
+        root.quaternion.set(rot.x, rot.y, rot.z, rot.w);
     if (characterState.tweakRot) root.rotation.y += characterState.tweakRot; // optional 180° turn if needed
     
     const newRootPos = characterState.newPos.clone();

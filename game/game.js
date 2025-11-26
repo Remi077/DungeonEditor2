@@ -46,6 +46,11 @@ export function startGameLoop() {
     if (firstInit) {
         firstInit = false;
         const campos = Shared.yawObject.position;
+
+        Shared.playerState.capsuleTotalHeight = Shared.playerHeight;
+        Shared.playerState.capsuleRadius = Shared.playerRadius;
+        Shared.playerState.capsuleCylinderhalfHeight = Shared.halfHeight;
+
         // --- Create kinematic body ---
         const playerBodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
             .setTranslation(campos.x, campos.y + Shared.cameraHeightFromCapsuleCenter, campos.z); // initial position where camera is
@@ -68,7 +73,7 @@ export function startGameLoop() {
         // kcc.disableSnapToGround();
 
         // --- Create capsule collider ---
-        const playerColliderDesc = RAPIER.ColliderDesc.capsule(Shared.halfHeight, Shared.playerRadius)
+        const playerColliderDesc = RAPIER.ColliderDesc.capsule(Shared.playerState.capsuleCylinderhalfHeight, Shared.playerState.capsuleRadius)
             .setFriction(0.9)
             .setRestitution(0)
             .setCollisionGroups(Shared.COL_MASKS.PLAYER);
@@ -80,7 +85,7 @@ export function startGameLoop() {
         Shared.playerState.collider.userData.characterState = Shared.playerState;
         Shared.playerState.colliderDesc = playerColliderDesc;
         Shared.playerState.offsetRootToBody = new THREE.Vector3(
-            0,Shared.halfHeight + Shared.playerRadius,0
+            0,Shared.playerState.capsuleCylinderhalfHeight + Shared.playerState.capsuleRadius, 0
         );
         Shared.playerState.tweakRot = Math.PI
         Shared.playerState.tweakPos = new THREE.Vector3(0.1,0,0.1);
@@ -93,7 +98,15 @@ export function startGameLoop() {
 
         //initialize enemy template rapier primitives
         const EnemyTemplateState = Shared.EnemyTemplateState;
-        const enemyColliderDesc = RAPIER.ColliderDesc.capsule(Shared.halfHeight, Shared.playerRadius)
+        // const enemyColliderDesc = RAPIER.ColliderDesc.capsule(Shared.halfHeight, Shared.playerRadius*0.7)
+        // const enemyColliderDesc = RAPIER.ColliderDesc.capsule(Shared.halfHeight, Shared.playerRadius)
+        EnemyTemplateState.capsuleTotalHeight = 1.8;
+        EnemyTemplateState.capsuleRadius = 0.2;
+        EnemyTemplateState.capsuleCylinderhalfHeight = (EnemyTemplateState.capsuleTotalHeight/2) - 
+        EnemyTemplateState.capsuleRadius;
+        // const enemyColliderDesc = RAPIER.ColliderDesc.capsule(Shared.halfHeight, 0.3)
+        const enemyColliderDesc = RAPIER.ColliderDesc.capsule(EnemyTemplateState.capsuleCylinderhalfHeight,
+            EnemyTemplateState.capsuleRadius)
             .setFriction(0.9)
             .setRestitution(0)
             .setCollisionGroups(Shared.COL_MASKS.ENEMY);
@@ -104,20 +117,50 @@ export function startGameLoop() {
         e_kcc.enableSnapToGround(0.5);
         EnemyTemplateState.kcc = e_kcc
         EnemyTemplateState.moveSpeed = 0.8;
+        // EnemyTemplateState.moveSpeed = 2;
         EnemyTemplateState.collisionmask = Shared.COL_MASKS.ENEMY
         EnemyTemplateState.colliderDesc = enemyColliderDesc
-        EnemyTemplateState.offsetRootToBody = new THREE.Vector3(0, Shared.halfHeight + Shared.playerRadius, 0);
+        // EnemyTemplateState.offsetRootToBody = new THREE.Vector3(0, Shared.halfHeight + Shared.playerRadius, 0);
+        EnemyTemplateState.offsetRootToBody = new THREE.Vector3(0, 
+            EnemyTemplateState.capsuleCylinderhalfHeight + EnemyTemplateState.capsuleRadius, 0);
         EnemyTemplateState.attackDamageStart = 0.5;
         EnemyTemplateState.attackDamageEnd = 0.5+0.3;
         EnemyTemplateState.healthBar = GameHUD.createHealthBar(0.5, 0.05)
         EnemyTemplateState.healthBar.position.y = Shared.playerHeight+0.3;
         EnemyTemplateState.root.add(EnemyTemplateState.healthBar);
 
+        /*--------------------------------------------*/
+        // DEBUG ENEMY BY SEEING IT THROUGH THE WALLS //
+        /*--------------------------------------------*/
+        if (0){
+            let enemyMat = null;
+
+            // Correct syntax: forEach(callback)
+            EnemyTemplateState.root.children.forEach(child => {
+                if (child.isSkinnedMesh) {          // Correct property name
+                    enemyMat = child.material;
+                }
+            });
+
+            if (enemyMat) {
+                enemyMat.depthTest = false;         // camelCase
+                enemyMat.depthWrite = false;        // camelCase
+                enemyMat.transparent = true;        // required for visibility changes
+                enemyMat.opacity = 1.0;             // optional
+            }
+        }
+        /*--------------------------------------------*/
+        /*--------------------------------------------*/
+
+
+
+
+
         let num = 1;
         Shared.enemySpawnGroup.children.forEach(
             child => {
                 num--;
-                // if (num<0) return;
+                if (num<0) return;
                 const p = child.getWorldPosition(new THREE.Vector3());
                 const q = child.getWorldQuaternion(new THREE.Quaternion());
                 const myClonedEnemy = Shared.EnemyTemplateState.clone(
@@ -257,9 +300,16 @@ function gameLoop(now) {
 const enableEnemy = true;
 // const enemyMoveSpeed = Shared.moveSpeed*0.8;     // Adjust movement speed
 const enemyMoveSpeed = Shared.moveSpeed * 0.02;     // Adjust movement speed
-const enemyAttackDistance = 2;     // Adjust movement speed        
+// const enemyAttackDistance = 2;        
+const enemyAttackDistance = 1.8;
 const up = new THREE.Vector3(0, 1, 0);
+const agentRadius = 1.2; // tune to your capsule size
 // let oneFrameOnly = false;
+
+let timeSinceLastCalculatedPath = 0;
+const calculatePathPeriod = 1.5;
+let pathbuffer = null;
+let lastKnownPlayerPosition = null;
 function enemyLoop() {
 
     if (
@@ -293,10 +343,11 @@ function enemyLoop() {
                 const yaw = Math.atan2(toPlayer.x, toPlayer.z); // Compute yaw angle from direction (THREE uses Z-forward)
                 const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0, "YXZ"));// Build quaternion with yaw only
                 
-                enemycharacterState.rotation = q;
+                // enemycharacterState.rotation = q;
 
                 //if within reach attack, otherwise move towards player
                 if (enemyPos.distanceTo(targetPos) < enemyAttackDistance) {
+                    enemycharacterState.rotation = q;
                     // console.log("ATTACK");
                     // playClip(enemycharacterState,"Idle",true);
                     // playClip(enemycharacterState,"Attack",true);
@@ -305,19 +356,100 @@ function enemyLoop() {
                     if (!enemycharacterState.invincibility) //enemy just got hurt and cannot attack
                         attack(enemycharacterState);
                 } else {
-                    // const toPlayer = targetPos.clone().sub(enemyPos);
-                    // toPlayer.y = 0;//unless enemy is flying movement along Y is prohibited                
-                    // toPlayer.normalize().multiplyScalar(enemyMoveSpeed);
+
+                    //use a straight line to player
+                    if (0){
+                    enemycharacterState.rotation = q;
                     toPlayer.multiplyScalar(enemycharacterState.moveSpeed);
-                    // const nextPos = enemyPos.add(toPlayer);
                     enemycharacterState.moveVector = toPlayer;
+                    }
+
+                    if (1){
+
+                        const start = projectToNavmesh(Shared.pathfinder, enemyPos);
+                        const end = projectToNavmesh(Shared.pathfinder, targetPos);
+
+                        if (!start || end) {
+                            console.warn("Could not project position(s) onto navmesh.");
+                        }
+
+                        //use the navmesh
+                        const groupID = Shared.pathfinder.getGroup("level", enemyPos);
+
+                        let path = pathbuffer;
+                        // Compute path
+                        if (
+                            (timeSinceLastCalculatedPath < calculatePathPeriod) ||
+                            (lastKnownPlayerPosition !== null && lastKnownPlayerPosition.equals(targetPos))
+                        ){
+                            timeSinceLastCalculatedPath += deltaTime;
+                        } else {
+                            timeSinceLastCalculatedPath = 0;
+
+                            path = Shared.pathfinder.findPath(
+                                start,
+                                end,
+                                "level",
+                                groupID
+                            );
+                            pathbuffer = path;
+
+                            console.log("CALCULATE PATH");
+                            lastKnownPlayerPosition = targetPos.clone();
+                            drawDebugPath(path, Shared.scene);
+                        }
+
+                        let newNavMeshPos = enemyPos.clone();
+                        if (path) {
+                            if (path.length > 0){
+                                const target = path[0];
+
+                                //calculate desired movement
+                                const dir = target.clone().sub(enemyPos).setY(0);
+                                const dist = dir.length();
+
+                                // if (enemyPos.distanceTo(target) < 1)
+                                if (enemyPos.distanceTo(target) < 0.05) {
+                                    path.shift();
+                                } else {
+                                    dir.normalize();
+
+                                    //desired step
+                                    const desiredStep = dir.clone().multiplyScalar(enemycharacterState.moveSpeed);
+                                    // const rawEnd = enemyPos.clone().add(desiredStep);
+
+                                    // const nextPos = clampStepWithRadius(
+                                    //     Shared.pathfinder,
+                                    //     enemyPos,
+                                    //     rawEnd,
+                                    //     "level"
+                                    // );
+
+                                    enemycharacterState.moveVector = desiredStep;
+
+                                    const yaw2 = Math.atan2(enemycharacterState.moveVector.x, enemycharacterState.moveVector.z);
+                                    const q2 = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw2, 0, "YXZ"));
+                                    // const qlerp = 
+                                    enemycharacterState.rotation = q2;
+                                }
+                            } else {
+                                console.log("NO MORE PATH");
+
+                                //normal steer logic
+                                enemycharacterState.rotation = q;
+                                toPlayer.multiplyScalar(enemycharacterState.moveSpeed);
+                                enemycharacterState.moveVector = toPlayer;
+                            }
+                        }
+                    }
+
                     enemycharacterState.newPos = enemycharacterState.curPos.clone();
                     playClip(enemycharacterState,"Walk",true);
                 }
                 
                 computeNextPos(enemycharacterState, deltaTime); //compute next position based on movement and collisions
 
-                Shared.updateMeshRotPos(enemycharacterState); //update mesh position
+                Shared.updateMeshRotPos(enemycharacterState, true); //update mesh position (and lerp rotation)
                 Shared.scheduleSyncBodyFromcharacterState(enemycharacterState) // schedule player rigidbody sync
                 Shared.scheduleSyncBodyToMesh(enemycharacterState.weapon, enemycharacterState.weaponBody, enemycharacterState.weaponOffsetRootToBody) // schedule weapon rigidbody sync
 
@@ -334,6 +466,59 @@ function enemyLoop() {
     }
     enemyId = requestAnimationFrame(enemyLoop);
 }
+
+function drawDebugPath(path, scene) {
+    //remove old debug spheres
+    if (scene.debugPathSpheres) {
+        scene.debugPathSpheres.forEach(s => scene.remove(s));
+    }
+    scene.debugPathSpheres = [];
+
+    const geometry = new THREE.SphereGeometry(0.1, 8, 8);
+    const material = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+
+    path.forEach(point => {
+        const sphere = new THREE.Mesh(geometry, material);
+        sphere.position.copy(point);
+        scene.add(sphere);
+        scene.debugPathSpheres.push(sphere);
+    })
+}
+
+function projectToNavmesh(pathfinder, pos) {
+    const zone = "level";
+
+    // Find nearest group
+    const groupID = pathfinder.getGroup(zone, pos);
+    if (groupID === null || groupID === undefined) return null;
+
+    // Find nearest polygon node (without polygon check)
+    const node = pathfinder.getClosestNode(pos, zone, groupID, false);
+    if (!node) return null;
+
+    // Move position to that node's centroid
+    return node.centroid.clone();
+
+}
+
+// function clampStepWithRadius(pathfinder, start, end, zone="level"){
+
+//     // Get group
+//     const groupID = pathfinder.getGroup(zone, start);
+//     if (groupID === null || groupID === undefined) return start.clone();
+
+//     // Get polygon node
+//     const node = pathfinder.getClosestNode(start, zone, groupID, false);
+//     if (!node) return start.clone();
+
+//     // endTarget must be a Vector3: clampStep will write into it
+//     const out = end.clone();
+
+//     // Call your clampStep: output is written into `out`
+//     pathfinder.clampStep(start, end, node, zone, groupID, out);
+
+//     return out; // This is the real output
+// }
 
 /*---------------------------------*/
 /* myworldstep */
@@ -674,6 +859,18 @@ function animateLoop() {
     for (const mixer of activeMixers) {
         mixer.update(deltaTime);
     }
+
+    //temp: turn enemies head
+    Shared.enemyGroup.children.forEach(enemy => {
+        const enemycharacterState = Shared.characterStateNameMap.get(enemy.userData.name);
+        const isAlive = enemycharacterState.health > 0;
+        if (isAlive){
+            makeRigLookAt(enemycharacterState,Shared.yawObject);
+        }
+    })
+
+
+
     requestAnimationFrame(animateLoop);
 }
 
@@ -951,4 +1148,41 @@ function die(thisCharacter){
     thisCharacter.healthBar.visible = false;
     Shared.physWorld.removeCollider(thisCharacter.collider, true);
     Shared.physWorld.removeCollider(thisCharacter.weaponCollider, true);
+}
+
+
+
+function makeRigLookAt(characterState, target) {
+    const headBone = characterState.headBone;
+    if (headBone) {
+
+
+        // Get player position in bone parent space
+        const targetPos = new THREE.Vector3();
+        target.getWorldPosition(targetPos);
+
+        const parent = headBone.parent;
+        const targetLocal = targetPos.clone();
+        parent.worldToLocal(targetLocal);
+
+        // Direction the head should look
+        const dir = targetLocal.sub(headBone.position).normalize();
+
+        // Create quaternion that turns +Z to face direction
+        const targetQuat = new THREE.Quaternion()
+            .setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
+
+        // Smooth head motion
+        // headBone.quaternion.slerp(targetQuat, 0);
+        // headBone.quaternion.slerp(targetQuat, 0.1);
+        headBone.quaternion.slerp(targetQuat, 0.8);
+        // headBone.quaternion.copy(targetQuat);
+
+        // If you don’t want Exorcist-like twists:
+        let c = 0.7;
+        headBone.rotation.x = THREE.MathUtils.clamp(headBone.rotation.x, -c, c);
+        headBone.rotation.z = THREE.MathUtils.clamp(headBone.rotation.z, -c, c);
+
+    }
+
 }
