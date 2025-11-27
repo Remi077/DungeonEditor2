@@ -156,7 +156,7 @@ export function startGameLoop() {
 
 
 
-        let num = 1;
+        let num = 4;
         Shared.enemySpawnGroup.children.forEach(
             child => {
                 num--;
@@ -306,10 +306,9 @@ const up = new THREE.Vector3(0, 1, 0);
 const agentRadius = 1.2; // tune to your capsule size
 // let oneFrameOnly = false;
 
-let timeSinceLastCalculatedPath = 0;
-const calculatePathPeriod = 1.5;
-let pathbuffer = null;
-let lastKnownPlayerPosition = null;
+// let timeSinceLastCalculatedPath = 0;
+// let pathbuffer = null;
+// let lastKnownPlayerPosition = null;
 function enemyLoop() {
 
     if (
@@ -321,12 +320,12 @@ function enemyLoop() {
         const targetPos = Shared.yawObject.position.clone();
         Shared.enemyGroup.children.forEach(enemy => {
 
-            const enemycharacterState = Shared.characterStateNameMap.get(enemy.userData.name);
+            const ec = Shared.characterStateNameMap.get(enemy.userData.name);
 
             // Compute the quaternion that makes the enemy look at the target
             const enemyPos = enemy.position.clone();
 
-            const isAlive = enemycharacterState.health > 0;
+            const isAlive = ec.health > 0;
             
             // Compute direction but ignore vertical difference:
             if (isAlive){
@@ -343,25 +342,25 @@ function enemyLoop() {
                 const yaw = Math.atan2(toPlayer.x, toPlayer.z); // Compute yaw angle from direction (THREE uses Z-forward)
                 const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0, "YXZ"));// Build quaternion with yaw only
                 
-                // enemycharacterState.rotation = q;
+                // ec.rotation = q;
 
                 //if within reach attack, otherwise move towards player
                 if (enemyPos.distanceTo(targetPos) < enemyAttackDistance) {
-                    enemycharacterState.rotation = q;
+                    ec.rotation = q;
                     // console.log("ATTACK");
-                    // playClip(enemycharacterState,"Idle",true);
-                    // playClip(enemycharacterState,"Attack",true);
-                    enemycharacterState.moveVector.set(0,0,0);
-                    // stopClip(enemycharacterState);
-                    if (!enemycharacterState.invincibility) //enemy just got hurt and cannot attack
-                        attack(enemycharacterState);
+                    // playClip(ec,"Idle",true);
+                    // playClip(ec,"Attack",true);
+                    ec.moveVector.set(0,0,0);
+                    // stopClip(ec);
+                    if (!ec.invincibility) //enemy just got hurt and cannot attack
+                        attack(ec);
                 } else {
 
                     //use a straight line to player
                     if (0){
-                    enemycharacterState.rotation = q;
-                    toPlayer.multiplyScalar(enemycharacterState.moveSpeed);
-                    enemycharacterState.moveVector = toPlayer;
+                    ec.rotation = q;
+                    toPlayer.multiplyScalar(ec.moveSpeed);
+                    ec.moveVector = toPlayer;
                     }
 
                     if (1){
@@ -376,15 +375,16 @@ function enemyLoop() {
                         //use the navmesh
                         const groupID = Shared.pathfinder.getGroup("level", enemyPos);
 
-                        let path = pathbuffer;
+                        let path = ec.pathbuffer;
                         // Compute path
-                        if (
-                            (timeSinceLastCalculatedPath < calculatePathPeriod) ||
-                            (lastKnownPlayerPosition !== null && lastKnownPlayerPosition.equals(targetPos))
-                        ){
-                            timeSinceLastCalculatedPath += deltaTime;
+                        if (ec.timeSinceLastCalculatedPath < Shared.calculatePathPeriod) { 
+                            ec.timeSinceLastCalculatedPath += deltaTime;
+                        } else if (ec.lastKnownPlayerPosition !== null && ec.lastKnownPlayerPosition.equals(targetPos)) {
+                            //timer expired but player didnt move => dont recompute, just restart timer
+                            ec.timeSinceLastCalculatedPath = 0;
                         } else {
-                            timeSinceLastCalculatedPath = 0;
+                            //timer expired and player moved => recompute path
+                            ec.timeSinceLastCalculatedPath = 0;
 
                             path = Shared.pathfinder.findPath(
                                 start,
@@ -392,11 +392,11 @@ function enemyLoop() {
                                 "level",
                                 groupID
                             );
-                            pathbuffer = path;
+                            ec.pathbuffer = path;
 
-                            console.log("CALCULATE PATH");
-                            lastKnownPlayerPosition = targetPos.clone();
-                            drawDebugPath(path, Shared.scene);
+                            console.log(ec.name,"CALCULATE PATH",performance.now());
+                            ec.lastKnownPlayerPosition = targetPos.clone();
+                            if (0) drawDebugPath(path, Shared.scene);
                         }
 
                         let newNavMeshPos = enemyPos.clone();
@@ -415,7 +415,7 @@ function enemyLoop() {
                                     dir.normalize();
 
                                     //desired step
-                                    const desiredStep = dir.clone().multiplyScalar(enemycharacterState.moveSpeed);
+                                    const desiredStep = dir.clone().multiplyScalar(ec.moveSpeed);
                                     // const rawEnd = enemyPos.clone().add(desiredStep);
 
                                     // const nextPos = clampStepWithRadius(
@@ -425,44 +425,46 @@ function enemyLoop() {
                                     //     "level"
                                     // );
 
-                                    enemycharacterState.moveVector = desiredStep;
+                                    ec.moveVector = desiredStep;
 
-                                    const yaw2 = Math.atan2(enemycharacterState.moveVector.x, enemycharacterState.moveVector.z);
+                                    const yaw2 = Math.atan2(ec.moveVector.x, ec.moveVector.z);
                                     const q2 = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw2, 0, "YXZ"));
                                     // const qlerp = 
-                                    enemycharacterState.rotation = q2;
+                                    ec.rotation = q2;
                                 }
                             } else {
                                 console.log("NO MORE PATH");
 
                                 //normal steer logic
-                                enemycharacterState.rotation = q;
-                                toPlayer.multiplyScalar(enemycharacterState.moveSpeed);
-                                enemycharacterState.moveVector = toPlayer;
+                                ec.rotation = q;
+                                toPlayer.multiplyScalar(ec.moveSpeed);
+                                ec.moveVector = toPlayer;
                             }
                         }
                     }
 
-                    enemycharacterState.newPos = enemycharacterState.curPos.clone();
-                    playClip(enemycharacterState,"Walk",true);
+                    ec.newPos = ec.curPos.clone();
+                    playClip(ec,"Walk",true);
                 }
                 
-                computeNextPos(enemycharacterState, deltaTime); //compute next position based on movement and collisions
+                computeNextPos(ec, deltaTime); //compute next position based on movement and collisions
 
-                Shared.updateMeshRotPos(enemycharacterState, true); //update mesh position (and lerp rotation)
-                Shared.scheduleSyncBodyFromcharacterState(enemycharacterState) // schedule player rigidbody sync
-                Shared.scheduleSyncBodyToMesh(enemycharacterState.weapon, enemycharacterState.weaponBody, enemycharacterState.weaponOffsetRootToBody) // schedule weapon rigidbody sync
+                Shared.updateMeshRotPos(ec, true); //update mesh position (and lerp rotation)
+                Shared.scheduleSyncBodyFromcharacterState(ec) // schedule player rigidbody sync
+                Shared.scheduleSyncBodyToMesh(ec.weapon, ec.weaponBody, ec.weaponOffsetRootToBody) // schedule weapon rigidbody sync
 
                 //disappear the health bar after a certain time showing up
-                if (enemycharacterState.healthBar.visible){
-                    enemycharacterState.timeSinceHealthBarShowedUp += deltaTime;
-                    if (enemycharacterState.timeSinceHealthBarShowedUp > healthBarDuration)
-                        enemycharacterState.healthBar.visible = false;
+                if (ec.healthBar.visible){
+                    ec.timeSinceHealthBarShowedUp += deltaTime;
+                    if (ec.timeSinceHealthBarShowedUp > healthBarDuration)
+                        ec.healthBar.visible = false;
                 }
 
             }
 
         });
+
+
     }
     enemyId = requestAnimationFrame(enemyLoop);
 }

@@ -103,6 +103,8 @@ export let navmesh = null;
 export function setNavMesh(n){ navmesh = n; }
 export let pathfinder = null;
 export function setPathFinder(p){pathfinder = p;}
+export const calculatePathPeriod = 1.5;
+
 
 /*---------------------------------*/
 // PHYSICS VARIABLES
@@ -252,13 +254,15 @@ const characterStateProto = {
         //animation
         copy.skeleton = copy.root.skeleton;
         copy.weaponBone = copy.root.getObjectByName(this.weaponBone.name);
-        copy.headBone = copy.root.getObjectByName("mixamorigHead");
+        copy.headBone = copy.root.getObjectByName("mixamorigHead");//TODO: use variable instead of hardcoding this here
         copy.mixer = new THREE.AnimationMixer(copy.root); // one new mixer per character
         for (const [k, v] of this.animationClips) {
             copy.animationClips.set(k, v);
             copy.animationActions.set(k, copy.mixer.clipAction(v));
         } // shallow copy of clips (clips are immutable)
         copy.currentAction = this.currentAction;
+        //navmesh
+        // copy timeSinceLastCalculatedPath = 0;
         //weapon
         copy.weapon = getObjectByPrefix(copy.root,"weapon");
         copy.weaponBodyDesc = structuredClone(this.weaponBodyDesc);
@@ -321,7 +325,7 @@ function cloneKCC(templateKCC, physWorld, skin) {
     return kcc;
 }
 
-
+//THEBIGCLASS
 export function newcharacterState(name) {
     const newObj = Object.create(characterStateProto);
 
@@ -361,6 +365,11 @@ export function newcharacterState(name) {
         animationClips: new Map(),
         animationActions: new Map(), //tied to mixer
         currentAction: null,
+        //navmesh/AI
+        //all agents start with a different offset so they dont recompute path at same time (spread the load/avoid cpu spikes)
+        timeSinceLastCalculatedPath: Math.random() * calculatePathPeriod, 
+        pathbuffer: null,
+        lastKnownPlayerPosition: null,
         //weapon
         weapon: null, 
         weaponBodyDesc: null,
@@ -387,6 +396,8 @@ export function newcharacterState(name) {
         tweakRot: null,
         tweakPos: null,
     });
+
+    // console.log("NEW ENEMY timeSinceLastCalculatedPath",newObj.timeSinceLastCalculatedPath);
 
     // Seal AFTER prototype + properties exist
     Object.seal(newObj);
