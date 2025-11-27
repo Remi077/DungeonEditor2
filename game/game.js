@@ -63,7 +63,9 @@ export function startGameLoop() {
         // Don’t allow climbing slopes larger than 45 degrees.
         kcc.setMaxSlopeClimbAngle(45 * Math.PI / 180);
         // Automatically slide down on slopes smaller than 30 degrees.
-        kcc.setMinSlopeSlideAngle(30 * Math.PI / 180);
+        // kcc.setMinSlopeSlideAngle(30 * Math.PI / 180);
+        kcc.setMinSlopeSlideAngle(40 * Math.PI / 180);
+        // kcc.setMinSlopeSlideAngle(30 * Math.PI / 180);
         // Autostep if the step height is smaller than 0.5, its width is larger than 0.2,
         // and allow stepping on dynamic bodies.
         kcc.enableAutostep(0.5, 0.2, true);
@@ -74,9 +76,10 @@ export function startGameLoop() {
 
         // --- Create capsule collider ---
         const playerColliderDesc = RAPIER.ColliderDesc.capsule(Shared.playerState.capsuleCylinderhalfHeight, Shared.playerState.capsuleRadius)
-            .setFriction(0.9)
-            .setRestitution(0)
-            .setCollisionGroups(Shared.COL_MASKS.PLAYER);
+        .setFriction(0.9)
+        .setRestitution(0)
+        .setCollisionGroups(Shared.COL_MASKS.PLAYER);
+        // .setFriction(1.5)
             
         const playerCollider = Shared.createColliderCustom(playerColliderDesc, playerBody, "playerCollider");
 
@@ -112,7 +115,8 @@ export function startGameLoop() {
             .setCollisionGroups(Shared.COL_MASKS.ENEMY);
         const e_kcc = Shared.physWorld.createCharacterController(Shared.skin); //0.1 is skin distance
         e_kcc.setMaxSlopeClimbAngle(45 * Math.PI / 180);
-        e_kcc.setMinSlopeSlideAngle(30 * Math.PI / 180);
+        // e_kcc.setMinSlopeSlideAngle(30 * Math.PI / 180);
+        e_kcc.setMinSlopeSlideAngle(40 * Math.PI / 180);
         e_kcc.enableAutostep(0.5, 0.2, true);
         e_kcc.enableSnapToGround(0.5);
         EnemyTemplateState.kcc = e_kcc
@@ -156,7 +160,7 @@ export function startGameLoop() {
 
 
 
-        let num = 4;
+        let num = 1;
         Shared.enemySpawnGroup.children.forEach(
             child => {
                 num--;
@@ -396,7 +400,7 @@ function enemyLoop() {
 
                             console.log(ec.name,"CALCULATE PATH",performance.now());
                             ec.lastKnownPlayerPosition = targetPos.clone();
-                            if (0) drawDebugPath(path, Shared.scene);
+                            if (1) drawDebugPath(path, Shared.scene);
                         }
 
                         let newNavMeshPos = enemyPos.clone();
