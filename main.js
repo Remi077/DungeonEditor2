@@ -7,7 +7,7 @@ import * as Editor from './editor/editor.js';
 import * as EditorUI from './editor/editorUI.js';
 import * as MenuUI from './menu/menuUI.js';
 import * as Game from './game/game.js';
-import * as GameOver from './game/gameover.js';
+import * as GameOver from './game/gameOver.js';
 
 /*-----------------------------------------------------*/
 // REVISION NUMBER
