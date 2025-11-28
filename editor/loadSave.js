@@ -81,7 +81,10 @@ async function loadLevel(scene) {
                 lightsArray.push(child);
             }
 
-            if (child.name.startsWith("Collider_")) {
+            const isCollider = child.name.startsWith("Collider_")
+            const isTrigger = child.name.startsWith("Trigger_")
+
+            if (isCollider || isTrigger) {
                 //Collider -> do nothing
             } else if (child.name.startsWith("Action_")) {
                 //Actionnable
@@ -149,7 +152,10 @@ async function loadLevel(scene) {
         gltf.scene.traverse((child) => {
             if (!child.isMesh) return;
 
-            if (child.name.startsWith("Collider_")) {
+            const isCollider = child.name.startsWith("Collider_")
+            const isTrigger = child.name.startsWith("Trigger_")
+
+            if ( isCollider || isTrigger) {
 
                 //local transforms of the object as exported from Blender, relative to its parent (or the world if it has no parent).
                 const childquaternion = child.quaternion.clone();
@@ -222,11 +228,19 @@ async function loadLevel(scene) {
                         .setTranslation(newCenterPosition.x, newCenterPosition.y, newCenterPosition.z)
                         .setRotation(childquaternion)
 
+                    // if (isTrigger){
+                        // colliderDesc.setSensor(true);
+                    // }
+
                 }
 
-                colliderDesc.setCollisionGroups(Shared.COL_MASKS.SCENERY)
+                if (isCollider)
+                    colliderDesc.setCollisionGroups(Shared.COL_MASKS.SCENERY)
+                else
+                    colliderDesc.setCollisionGroups(Shared.COL_MASKS.WATER)
 
                 const colliderHandle = Shared.createColliderCustom(colliderDesc, bodyHandle, collidername);
+                if (isTrigger) colliderHandle.userData.isWater = true
 
             }
         });

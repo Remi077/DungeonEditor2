@@ -219,6 +219,8 @@ export function stopGameLoop() {
 let lastUVUpdate = 0;
 const verbose = false;
 let deltaTime = 0;
+let isInWater = false;
+let isAtSurface = false;
 
 function gameLoop(now) {
     const scene = Shared.scene;
@@ -252,7 +254,13 @@ function gameLoop(now) {
         /*-----------------------------------------------------*/
         /* INITIALIZE PLAYER MOVE AND ROTATION BASED ON INPUTS */
         /*-----------------------------------------------------*/
-        Shared.playerState.moveVector.applyQuaternion(Shared.yawObject.quaternion);
+        if (!Shared.playerState.isInWater){
+            Shared.playerState.moveVector.applyQuaternion(Shared.yawObject.quaternion);
+        } else {
+            const worldQuat = new THREE.Quaternion();
+            Shared.pitchObject.getWorldQuaternion(worldQuat);
+            Shared.playerState.moveVector.applyQuaternion(worldQuat);
+        }
         Shared.playerState.rotation.copy(Shared.yawObject.quaternion);
         Shared.playerState.newPos = Shared.playerState.curPos.clone();
 
@@ -272,6 +280,23 @@ function gameLoop(now) {
         Shared.scheduleSyncBodyToMesh(Shared.playerState.weapon, Shared.playerState.weaponBody, Shared.playerState.weaponOffsetRootToBody) // schedule weapon rigidbody sync
 
         updatePhysics(); // update all the scene kinematic rigidbodies. Player/enemies/weapons/doors etc...
+
+        //check if player is in water
+        const prevIsInWater = isInWater;
+        const belowChin  = Shared.yawObject.position.clone()
+        belowChin.y -= 0.3;
+        isInWater = checkIsInWater(belowChin);
+        if (!prevIsInWater && isInWater) console.log("ENTERSWATER");
+        if (prevIsInWater && !isInWater) console.log("EXITSWATER");
+        Shared.playerState.isInWater = isInWater;
+        Shared.playerState.isAtSurface = false;
+        if (isInWater){
+            const isHeadInWater = checkIsInWater(Shared.yawObject.position);
+            if (!isHeadInWater) {
+                console.log("ATSURFACE")
+                Shared.playerState.isAtSurface = true;
+            }
+        }
 
         worldstep(); // step the physic world
 
@@ -588,7 +613,14 @@ function computeNextPos(characterState, deltaTime) {
     const kcc = characterState.kcc;
     const collider = characterState.collider;
     const movement = characterState.moveVector.clone().multiplyScalar(characterState.moveSpeed);
-    const nextVerticalSpeed = Math.max(-Shared.maxFallSpeed, characterState.verticalSpeed - (Shared.gravity * deltaTime));
+    let nextVerticalSpeed = 0
+    if (!characterState.isInWater){
+        nextVerticalSpeed = Math.max(-Shared.maxFallSpeed, characterState.verticalSpeed - (Shared.gravity * deltaTime));
+    } else {
+        nextVerticalSpeed = (Math.abs(characterState.verticalSpeed) < 0.00001) ? 0 : (characterState.verticalSpeed*0.93)
+        // if (nextVerticalSpeed!=0)
+            // console.log(nextVerticalSpeed);
+    }
     movement.y += nextVerticalSpeed
     
     //add repulsion forces from hit
@@ -616,11 +648,14 @@ function computeNextPos(characterState, deltaTime) {
         updateHighlight(othercollider, i);
     }
 
-    if (grounded) {
+    if (
+        (grounded && (!characterState.isInWater)) ||
+        (characterState.isAtSurface) //you can jump when (grounded and not in water) or at surface of water
+    ) {
         if (characterState.jumpPressed){
             characterState.verticalSpeed = Shared.jumpSpeed;
-            characterState.jumpPressed = false;
-            // console.log("jump");
+            // characterState.jumpPressed = false;
+            console.log("jump");
         }
         // console.log("grounded"+characterState.verticalSpeed );
         // characterState.moveSpeed = Shared.moveSpeed; //TOFIX
@@ -629,6 +664,7 @@ function computeNextPos(characterState, deltaTime) {
         characterState.verticalSpeed = nextVerticalSpeed;//accumulate vertical speed
         // characterState.moveSpeed = Shared.moveSpeed*0.5; //TOFIX
     } 
+    characterState.jumpPressed = false;
 
     characterState.newPos = characterState.curPos.clone().add(correctedMovement);
     characterState.curPos = characterState.newPos
@@ -1191,4 +1227,31 @@ function makeRigLookAt(characterState, target) {
 
     }
 
+}
+
+
+// const playerLayer =  Shared.COL_LAYERS.PLAYER;
+// const waterLayer = Shared.COL_LAYERS.WATER;
+// We want our point (player) to test against water colliders only
+// const watergroups = new RAPIER.InteractionGroups(playerLayer, waterLayer);
+
+function checkIsInWater(point) {
+    let isWater = false;
+
+    Shared.physWorld.intersectionsWithPoint(
+        point, 
+        (h) => {
+            if (!isWater) {
+                // const col = Shared.physWorld.getCollider(h);
+                const col = h;
+                // console.log(col?.userData?.name);
+                if (col.userData?.isWater) isWater = true;
+            }
+        },
+        undefined, // optional filterFlags
+        Shared.COL_MASKS.WATER
+        // watergroups        
+    );
+
+    return isWater;
 }

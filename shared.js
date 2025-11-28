@@ -357,6 +357,8 @@ export function newcharacterState(name) {
         isTouchingCeiling: false,
         moveVector: new THREE.Vector3(),
         moveSpeed: moveSpeed,
+        isInWater: false,
+        isAtSurface: false,
         //animation
         skeleton: null,
         weaponBone: null,
@@ -1030,11 +1032,12 @@ export async function initRapier() {
 
 // COLLISION GROUPS
 export const COL_LAYERS = {
-    PLAYER: 1 << 0,  // 00001
-    PLAYERWPN: 1 << 1,  // 00010
-    ENEMY: 1 << 2,  // 00100
-    ENEMYWPN: 1 << 3,  // 01000
-    SCENERY: 1 << 4,  // 10000
+    PLAYER: 1 << 0,  // 000001
+    PLAYERWPN: 1 << 1,  // 000010
+    ENEMY: 1 << 2,  // 000100
+    ENEMYWPN: 1 << 3,  // 001000
+    SCENERY: 1 << 4,  // 010000
+    WATER: 1 << 5,  // 100000
 };
 
 // --- Helper to make masks ---
@@ -1068,6 +1071,10 @@ export const COL_MASKS = {
         COL_LAYERS.PLAYER | COL_LAYERS.ENEMY | COL_LAYERS.PLAYERWPN | COL_LAYERS.ENEMYWPN
     ),
 
+    WATER: makeMask(
+        COL_LAYERS.WATER,
+        COL_LAYERS.WATER
+    ),    
 };
 
 export function addRapierDebugExp() {
