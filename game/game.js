@@ -894,12 +894,16 @@ function hideAllHighlights() {
 /*----------------*/
 /* animateLoop */
 /*----------------*/
-const activeMixers = new Set();
-const inactiveMixers = new Set();
 
 function animateLoop() {
-    for (const mixer of activeMixers) {
+    for (const mixer of Shared.activeMixers) {
         mixer.update(deltaTime);
+
+        // fire update callbacks
+        if (mixer.updateCallBacks) {
+            for (const cb of mixer.updateCallBacks) cb(deltaTime);
+        }
+
     }
 
     //temp: turn enemies head
@@ -925,7 +929,7 @@ function playClip(characterState,clipName,r=false, v=false) {
     const nextAction = characterState.animationActions.get(clipName);
     const currentMixer = characterState.mixer;
     if (!nextAction || (nextAction === characterState.currentAction)) return;
-    activateMixer(currentMixer);
+    Shared.activateMixer(currentMixer);
 
     if (!r)
         nextAction.reset().play();//start next action before fading out previous one
@@ -949,20 +953,6 @@ function playClip(characterState,clipName,r=false, v=false) {
     characterState.currentAction = nextAction;
 }
 
-function activateMixer(mixer, single=false) {
-    if (!single) mixer._isActive = true;
-    else mixer._isSingleActive = true;
-    inactiveMixers.delete(mixer);
-    activeMixers.add(mixer);
-}
-
-function deactivateMixer(mixer, single=false) {
-    if (!single) mixer._isActive = false;
-    else mixer._isSingleActive = false;
-    if (mixer._isActive || mixer._isSingleActive) return;
-    activeMixers.delete(mixer);
-    inactiveMixers.add(mixer);
-}
 
 /*----------------*/
 /* playClipOnce */
@@ -975,7 +965,7 @@ function playClipOnce(characterState,clipName, clamp = true, endAction = null) {
         return;
     }
     const currentMixer = characterState.mixer;
-    activateMixer(currentMixer, true);
+    Shared.activateMixer(currentMixer, true);
     nextAction.reset();
     nextAction.setLoop(THREE.LoopOnce, 1);
     nextAction.clampWhenFinished = clamp;
@@ -987,7 +977,7 @@ function playClipOnce(characterState,clipName, clamp = true, endAction = null) {
     currentMixer._onFinishListener = (e) => {
         if (e.action === nextAction) {  // check which action finished
             console.log('Animation finished!');
-            deactivateMixer(currentMixer, true);
+            Shared.deactivateMixer(currentMixer, true);
             // if (!clamp) nextAction.stop();
             // if (!clamp) e.action.stop();
             // nextAction.stop();  
@@ -1009,7 +999,7 @@ function stopClip(characterState) {
     characterState.currentAction = null;
     // OPTIONAL — if no action is running anymore
     setTimeout(() => {
-        deactivateMixer(characterState.mixer);
+        Shared.deactivateMixer(characterState.mixer);
     }, 300);
 }
 

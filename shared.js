@@ -182,6 +182,25 @@ export function makePartialClip(clip, boneNames) {
 }
 export const clipActions = new Map();
 
+// MIXERS
+export const activeMixers = new Set();
+export const inactiveMixers = new Set();
+export function activateMixer(mixer, single=false) {
+    if (!single) mixer._isActive = true;
+    else mixer._isSingleActive = true;
+    inactiveMixers.delete(mixer);
+    activeMixers.add(mixer);
+}
+
+export function deactivateMixer(mixer, single=false) {
+    if (!single) mixer._isActive = false;
+    else mixer._isSingleActive = false;
+    if (mixer._isActive || mixer._isSingleActive) return;
+    activeMixers.delete(mixer);
+    inactiveMixers.add(mixer);
+}
+
+
 //name->characterState
 export const characterStateNameMap = new Map();
 
@@ -415,7 +434,7 @@ export const EnemyTemplateState = newcharacterState("EnemyTemplateState")
 /*------------------------*/
 // ACTIONNABLE VARIABLES //
 /*------------------------*/
-export const actionnableNames = ["Door", "Item", "Chest", "sword"];
+export const actionnableNames = ["Door", "Item", "Chest", "sword", "Herse"];
 export const actionnableUserData = {
     "Door": {
         action: openDoor,
@@ -428,6 +447,10 @@ export const actionnableUserData = {
         action: openChest,
         isOpen: false
     },
+    "Herse" : {
+        action: openGenericDoor,
+        isOpen: false        
+    }
 }
 
 /*------------------*/
@@ -849,6 +872,74 @@ export function takeItem(self, playerState) {
 }
 
 /*----------------------------*/
+// openGenericDoor
+/*----------------------------*/
+export function openGenericDoor(self, playerState) {
+    console.log("openGenericDoor");
+    if (!self?.userData) return;
+
+    // //if player has key open door
+    // const haskey = playerState.inventory["Action_Item_key001"]
+    // if (!haskey) {
+    //     console.log("NOKEY");
+    //     // return;
+    // }
+
+    // Toggle the door state
+    self.userData.isOpen = !self.userData.isOpen;
+
+    if (self.animations.length === 0 || !self.mixer) return;
+    const animationAction = self.animations[0];
+    const mixer = self.mixer
+
+    if (self.userData.isOpen) playForward(animationAction);
+    else playBackward(animationAction);
+
+    activateMixer(mixer,true);
+
+    mixer.removeEventListener('finished', mixer._onFinishListener);
+    console.log("Door Generic animation started");
+    mixer._onFinishListener = (e) => {
+        if (e.action === animationAction) {
+            console.log("Door Generic animation finished");
+            deactivateMixer(mixer,true);
+        }
+    };
+    mixer.addEventListener("finished", mixer._onFinishListener);
+
+    const body = self.userData?.body;
+    const offset = self.userData?.offsetRootToBody;
+    function updateCallBack() {
+         scheduleSyncBodyToMesh(self, body, offset);
+        // Manual backward finish detection
+        if (animationAction.timeScale < 0 && animationAction.time <= 0) {
+            console.log("Door animation finished (reverse)");
+            deactivateMixer(mixer, true);
+        }
+    }
+    mixer.updateCallBacks = [];
+    mixer.updateCallBacks.push(updateCallBack);
+
+}
+
+function playForward(action) {
+    action.reset();
+    action.timeScale = 1;
+    action.setLoop(THREE.LoopOnce, 1);
+    action.clampWhenFinished = true;
+    action.play();
+}
+
+function playBackward(action) {
+    action.time = action.getClip().duration; // start at the end
+    action.paused = false;
+    action.timeScale = -1;
+    action.setLoop(THREE.LoopOnce, 1);
+    action.clampWhenFinished = true;
+    action.play();
+}
+
+/*----------------------------*/
 // openDoor
 /*----------------------------*/
 export function openDoor(self, playerState) {
@@ -873,7 +964,6 @@ export function openDoor(self, playerState) {
     const doorPivot = self;
 
     rotatePivot(doorPivot, new THREE.Vector3(0, 1, 0), dir * ninetyDeg, 0.6, true); //local rotation axis
-
 }
 
 /*----------------------------*/

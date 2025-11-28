@@ -245,6 +245,20 @@ async function loadLevel(scene) {
             }
         });
 
+        //process animations and attach them to their respective objects
+        gltf.animations.forEach(clip => {
+            const [, relatedName] = clip.name.match(/Animation_(.*)$/);
+            const relatedObj = scene.getObjectByName(relatedName);
+            if (relatedObj){
+                if (!relatedObj.mixer){
+                    const mixer = new THREE.AnimationMixer(relatedObj)
+                    mixer.name = relatedName;
+                    relatedObj.mixer = mixer;
+                }
+                relatedObj.animations.push(relatedObj.mixer.clipAction(clip));
+            }
+        });        
+
     } catch (err) {
         console.error("Failed to load GLB:", err);
     }
