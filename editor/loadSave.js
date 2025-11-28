@@ -94,8 +94,10 @@ async function loadLevel(scene) {
                         actionnablesArray.push(child);
                         child.traverse((childofchild) => {
                             childofchild.userData.type = "actionnable";
-                            if (child != childofchild)
+                            if (child != childofchild){
                                 childofchild.userData.actionnableParent = child;
+                                childofchild.userData["actionnableData"] = Shared.actionnableUserData[name];
+                            }
                         }
                         );
                         exitLoop = true;
@@ -210,6 +212,7 @@ async function loadLevel(scene) {
 
                     //add corresponding mesh offset
                     const relatedMesh = Shared.scene.getObjectByName(relatedName)
+                    if (!relatedMesh) throw new Error("cant find related mesh for name "+relatedName);
                     const p = relatedMesh.getWorldPosition(new THREE.Vector3());
                     const q = relatedMesh.getWorldQuaternion(new THREE.Quaternion());
                     const offsetRootToBody = newCenterPosition.clone().sub(p)
@@ -248,16 +251,30 @@ async function loadLevel(scene) {
         //process animations and attach them to their respective objects
         gltf.animations.forEach(clip => {
             const [, relatedName] = clip.name.match(/Animation_(.*)$/);
-            const relatedObj = scene.getObjectByName(relatedName);
-            if (relatedObj){
-                if (!relatedObj.mixer){
-                    const mixer = new THREE.AnimationMixer(relatedObj)
-                    mixer.name = relatedName;
-                    relatedObj.mixer = mixer;
+            const sanitizedName = relatedName.replace(/\./g, ''); //replace all dots with underscores
+            // const relatedObj = scene.getObjectByName(relatedName);
+            const relatedMeshes = [];
+            scene.traverse(obj => {
+                if (obj.isMesh && obj.name.startsWith(sanitizedName)) {
+                    relatedMeshes.push(obj);
                 }
-                relatedObj.animations.push(relatedObj.mixer.clipAction(clip));
-            }
-        });        
+            });
+
+            relatedMeshes.forEach( mesh => {
+                if (!mesh.mixer){
+                    const mixer = new THREE.AnimationMixer(mesh);
+                    mixer.name = relatedName;
+                    mesh.mixer = mixer;
+                }
+                mesh.animations.push(mesh.mixer.clipAction(clip));
+                if (mesh.userData?.actionnableParent){
+                    mesh.userData.actionnableParent.animations = mesh.animations;
+                    mesh.userData.actionnableParent.mixer = mesh.mixer;
+                }
+            })
+
+        });
+
 
     } catch (err) {
         console.error("Failed to load GLB:", err);
@@ -479,6 +496,7 @@ async function loadCharacter(characterState, scene, pathToGlb) {
 
                 //add corresponding mesh offset
                 const relatedMesh = gltf.scene.getObjectByName(relatedName)
+                if (!relatedMesh) throw new Error("cant find related mesh for name "+relatedName);
                 const p = relatedMesh.getWorldPosition(new THREE.Vector3());
                 const q = relatedMesh.getWorldQuaternion(new THREE.Quaternion());
                 const offsetRootToBody = newCenterPosition.clone().sub(p)

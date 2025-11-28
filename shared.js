@@ -434,22 +434,26 @@ export const EnemyTemplateState = newcharacterState("EnemyTemplateState")
 /*------------------------*/
 // ACTIONNABLE VARIABLES //
 /*------------------------*/
-export const actionnableNames = ["Door", "Item", "Chest", "sword", "Herse"];
+export const actionnableNames = ["Door", "Item", "Chest", "sword", "Herse", "Switch"];
 export const actionnableUserData = {
     "Door": {
-        action: openDoor,
+        action: openGenericDoor,
         isOpen: false
     },
     "Item": {
         action: takeItem,
     },
     "Chest": {
-        action: openChest,
+        action: openGenericDoor,
         isOpen: false
     },
     "Herse" : {
         action: openGenericDoor,
         isOpen: false        
+    },
+    "Switch": {
+        action: useSwitch,
+        isOpen: false
     }
 }
 
@@ -910,7 +914,8 @@ export function openGenericDoor(self, playerState) {
     const body = self.userData?.body;
     const offset = self.userData?.offsetRootToBody;
     function updateCallBack() {
-         scheduleSyncBodyToMesh(self, body, offset);
+        if (body)
+            scheduleSyncBodyToMesh(self, body, offset);
         // Manual backward finish detection
         if (animationAction.timeScale < 0 && animationAction.time <= 0) {
             console.log("Door animation finished (reverse)");
@@ -1021,6 +1026,14 @@ export function openChest(self, playerState) {
     const doorPivot = target.children[0];
     // rotatePivot(doorPivot, new THREE.Vector3(0, 1, 0),dir * ninetyDeg, 0.6);
     rotatePivot(doorPivot, new THREE.Vector3(1, 0, 0), dir * ninetyDeg, 0.6); //local rotation axis
+}
+
+export function useSwitch(self,playerState){
+    console.log("useSwitch");
+
+    self.children.forEach(element => {
+        openGenericDoor(element, playerState);
+    })
 }
 
 /*------------------*/

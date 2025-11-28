@@ -690,6 +690,7 @@ function raycastActionnables() {
     selectObject = null;
     const raycastTargets = [];
 
+    //TODO: only call this function when clicked
     //TODO: optimize with octree or BVH tree
     Shared.actionnablesGroup.traverse((child) => {
         if (child.isMesh) raycastTargets.push(child);
@@ -720,12 +721,12 @@ function raycastActionnables() {
 
     if (doesIntersect) {
 
-        if (closestHit.object?.userData?.type == "actionnable" ||
-            closestHit.object?.userData?.type == "enemy"
+        if (closestHit.object?.userData?.type == "actionnable" //||
+            // closestHit.object?.userData?.type == "enemy"
         ) {
             selectObject = closestHit.object;
-            if (selectObject.userData.actionnableParent != null)
-                selectObject = selectObject.userData.actionnableParent
+            // if (selectObject.userData.actionnableParent != null)
+                // selectObject = selectObject.userData.actionnableParent
         }
     }
 
