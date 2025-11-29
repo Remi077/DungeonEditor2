@@ -344,6 +344,15 @@ function cloneKCC(templateKCC, physWorld, skin) {
     return kcc;
 }
 
+// COLLISION GROUPS
+export const ENEMY_STATES = {
+    IDLE: 1,
+    PATROL: 2,
+    CHASE: 3,
+    SEARCH: 4,
+    DEATH: 5
+};
+
 //THEBIGCLASS
 export function newcharacterState(name) {
     const newObj = Object.create(characterStateProto);
@@ -390,7 +399,8 @@ export function newcharacterState(name) {
         //all agents start with a different offset so they dont recompute path at same time (spread the load/avoid cpu spikes)
         timeSinceLastCalculatedPath: Math.random() * calculatePathPeriod, 
         pathbuffer: null,
-        lastKnownPlayerPosition: null,
+        lastKnownPlayerPosition: null,//store last frame player position, used to recalculate navigation path if changed
+        lastSeenPlayerPosition: null,//store last seen player position by the enemy, used for AI
         //weapon
         weapon: null, 
         weaponBodyDesc: null,
@@ -407,6 +417,13 @@ export function newcharacterState(name) {
         hitRepulsionForce: new THREE.Vector3(),
         healthBar: null,
         timeSinceHealthBarShowedUp: 0,
+        enemyState: ENEMY_STATES.IDLE,
+        timeSinceChangedState: 0,
+        patrolPath: [],
+        timeSinceLastSightCheck: 0,
+        playerSeen: false,
+        timeSinceLastSeen: 0,
+        // sightTarget: null,
         //attack
         isAttacking: false,
         attackLoopId: null,

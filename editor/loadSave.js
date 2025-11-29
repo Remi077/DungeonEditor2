@@ -127,7 +127,7 @@ async function loadLevel(scene) {
         scene.add(Shared.lightGroup);
         scene.add(Shared.enemySpawnGroup);
         scene.add(Shared.enemyGroup);
-        Shared.enemySpawnGroup.visible = false;
+        // Shared.enemySpawnGroup.visible = false;
         scene.add(Shared.rigGroup);
 
 
@@ -414,6 +414,7 @@ async function loadCharacter(characterState, scene, pathToGlb) {
                     if (obj.isSkinnedMesh) {
                         characterState.skeleton = obj.skeleton;//TEMP
                         obj.frustumCulled = !isPlayer; //dont frustrum cull player body
+                        // characterState.sightTarget = obj;
                     } else if ( obj.isMesh && obj.name.startsWith("weapon")) {
                         characterState.weaponBone = obj.parent;//TEMP
                         characterState.weapon = obj;
