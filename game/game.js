@@ -22,6 +22,15 @@ export let ActionToKeyMap = {
     jump: { key: 'Space', OnPress: true },
     interact: { key: 'KeyE', OnPress: true },
     hideCol: { key: 'KeyH', OnPress: true },
+
+    Item1: { key: 'Digit1', OnPress: true },
+    Item2: { key: 'Digit2', OnPress: true },
+    Item3: { key: 'Digit3', OnPress: true },
+    Item4: { key: 'Digit4', OnPress: true },
+    Item5: { key: 'Digit5', OnPress: true },
+    Item6: { key: 'Digit6', OnPress: true },
+    Item7: { key: 'Digit7', OnPress: true },
+
 };
 
 /*---------------------------------*/
@@ -794,6 +803,15 @@ function executeActions() {
         if (Actions.jump) jump();
         if (Actions.interact) interact();
         if (Actions.hideCol) toggleHideCollider();
+
+        if (Actions.Item1) Shared.highlightSelectedSlot(1);
+        if (Actions.Item2) Shared.highlightSelectedSlot(2);
+        if (Actions.Item3) Shared.highlightSelectedSlot(3);
+        if (Actions.Item4) Shared.highlightSelectedSlot(4);
+        if (Actions.Item5) Shared.highlightSelectedSlot(5);
+        if (Actions.Item6) Shared.highlightSelectedSlot(6);
+        if (Actions.Item7) Shared.highlightSelectedSlot(7);
+
 
         //animations
         if (

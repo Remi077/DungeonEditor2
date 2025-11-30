@@ -200,6 +200,10 @@ export function deactivateMixer(mixer, single=false) {
     inactiveMixers.add(mixer);
 }
 
+//items atlas map
+export let itemAtlas = null;
+export function setItemAtlas(a){itemAtlas = a};
+
 
 //name->characterState
 export const characterStateNameMap = new Map();
@@ -412,6 +416,7 @@ export function newcharacterState(name) {
         health: 100,
         maxHealth: 100,
         inventory: {},
+        hotbar : [null, null, null, null, null, null, null],
         invincibility: false,
         timeSinceLastHit: 0,
         hitRepulsionForce: new THREE.Vector3(),
@@ -881,15 +886,127 @@ export function doSomething(self) {
 /*----------------------------*/
 // takeItem
 /*----------------------------*/
+// export function takeItem(self, playerState) {
+//     self.visible = false;
+
+//     const key = self.name;
+
+//     // extract item name
+//     const [, rawName] = self.name.match(/Action_Item_(.*)...$/);
+//     const label = rawName;
+
+//     // create inventory entry if none
+//     if (!playerState.inventory[label]) {
+//         playerState.inventory[label] = 0;
+//     }
+//     // increment count
+//     playerState.inventory[label]++;
+    
+//     const num = playerState.inventory[label];
+
+//     const label_num = rawName + " x" + num;
+
+//     const grid = document.getElementById("inventory-grid");
+
+//     // Try to find an existing slot for this item
+//     let slot = grid.querySelector(`.slot[data-item="${label}"]`);
+
+//     if (!slot) {
+//         // Item is new → create new slot
+//         slot = document.createElement("div");
+//         slot.className = "slot";
+//         slot.dataset.item = label;   // store item id
+//         slot.textContent = label_num;
+//         grid.appendChild(slot);
+//     } else {
+//         // Item exists → update text only
+//         slot.textContent = label_num;
+//     }
+// }
+
 export function takeItem(self, playerState) {
     self.visible = false;
 
-    const key = self.name;
-    if (!playerState.inventory[key]) {
-        playerState.inventory[key] = 0;
+    const [, rawName] = self.name.match(/Action_Item_(.*)...$/);
+    const itemName = rawName;
+
+    // 1 — check if item already exists in hotbar
+    for (let i = 0; i < 7; i++) {
+        const slot = playerState.hotbar[i];
+        if (slot && slot.name === itemName) {
+            slot.count++;
+            updateHotbarUI();
+            return;
+        }
     }
 
-    playerState.inventory[key]++;
+    // 2 — otherwise find first empty slot
+    for (let i = 0; i < 7; i++) {
+        if (playerState.hotbar[i] === null) {
+            playerState.hotbar[i] = {
+                name: itemName,
+                count: 1
+            };
+            updateHotbarUI();
+            return;
+        }
+    }
+
+    // hotbar full → ignore or handle overflow here
+}
+
+function updateHotbarUI() {
+    const hotbar = document.getElementById("hotbar");
+
+    for (let i = 0; i < 7; i++) {
+        const uiSlot = hotbar.children[i];
+        const slot = playerState.hotbar[i];
+
+        if (!slot) {
+            uiSlot.style.backgroundImage = "none";  // <--- remove icon
+            uiSlot.innerHTML = "";                  // remove count text
+            continue;
+        }
+
+        // slot.name should match keys from items.json like "Item_key"
+        setSlotIcon(uiSlot, slot.name, slot.count);
+    }
+}
+
+export function highlightSelectedSlot(selectedIndex) {
+    const hotbar = document.getElementById("hotbar");
+
+    for (let i = 0; i < 7; i++) {   
+        hotbar.children[i].classList.toggle("selected", i === (selectedIndex-1));
+        // hotbar.children[i].classList.toggle("selected", i === selectedIndex);
+    }
+}
+
+function setSlotIcon(slotElement, itemName, count) {
+    const data = itemAtlas.IMAGES[itemName];
+    if (!data) {
+        console.warn("No atlas entry for", itemName);
+        return;
+    }
+
+    const tileSize = itemAtlas.SIZE; // 64
+
+    const px = data.x * tileSize;
+    const py = data.y * tileSize;
+
+    // add the atlas image when needed
+    slotElement.style.backgroundImage = 'url("./assets/textures/items.png")';
+    slotElement.style.backgroundSize = "128px 128px";
+    slotElement.style.backgroundPosition = `-${px}px -${py}px`;
+
+    slotElement.innerHTML = "";
+
+    if (count > 1) {
+        const c = document.createElement("div");
+        c.className = "count";
+        c.textContent = count;
+        slotElement.appendChild(c);
+    }
 }
 
 /*----------------------------*/
@@ -1346,3 +1463,15 @@ export const debugLine = new THREE.Line(debugLineGeometry, debugLineMaterial);
 // Add it to the scene but keep it invisible
 debugLine.visible = false;
 scene.add(debugLine);
+
+
+
+function addToInventory(itemName) {
+  inventory.push(itemName);
+
+  const grid = document.getElementById("inventory-grid");
+  const slot = document.createElement("div");
+  slot.className = "slot";
+  slot.textContent = itemName[0]; // first letter as icon
+  grid.appendChild(slot);
+}

@@ -100,6 +100,101 @@
             background: #0f0;
             transition: width 0.2s ease-out;
         }
+/* 
+        #inventory {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            width: 1000px;
+            padding: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border-radius: 8px;
+        }
+
+        #inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 40px);
+            gap: 50px;
+        }
+
+        .slot {
+            width: 80px;
+            height: 80px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        } */
+
+
+        #hotbar {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+            padding: 10px 16px;
+            background: rgba(0, 0, 0, 0.45);
+            border-radius: 10px;
+            backdrop-filter: blur(4px);
+        }
+/* 
+        .slot {
+            width: 64px;
+            height: 64px;
+            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: flex-end;
+            padding: 4px;
+            font-size: 14px;
+            color: white;
+            position: relative;
+        } */
+
+        .slot.selected {
+            border: 2px solid white;
+            box-shadow: 0 0 8px white;
+        }
+
+        .slot {
+            width: 64px;
+            height: 64px;
+            background: rgba(255,255,255,0.15);
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            position: relative;
+
+            /* REMOVE these lines — they cause the unwanted icon */
+            /* background-image: url("./assets/textures/items.png"); */
+            /* full size of atlas */
+            /* background-size: 128px 128px;  */
+            /* background-repeat: no-repeat; */
+        }
+
+        .slot .count {
+            position: absolute;
+            bottom: 4px;
+            right: 6px;
+            font-size: 16px;
+            color: white;
+            text-shadow: 0 0 4px black;
+        }
+
+        .slot .item-name {
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            font-size: 12px;
+            color: white;
+            opacity: 0.8;
+        }
+
 
         /* sidebar in edit mode */
         #ui-panel {
@@ -255,7 +350,23 @@
             <div id="health-container">
                 <div id="health-bar"></div>
             </div>
+            <!-- <div id="inventory">
+                <h2>Inventory</h2>
+                <div id="inventory-grid"></div>
+            </div> -->
+            <div id="hotbar">
+                <div class="slot" data-index="0"></div>
+                <div class="slot" data-index="1"></div>
+                <div class="slot" data-index="2"></div>
+                <div class="slot" data-index="3"></div>
+                <div class="slot" data-index="4"></div>
+                <div class="slot" data-index="5"></div>
+                <div class="slot" data-index="6"></div>
+            </div>
         </div>
+
+
+        <!-- <canvas id="canvas"></canvas> -->
 
         <div id="ui-panel">
             <div class="tab-header">Game controls</div>

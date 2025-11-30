@@ -52,6 +52,7 @@ import { Pathfinding } from 'three-pathfinding';
 // }
 
 export async function loadTest(scene) {
+
     loadLevel(scene);
     await(loadCharacter(Shared.playerState, scene, './assets/glb/player.glb'));
     await(loadCharacter(Shared.EnemyTemplateState, scene, './assets/glb/zombie.glb'));
@@ -59,6 +60,17 @@ export async function loadTest(scene) {
 
     //add player to the level
     Shared.rigGroup.add(Shared.playerState.root);
+
+    await (loadItems());
+}
+
+async function loadItems(scene) {
+    try {
+        const json = await (await fetch('./assets/textures/items.json')).json();
+        Shared.setItemAtlas(json);
+    } catch (err) {
+        console.error("Failed to load items:", err);
+    }
 }
 
 async function loadLevel(scene) {
