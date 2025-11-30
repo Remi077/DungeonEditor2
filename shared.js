@@ -1333,3 +1333,16 @@ function printQuat(pivot) {
     console.log('World rotation:', deg);
 }
 
+
+
+// Debug line setup
+const debugLineMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
+const debugLineGeometry = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(),
+    new THREE.Vector3()
+]);
+export const debugLine = new THREE.Line(debugLineGeometry, debugLineMaterial);
+
+// Add it to the scene but keep it invisible
+debugLine.visible = false;
+scene.add(debugLine);

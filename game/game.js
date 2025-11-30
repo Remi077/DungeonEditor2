@@ -160,7 +160,7 @@ export function startGameLoop() {
 
 
 
-        let num = 1;
+        let num = 2;
         Shared.enemySpawnGroup.children.forEach(
             child => {
                 num--;
@@ -353,6 +353,8 @@ function enemyLoop() {
     ) {
         // oneFrameOnly = true;
 
+        Shared.debugLine.visible = false;
+
         Shared.enemyGroup.children.forEach(enemy => {
 
             const ec = Shared.characterStateNameMap.get(enemy.userData.name);
@@ -363,6 +365,22 @@ function enemyLoop() {
             // Compute direction but ignore vertical difference:
             if (isAlive){
                 // ec.enemyState = Shared.ENEMY_STATES.CHASE; //temp
+
+
+                //check if enemy sees player (dont do this every frame)
+                if (ec.timeSinceLastSightCheck > 0.3){
+                    ec.timeSinceLastSightCheck = 0;
+                    ec.playerSeen = canEnemySeeTarget(ec, Shared.playerState.root)
+                    if (ec.playerSeen) {
+                        ec.lastSeenPlayerPosition = Shared.playerState.root.position.clone();
+                        console.log("PLAYER DETECTED at",ec.lastSeenPlayerPosition);
+                        ec.timeSinceLastSeen = 0;
+                    }
+                } else{
+                    ec.timeSinceLastSightCheck += deltaTime;
+                }
+
+
 
                 // enemy state machine
 
@@ -413,7 +431,7 @@ function enemyLoop() {
                             if (ec.timeSinceLastSeen > 1) {
                                 console.log("SEARCH");
                                 ec.enemyState = Shared.ENEMY_STATES.SEARCH;
-                                drawDebugSphere(ec.lastSeenPlayerPosition,Shared.scene);
+                                if (1) drawDebugSphere(ec.lastSeenPlayerPosition,Shared.scene);
                             }
                         }
                         break;
@@ -439,18 +457,6 @@ function enemyLoop() {
                 }
                 ec.timeSinceChangedState += deltaTime;
 
-                //check if enemy sees player (dont do this every frame)
-                if (ec.timeSinceLastSightCheck > 0.3){
-                    ec.timeSinceLastSightCheck = 0;
-                    ec.playerSeen = canEnemySeeTarget(ec, Shared.playerState.root)
-                    if (ec.playerSeen) {
-                        ec.lastSeenPlayerPosition = Shared.playerState.root.position.clone();
-                        console.log("PLAYER DETECTED at",ec.lastSeenPlayerPosition);
-                        ec.timeSinceLastSeen = 0;
-                    }
-                } else{
-                    ec.timeSinceLastSightCheck += deltaTime;
-                }
 
                 //compute next position based on movement, collisions, gravity
                 updateEnemyPhysics(ec);
@@ -608,10 +614,11 @@ function moveTo(enemycharacterState, targetPos, withinDistance) {
 
 
 function canEnemySeeTarget(ec, target, sightDistance = 10, fovDegrees = 90) {
-    const targetPos = target.position;
+    const targetPos = target.position.clone();
     targetPos.y += Shared.playerHeight/2;//TOIMPROVE
     const enemyEyes = ec.root.position.clone();
-    enemyEyes.y += (ec.capsuleTotalHeight * 2/3);
+    enemyEyes.y += (ec.capsuleTotalHeight * 0.9);
+
 
     // 1️⃣ Early exit: too far
     const dist = targetPos.distanceTo(enemyEyes);
@@ -621,8 +628,14 @@ function canEnemySeeTarget(ec, target, sightDistance = 10, fovDegrees = 90) {
     const enemyForward = new THREE.Vector3(0, 0, 1).applyQuaternion(ec.root.quaternion);
     const toTarget = targetPos.clone().sub(enemyEyes).normalize();
     const angle = enemyForward.angleTo(toTarget); // radians
-    if (angle > THREE.MathUtils.degToRad(fovDegrees / 2)) return false; // outside FOV
-
+    if (
+        (ec.enemyState === Shared.ENEMY_STATES.IDLE) ||
+        (ec.enemyState === Shared.ENEMY_STATES.PATROL)
+    ) //when in chase/search mode enemy can see from all angles (otherwise too easy to run in the back of enemies)
+    {        
+        if (angle > THREE.MathUtils.degToRad(fovDegrees / 2)) return false; // outside FOV
+    
+    }
     // 3️⃣ Collect raycastable objects
     const raycastTargets = [];
     Shared.actionnablesGroup.traverse(child => { if (child.isMesh) raycastTargets.push(child); });
@@ -646,9 +659,22 @@ function canEnemySeeTarget(ec, target, sightDistance = 10, fovDegrees = 90) {
     // 5️⃣ Check if first hit is the target or its descendant    
     // Check if the first hit is target or a descendant of target
     let hitObj = intersects[0].object;
-    console.log("ENEMY sees "+hitObj.name);
+    console.log("ENEMY" + ec.name + "sees "+hitObj.name);
     while (hitObj) {
-        if (hitObj === target) return true;
+        if (hitObj === target) {
+
+            // Ray start & end
+            const start = origin.clone();
+            const end = origin.clone().add(direction.clone().multiplyScalar(100)); // Extend ray visually
+
+            // Update line geometry
+            Shared.debugLine.geometry.setFromPoints([start, end]);
+
+            // Toggle visibility
+            Shared.debugLine.visible = true;
+            
+            return true;
+        }
         // Stop if we've reached a Group or the Scene
         if (hitObj.type === 'Group' || hitObj.type === 'Scene') break;
         hitObj = hitObj.parent;
@@ -1307,8 +1333,8 @@ function hitCollider(hitCharacter, hitter){
 
     hitCharacter.invincibility = true;
     console.log("hitCharacter ", hitCharacter.name)
-    hitCharacter.health -= 10;
-    // hitCharacter.health -= 50;
+    // hitCharacter.health -= 10;
+    hitCharacter.health -= 50;
     if (hitCharacter.isPlayer){
         GameHUD.updateHealthBar(hitCharacter.health, hitCharacter.maxHealth);
     } else {

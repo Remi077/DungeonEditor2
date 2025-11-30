@@ -127,7 +127,7 @@ async function loadLevel(scene) {
         scene.add(Shared.lightGroup);
         scene.add(Shared.enemySpawnGroup);
         scene.add(Shared.enemyGroup);
-        // Shared.enemySpawnGroup.visible = false;
+        Shared.enemySpawnGroup.visible = false;
         scene.add(Shared.rigGroup);
 
 
