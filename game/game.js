@@ -174,7 +174,7 @@ export function startGameLoop() {
 
 
 
-        let num = 0;
+        let num = 2;
         Shared.enemySpawnGroup.children.forEach(
             child => {
                 num--;
