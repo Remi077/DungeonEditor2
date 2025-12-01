@@ -50,6 +50,12 @@
             pointer-events: none;
             z-index: 10;
             display: none;
+
+
+            top : 50%;
+            left : 50%;
+            transform : translate(-50%, -50%);
+
         }
 
         #pointer-lock-hint {
@@ -141,21 +147,6 @@
             border-radius: 10px;
             backdrop-filter: blur(4px);
         }
-/* 
-        .slot {
-            width: 64px;
-            height: 64px;
-            background: rgba(255,255,255,0.15);
-            border: 2px solid rgba(255,255,255,0.2);
-            border-radius: 6px;
-            display: flex;
-            align-items: flex-end;
-            justify-content: flex-end;
-            padding: 4px;
-            font-size: 14px;
-            color: white;
-            position: relative;
-        } */
 
         .slot.selected {
             border: 2px solid white;
@@ -169,12 +160,6 @@
             border: 2px solid rgba(255,255,255,0.2);
             border-radius: 6px;
             position: relative;
-
-            /* REMOVE these lines — they cause the unwanted icon */
-            /* background-image: url("./assets/textures/items.png"); */
-            /* full size of atlas */
-            /* background-size: 128px 128px;  */
-            /* background-repeat: no-repeat; */
         }
 
         .slot .count {
@@ -195,6 +180,53 @@
             opacity: 0.8;
         }
 
+        #inventory-grid-container {
+            position: absolute;
+            bottom: 100px; /* above hotbar */
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px;
+            background: rgba(0,0,0,0.7);
+            border-radius: 10px;
+            display: none; /* hidden initially */
+            z-index: 100;
+        }
+
+        #inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 64px);
+            grid-template-rows: repeat(4, 64px);
+            gap: 8px;
+        }
+
+        .inv-slot {
+            width: 64px;
+            height: 64px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid rgba(255,255,255,0.2);
+            border-radius: 6px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .inv-slot .icon {
+            width: 100%;
+            height: 100%;
+            background-image: url("./assets/textures/items.png");
+            background-size: 128px 128px;
+            background-repeat: no-repeat;
+            background-position: -9999px -9999px; /* hidden until used */
+        }
+
+        .inv-slot .count {
+            position: absolute;
+            bottom: 4px;
+            right: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 0 0 4px black;
+        }
 
         /* sidebar in edit mode */
         #ui-panel {
@@ -363,6 +395,12 @@
                 <div class="slot" data-index="5"></div>
                 <div class="slot" data-index="6"></div>
             </div>
+
+            <!-- Full inventory (hidden by default) -->
+            <div id="inventory-grid-container">
+                <div id="inventory-grid"></div>
+            </div>
+
         </div>
 
 

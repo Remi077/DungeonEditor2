@@ -28,23 +28,24 @@ StartBtn.addEventListener('click', () => { Shared.toggleGameMode(); });
 //prevent right click context menu everywhere in document
 document.addEventListener("contextmenu", (e) => e.preventDefault()); // prevent browser menu
 
-const crosshair = document.getElementById("crosshair");
-document.addEventListener("pointerlockchange", () => {
-    if (document.pointerLockElement === Shared.canvas) {
+// const crosshair = document.getElementById("crosshair");
+// function onPointerLockChange() {
+//     if (document.pointerLockElement === Shared.canvas) {
+//         console.log("Pointer locked");
 
-        // --- Locked mode: fixed at center ---
-        crosshair.style.display = "block";
-        crosshair.style.position = "absolute";
-        crosshair.style.top = "50%";
-        crosshair.style.left = "50%";
-        crosshair.style.transform = "translate(-50%, -50%)";
+//         crosshair.style.display = "block";
+//         crosshair.style.position = "absolute";
+//         crosshair.style.top = "50%";
+//         crosshair.style.left = "50%";
+//         crosshair.style.transform = "translate(-50%, -50%)";
+//     } else {
+//         console.log("Pointer unlocked");
+//         Shared.resetAllActions();
+//         crosshair.style.display = "none";
+//     }
+// }
 
-    } else {
-        // console.log("Pointer unlocked");
-        Shared.resetAllActions();
-        crosshair.style.display = "none";
-    }
-});
+// document.addEventListener("pointerlockchange", onPointerLockChange);
 
 /*-----------------------------------------------------*/
 // GAMEPLAY GLOBAL VARIABLES

@@ -204,7 +204,6 @@ export function deactivateMixer(mixer, single=false) {
 export let itemAtlas = null;
 export function setItemAtlas(a){itemAtlas = a};
 
-
 //name->characterState
 export const characterStateNameMap = new Map();
 
@@ -417,6 +416,7 @@ export function newcharacterState(name) {
         maxHealth: 100,
         inventory: {},
         hotbar : [null, null, null, null, null, null, null],
+        inventorySlots : Array(4 * 8).fill(null),        
         invincibility: false,
         timeSinceLastHit: 0,
         hitRepulsionForce: new THREE.Vector3(),
@@ -528,7 +528,8 @@ export const LoadBtnProgress = document.getElementById('LoadBtnProgress'); //TOM
 export const MODEMENU = 0;
 export const MODEEDITOR = 1;
 export const MODEGAME = 2;
-export const MODEGAMEOVER = 3;
+export const MODEINVENTORY = 3;
+export const MODEGAMEOVER = 4;
 
 // editor variables
 export const editorState = {
@@ -607,6 +608,8 @@ export function setMode(mode) {
             startGameLoop();
             startGameLoopUI();
             break;
+        // case MODEINVENTORY:
+            // break;
         case MODEGAMEOVER:
             stopGameLoop();
             stopGameLoopUI();
@@ -649,6 +652,7 @@ function startEditorUI() {
         if (e.button === 2 && document.pointerLockElement !== canvas) {
             canvas.requestPointerLock();
             setRightMouseDown(true);
+            crosshair.style.display = "block";
         }
     };
     canvas.addEventListener("mousedown", onMouseDown);
@@ -658,11 +662,14 @@ function startEditorUI() {
         if (e.button === 2 && document.pointerLockElement === canvas) {
             document.exitPointerLock();
             setRightMouseDown(false);
+            crosshair.style.display = "none";
         }
     };
     document.addEventListener("mouseup", onMouseUp);
 
     document.addEventListener("mousemove", onMouseMoveEditor, false);
+
+    // document.addEventListener("pointerlockchange", onPointerLockChange);
 
 }
 
@@ -673,6 +680,9 @@ function stopEditorUI() {
     if (onMouseDown) canvas.removeEventListener("mousedown", onMouseDown);
     if (onMouseUp) document.removeEventListener("mouseup", onMouseUp);
     document.removeEventListener("mousemove", onMouseMoveEditor, false);
+
+
+    // document.removeEventListener("pointerlockchange", onPointerLockChange);
 }
 
 /*---------------------------------*/
@@ -682,6 +692,7 @@ function startGameLoopUI() {
     canvas.requestPointerLock();
     document.addEventListener("mousemove", onMouseMoveGame, false);
     canvas.addEventListener("mousedown", onMouseDown);
+    crosshair.style.display = "block";
 }
 
 /*---------------------------------*/
@@ -690,6 +701,7 @@ function startGameLoopUI() {
 function stopGameLoopUI() {
     document.exitPointerLock();
     document.removeEventListener("mousemove", onMouseMoveGame, false);
+    crosshair.style.display = "none";
 }
 
 /*---------------------------------*/
@@ -863,17 +875,21 @@ export function onMouseMoveEditor(event) {
 }
 
 export function onMouseMoveGame(event) {
-    const dx = event.movementX;
-    const dy = event.movementY;
+    if (!inventoryOpen){
+        const dx = event.movementX;
+        const dy = event.movementY;
 
-    const sensitivity = 0.002;
+        const sensitivity = 0.002;
 
-    yawObject.rotation.y -= event.movementX * sensitivity;  // Y-axis (left/right)
-    pitchObject.rotation.x -= event.movementY * sensitivity; // X-axis (up/down)
+        yawObject.rotation.y -= event.movementX * sensitivity;  // Y-axis (left/right)
+        pitchObject.rotation.x -= event.movementY * sensitivity; // X-axis (up/down)
 
-    // Clamp pitch to prevent flipping
-    const maxPitch = Math.PI / 2;
-    pitchObject.rotation.x = Math.max(-maxPitch, Math.min(maxPitch, pitchObject.rotation.x));
+        // Clamp pitch to prevent flipping
+        const maxPitch = Math.PI / 2;
+        pitchObject.rotation.x = Math.max(-maxPitch, Math.min(maxPitch, pitchObject.rotation.x));
+    } else {
+
+    }
 }
 
 /*----------------------------*/
@@ -927,32 +943,49 @@ export function doSomething(self) {
 export function takeItem(self, playerState) {
     self.visible = false;
 
+    // Extract item id from mesh name
     const [, rawName] = self.name.match(/Action_Item_(.*)...$/);
-    const itemName = rawName;
+    const itemId = rawName;
 
-    // 1 — check if item already exists in hotbar
+    // addItemToInventory(itemId, playerState);
+    // return;
+    //
+    // ---------------------------
+    // 1. Try stacking in hotbar
+    // ---------------------------
+    //
     for (let i = 0; i < 7; i++) {
         const slot = playerState.hotbar[i];
-        if (slot && slot.name === itemName) {
+
+        if (slot && slot.itemId === itemId) {
             slot.count++;
-            updateHotbarUI();
+            updateHotbarUI(playerState);
             return;
         }
     }
 
-    // 2 — otherwise find first empty slot
+    //
+    // ---------------------------
+    // 2. Try adding to empty hotbar slot
+    // ---------------------------
+    //
     for (let i = 0; i < 7; i++) {
         if (playerState.hotbar[i] === null) {
             playerState.hotbar[i] = {
-                name: itemName,
+                itemId,
                 count: 1
             };
-            updateHotbarUI();
+            updateHotbarUI(playerState);
             return;
         }
     }
 
-    // hotbar full → ignore or handle overflow here
+    //
+    // ---------------------------
+    // 3. Hotbar full → add to inventory
+    // ---------------------------
+    //
+    addItemToInventory(itemId, playerState);
 }
 
 function updateHotbarUI() {
@@ -969,7 +1002,7 @@ function updateHotbarUI() {
         }
 
         // slot.name should match keys from items.json like "Item_key"
-        setSlotIcon(uiSlot, slot.name, slot.count);
+        setSlotIcon(uiSlot, slot.itemId, slot.count);
     }
 }
 
@@ -1466,12 +1499,145 @@ scene.add(debugLine);
 
 
 
-function addToInventory(itemName) {
-  inventory.push(itemName);
+// function addToInventory(itemName) {
+//   inventory.push(itemName);
 
-  const grid = document.getElementById("inventory-grid");
-  const slot = document.createElement("div");
-  slot.className = "slot";
-  slot.textContent = itemName[0]; // first letter as icon
-  grid.appendChild(slot);
+//   const grid = document.getElementById("inventory-grid");
+//   const slot = document.createElement("div");
+//   slot.className = "slot";
+//   slot.textContent = itemName[0]; // first letter as icon
+//   grid.appendChild(slot);
+// }
+
+
+
+
+export const crosshair = document.getElementById("crosshair"); //TOFIX, this should go in an input manager
+// function onPointerLockChange() {
+//     if (document.pointerLockElement === canvas) {
+//         console.log("Pointer locked");
+
+//         crosshair.style.display = "block";
+//         // crosshair.style.position = "absolute";
+//         // crosshair.style.top = "50%";
+//         // crosshair.style.left = "50%";
+//         // crosshair.style.transform = "translate(-50%, -50%)";
+//     } else {
+//         console.log("Pointer unlocked");
+//         Shared.resetAllActions();
+//         crosshair.style.display = "none";
+//     }
+// }
+
+
+export function buildInventoryGrid(rows = 4, cols = 8) {
+    const grid = document.getElementById("inventory-grid");
+    grid.innerHTML = "";   // Clear existing
+
+    const total = rows * cols;
+
+    for (let i = 0; i < total; i++) {
+        const slot = document.createElement("div");
+        slot.className = "inv-slot";
+        slot.dataset.index = i;
+
+        const icon = document.createElement("div");
+        icon.className = "icon";
+        slot.appendChild(icon);
+
+        const count = document.createElement("div");
+        count.className = "count";
+        slot.appendChild(count);
+
+        grid.appendChild(slot);
+    }
+}
+
+
+
+/*---------------------------------*/
+// toggleInventory
+/*---------------------------------*/
+let inventoryOpen = false;
+export function toggleInventory() {
+    inventoryOpen = !inventoryOpen;
+
+    const container = document.getElementById("inventory-grid-container");
+    container.style.display = inventoryOpen ? "block" : "none";
+
+    // unlock/lock cursor
+    // if (document.pointerLockElement === canvas){
+    if (inventoryOpen) {
+        document.exitPointerLock?.();
+        document.body.style.cursor = "default";
+        crosshair.style.display = "none";//TOFIX
+    } else {
+        document.body.requestPointerLock?.();
+        document.body.style.cursor = "none";
+        crosshair.style.display = "block";//TOFIX
+    }
+// }
+}
+
+// export function updateInventoryUI() {
+//     const grid = document.getElementById("inventory-grid");
+//     grid.innerHTML = ""; // clear
+
+//     for (let i = 0; i < 32; i++) { // 8*4
+//         const slot = document.createElement("div");
+//         slot.className = "slot";
+
+//         const item = playerState.inventorySlots[i]; // array of {name,count} or null
+//         if (item) {
+//             setSlotIcon(slot, item.name, item.count);
+//         }
+
+//         grid.appendChild(slot);
+//     }
+// }
+
+export function addItemToInventory(itemId, playerState) {
+    const atlas = itemAtlas.IMAGES[itemId];
+
+    if (!atlas) {
+        console.warn("No atlas entry for", itemId);
+        return;
+    }
+
+    // 1. Look for an existing stack
+    let index = playerState.inventorySlots.findIndex(
+        slot => slot && slot.itemId === itemId
+    );
+
+    // 2. Or empty slot
+    if (index === -1) {
+        index = playerState.inventorySlots.findIndex(s => s === null);
+        if (index === -1) {
+            console.warn("Inventory full!");
+            return;
+        }
+        playerState.inventorySlots[index] = { itemId, count: 0 };
+    }
+
+    // Increase count
+    playerState.inventorySlots[index].count++;
+
+    updateInventorySlotUI(index, playerState);
+}
+
+function updateInventorySlotUI(index, playerState) {
+    const slot = playerState.inventorySlots[index];
+    const atlas = itemAtlas.IMAGES[slot.itemId];
+    const size = itemAtlas.SIZE;
+
+    const slotEl = document.querySelector(`.inv-slot[data-index="${index}"]`);
+    const iconEl = slotEl.querySelector(".icon");
+    const countEl = slotEl.querySelector(".count");
+
+    // Show correct icon
+    iconEl.style.backgroundImage = 'url("./assets/textures/items.png")';
+    iconEl.style.backgroundPosition = `-${atlas.x * size}px -${atlas.y * size}px`;
+
+    // Show count
+    countEl.textContent = slot.count > 1 ? slot.count : "";
 }

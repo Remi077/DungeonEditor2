@@ -8,6 +8,7 @@ import * as EditorUI from './editor/editorUI.js';
 import * as MenuUI from './menu/menuUI.js';
 import * as Game from './game/game.js';
 import * as GameOver from './game/gameOver.js';
+// import * as Inventory from './game/inventory.js';
 
 /*-----------------------------------------------------*/
 // REVISION NUMBER

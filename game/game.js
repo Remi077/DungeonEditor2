@@ -22,6 +22,7 @@ export let ActionToKeyMap = {
     jump: { key: 'Space', OnPress: true },
     interact: { key: 'KeyE', OnPress: true },
     hideCol: { key: 'KeyH', OnPress: true },
+    toggleInventory: { key: 'KeyI', OnPress: true },
 
     Item1: { key: 'Digit1', OnPress: true },
     Item2: { key: 'Digit2', OnPress: true },
@@ -54,6 +55,10 @@ export function startGameLoop() {
 
     if (firstInit) {
         firstInit = false;
+
+        Shared.buildInventoryGrid(4,8);
+
+
         const campos = Shared.yawObject.position;
 
         Shared.playerState.capsuleTotalHeight = Shared.playerHeight;
@@ -169,7 +174,7 @@ export function startGameLoop() {
 
 
 
-        let num = 2;
+        let num = 0;
         Shared.enemySpawnGroup.children.forEach(
             child => {
                 num--;
@@ -803,6 +808,7 @@ function executeActions() {
         if (Actions.jump) jump();
         if (Actions.interact) interact();
         if (Actions.hideCol) toggleHideCollider();
+        if (Actions.toggleInventory) Shared.toggleInventory();
 
         if (Actions.Item1) Shared.highlightSelectedSlot(1);
         if (Actions.Item2) Shared.highlightSelectedSlot(2);
@@ -967,10 +973,14 @@ function raycastActionnables() {
 // onMouseClick
 /*---------------------------------*/
 function onMouseClick(event) {
-    if (selectObject) {
-        selectObject?.userData?.actionnableData?.action(selectObject, Shared.playerState);
+    if (!Shared.inventoryOpen){
+        if (selectObject) {
+            selectObject?.userData?.actionnableData?.action(selectObject, Shared.playerState);
+        }
+        attack(Shared.playerState);
+    } else {
+
     }
-    attack(Shared.playerState);
 }
 
 /*---------------------------------*/
@@ -1038,6 +1048,9 @@ function syncEnemyToBodies() {
 function toggleHideCollider() {
     Shared.colliderDebugGroup.visible = !Shared.colliderDebugGroup.visible;
 }
+
+
+
 
 /*---------------------------------*/
 // updatePhysics
@@ -1357,6 +1370,7 @@ function hitCollider(hitCharacter, hitter){
         GameHUD.updateHealthBar(hitCharacter.health, hitCharacter.maxHealth);
     } else {
         GameHUD.updateFloatingHealthBar(hitCharacter);
+        hitCharacter.enemyState = Shared.ENEMY_STATES.CHASE;//hitting an enemy will cause it to chase player
     }
     // hitCharacter.health -= 2;
     // hitCharacter.health -= 100;
