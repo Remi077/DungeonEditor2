@@ -359,7 +359,8 @@ export default class EditorState {
     onLoad() { console.log('Load pressed'); loadSave.saveLevel();}
     onSave() { console.log('Save pressed'); loadSave.loadLevel();}
     onReset() { console.log('Reset pressed'); loadSave.resetLevel();}
-    onStart() { this.game.stateManager.setState('game'); }
+    onStart() { 
+        this.game.stateManager.setState('game'); }
 
     updateStats(){
         const now = performance.now();
@@ -445,7 +446,7 @@ export default class EditorState {
             .then(() => this.game.systems.levelManager.addToScene());
         }    
         if (ActionsOnce.resetLevel) this.onReset();
-        if (ActionsOnce.startGame) this.onStart();
+        // if (ActionsOnce.startGame) this.onStart();
 
         //clear the onpress/onrelease actions now that they have been sampled
         //in that loop to avoid resampling
@@ -460,6 +461,10 @@ export default class EditorState {
         if (world){
             world.step(dt);
         }
+
+
+        if (ActionsOnce.startGame) 
+            this.onStart(); //switch state at end of update to avoid using removed resou
 
     }
 

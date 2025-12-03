@@ -232,7 +232,7 @@ export default class GameState {
         //initialize and place camera holder if not in scene
         const yawObject = this.game.yawObject;
         const pitchObject = this.game.pitchObject;
-        if (yawObject.parent !== scene)
+        if (yawObject.parent !== this.game.scene)
         {
             pitchObject.name = "pitchObject";
             pitchObject.add(this.game.camera);
