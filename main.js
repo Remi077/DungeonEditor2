@@ -20,6 +20,7 @@ import GameOverState from './game/GameOver.js';
 import InputManager from './InputManager.js';
 import PhysicsManager from './PhysicsManager.js';
 import LevelManager from './LevelManager.js';
+import CharacterManager from './CharacterManager.js';
 // import * as Stats from '../GameStats.js';
 
 /*-----------------------------------------------------*/
@@ -186,6 +187,7 @@ const game = {
     systems: {
         physicsManager: new PhysicsManager(),
         levelManager: null,
+        characterManager: null,
         //movement: new MovementSystem(),
         //ai: new AISystem(),
         //animation: new AnimationSystem(),
@@ -195,6 +197,7 @@ const game = {
 }
 
 game.systems.levelManager = new LevelManager(game.scene, game.systems.physicsManager);
+game.systems.characterManager = new CharacterManager(game);
 
 //tweaks
 //tweak global renderer

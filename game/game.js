@@ -247,6 +247,36 @@ export default class GameState {
             yawObject.rotation.set(0, 0, 0);
         }
 
+
+
+
+
+
+    // // 1. Level is ready (already loaded by LevelManager)
+    // await this.game.systems.levelManager.ensureLoaded();
+
+    // // 2. Load the player
+    // const gltf = await this.game.systems.characterManager.loadCharacter('./assets/characters/player.glb');
+
+    // // 3. Create player entity
+    // this.player = this.game.systems.characterManager.createPlayer(gltf);
+
+    // // 4. Place player in scene
+    // this.game.scene.add(this.player.get(ModelComponent).object3D);
+
+    // // 5. Register in ECS
+    // this.game.ecs.register(this.player);
+
+
+
+
+
+
+
+
+
+
+
     }
 
     keydown(e) {

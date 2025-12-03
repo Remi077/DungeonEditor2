@@ -1,0 +1,16 @@
+export default class WeaponComponent {
+    constructor() {
+        this.weapon = null;
+        this.weaponBody = null;
+        this.weaponBodyDesc = null;
+        this.weaponCollider = null;
+        this.weaponColliderDesc = null;
+        this.weaponOffsetRootToBody = null;
+        this.attackLoopId = null;
+        this.isAttacking = false;
+        this.timeSinceStartAttack = null;
+        this.attackDamageStart = 0;
+        this.attackDamageEnd = null;
+    }
+}
+
