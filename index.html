@@ -43,272 +43,10 @@
             /* 👈 Prevents content overflow from breaking flex */
         }
 
-        #crosshair {
-            position: absolute;
-            color: white;
-            font-size: 24px;
-            pointer-events: none;
-            z-index: 10;
-            display: none;
-
-
-            top : 50%;
-            left : 50%;
-            transform : translate(-50%, -50%);
-
-        }
-
-        #pointer-lock-hint {
-            position: absolute;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: #ccc;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 5px 10px;
-            font-size: 14px;
-            border-radius: 4px;
-            z-index: 100;
-            display: none;
-        }
-
         canvas {
             display: block;
             max-width: none;
             height: auto;
-        }
-
-        /* HUD canvas stays on top */
-        #hud-canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        #health-container {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            width: 200px;
-            height: 20px;
-            background: #300;
-            border: 2px solid #900;
-            border-radius: 4px;
-        }
-
-        #health-bar {
-            width: 100%;
-            height: 100%;
-            background: #0f0;
-            transition: width 0.2s ease-out;
-        }
-/* 
-        #inventory {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            width: 1000px;
-            padding: 10px;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            border-radius: 8px;
-        }
-
-        #inventory-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 40px);
-            gap: 50px;
-        }
-
-        .slot {
-            width: 80px;
-            height: 80px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        } */
-
-
-        #hotbar {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 12px;
-            padding: 10px 16px;
-            background: rgba(0, 0, 0, 0.45);
-            border-radius: 10px;
-            backdrop-filter: blur(4px);
-        }
-
-        .slot.selected {
-            border: 2px solid white;
-            box-shadow: 0 0 8px white;
-        }
-
-        .slot {
-            width: 64px;
-            height: 64px;
-            background: rgba(255,255,255,0.15);
-            border: 2px solid rgba(255,255,255,0.2);
-            border-radius: 6px;
-            position: relative;
-        }
-
-        .slot .count {
-            position: absolute;
-            bottom: 4px;
-            right: 6px;
-            font-size: 16px;
-            color: white;
-            text-shadow: 0 0 4px black;
-        }
-
-        .slot .item-name {
-            position: absolute;
-            bottom: 4px;
-            left: 4px;
-            font-size: 12px;
-            color: white;
-            opacity: 0.8;
-        }
-
-        #inventory-grid-container {
-            position: absolute;
-            bottom: 100px; /* above hotbar */
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 12px;
-            background: rgba(0,0,0,0.7);
-            border-radius: 10px;
-            display: none; /* hidden initially */
-            z-index: 100;
-        }
-
-        #inventory-grid {
-            display: grid;
-            grid-template-columns: repeat(8, 64px);
-            grid-template-rows: repeat(4, 64px);
-            gap: 8px;
-        }
-
-        .inv-slot {
-            width: 64px;
-            height: 64px;
-            background: rgba(255,255,255,0.1);
-            border: 2px solid rgba(255,255,255,0.2);
-            border-radius: 6px;
-            position: relative;
-            cursor: pointer;
-        }
-
-        .inv-slot .icon {
-            width: 100%;
-            height: 100%;
-            background-image: url("./assets/textures/items.png");
-            background-size: 128px 128px;
-            background-repeat: no-repeat;
-            background-position: -9999px -9999px; /* hidden until used */
-        }
-
-        .inv-slot .count {
-            position: absolute;
-            bottom: 4px;
-            right: 6px;
-            font-size: 16px;
-            font-weight: bold;
-            color: white;
-            text-shadow: 0 0 4px black;
-        }
-
-        /* sidebar in edit mode */
-        #ui-panel {
-            width: 300px;
-            min-width: 250px;
-            background-color: #222;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            border-left: 1px solid #333;
-            box-sizing: border-box;
-        }
-
-        /* hide the sidebar in gamemode */
-        .hidden {
-            display: none !important;
-        }
-
-        .tab {
-            border-bottom: 1px solid #333;
-            background-color: #333;
-            overflow: hidden;
-            transition: all 0.3s ease;
-        }
-
-        .tab-header {
-            background-color: #444;
-            color: white;
-            padding: 10px;
-            cursor: pointer;
-            user-select: none;
-        }
-
-        .tab-header.green {
-            background-color: green;
-        }
-
-        .tab-content {
-            display: flex;
-            flex-direction: column;
-            max-height: 0;
-            overflow: hidden;
-            padding: 0 10px;
-            background-color: #555;
-            transition: max-height 0.3s ease, padding 0.3s ease;
-        }
-
-        .tab.active .tab-content {
-            max-height: 500px;
-            /* adjust if needed */
-            padding: 10px;
-        }
-
-        .form-row {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 2px;
-        }
-
-        .form-row label {
-            min-width: 100px;
-            /* keeps labels aligned */
-        }
-
-
-        button {
-            padding: 10px;
-            background-color: #444;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-
-        button:hover {
-            background-color: #555;
-        }
-
-        button.green {
-            background-color: green;
         }
 
         #revision-info {
@@ -322,149 +60,40 @@
             padding: 5px 10px;
             border-radius: 5px;
             font-size: 12px;
-            z-index: 1000;
+            /* z-index: 1000; */
+            z-index: 1001;
         }
     </style>
 </head>
 
 <body>
 
-    <!-- Menu overlay -->
-    <div id="menu" class="hidden" style="
-        position: absolute;
-        top: 0; left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.85);
-        color: white;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        font-family: sans-serif;
-        z-index: 1000;
-    ">
-        <h1 style="font-size: 4em; margin-bottom: 50px;">application not found</h1>
-        <button id="menu-start" style="margin:10px; padding:15px 40px; font-size: 1.5em;">Start Game</button>
-        <button id="menu-load" style="margin:10px; padding:15px 40px; font-size: 1.5em;">Load</button>
-        <button id="menu-editor" style="margin:10px; padding:15px 40px; font-size: 1.5em;">Editor</button>
-    </div>
-
-    <!-- GameOver overlay -->
-    <div id="gameOver" class="hidden" style="
-        position: absolute;
-        top: 0; left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.85);
-        color: white;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        font-family: sans-serif;
-        z-index: 1000;
-    ">
-        <h1 style="font-size: 4em; margin-bottom: 50px;">GAME OVER</h1>
-        <!-- <button id="menu-start" style="margin:10px; padding:15px 40px; font-size: 1.5em;">Start Game</button> -->
-        <!-- <button id="menu-load" style="margin:10px; padding:15px 40px; font-size: 1.5em;">Load</button> -->
-        <!-- <button id="menu-editor" style="margin:10px; padding:15px 40px; font-size: 1.5em;">Editor</button> -->
-    </div>
-
     <!-- Main container for the canvas and UI panel -->
     <div id="main-container">
+
         <!-- Left: 3D canvas -->
         <div id="canvas-container">
             <canvas id="three-canvas" tabindex="0"></canvas>
-            <div id="crosshair">+</div>
-            <!-- <div id="pointer-lock-hint">Press ESC to release the mouse</div> -->
-            <canvas id="hud-canvas"></canvas>
-            <div id="health-container">
-                <div id="health-bar"></div>
-            </div>
-            <!-- <div id="inventory">
-                <h2>Inventory</h2>
-                <div id="inventory-grid"></div>
-            </div> -->
-            <div id="hotbar">
-                <div class="slot" data-index="0"></div>
-                <div class="slot" data-index="1"></div>
-                <div class="slot" data-index="2"></div>
-                <div class="slot" data-index="3"></div>
-                <div class="slot" data-index="4"></div>
-                <div class="slot" data-index="5"></div>
-                <div class="slot" data-index="6"></div>
-            </div>
-
-            <!-- Full inventory (hidden by default) -->
-            <div id="inventory-grid-container">
-                <div id="inventory-grid"></div>
-            </div>
-
         </div>
+    </div>
+    <div id="revision-info">Version: 0.1</div>
 
-
-        <!-- <canvas id="canvas"></canvas> -->
-
-        <div id="ui-panel">
-            <div class="tab-header">Game controls</div>
-
-            <div id="utilities" style="padding:10px; gap:10px; display: flex; flex-direction: column;">
-                <button id="LoadBtn" style="position: relative; overflow: hidden;">
-                    <span id="LoadBtnText" style="position: relative; z-index: 2;">Load (Ctrl+L)</span>
-                    <div id="LoadBtnProgress" style="
-                            position: absolute;
-                            top: 0; left: 0; bottom: 0;
-                            background-color: #4caf50;
-                            width: 0%;
-                            z-index: 1;
-                            transition: width 0.3s ease;
-                            opacity: 0.5;
-                        "></div>
-                </button>
-                <button id="SaveBtn">Save (Ctrl+S)</button>
-                <button id="ResetBtn">Reset (Ctrl+R)</button>
-                <button id="StartBtn">Start Game(G)</button>
-            </div>
-
-            <div id="text-stats" style="padding:10px;font-family: monospace; font-size: 12px; line-height: 1.5em;">
-                <div>FPS: <span id="fps">0</span></div>
-                <div>Meshes: <span id="meshCount">0</span></div>
-                <div>Visible Meshes: <span id="visibleMeshCount">0</span></div>
-                <div>Lights: <span id="lightCount">0</span></div>
-                <div>Materials: <span id="materialCount">0</span></div>
-                <div>Geometries: <span id="geometryCount">0</span></div>
-                <div>Textures: <span id="textureCount">0</span></div>
-                <div>Draw Calls: <span id="drawCalls">0</span></div>
-                <div>Colliders: <span id="Colliders">0</span></div>
-                <div>RigidBodies: <span id="RigidBodies">0</span></div>
-            </div>
-
-        </div>
-
-        <div id="revision-info">Version: 0.1</div>
-
-        <script type="importmap">
+    <script type="importmap">
         {
             "imports": {
                 "three": "https://esm.sh/three@0.158.0",
                 "GLTFLoader": "https://esm.sh/three@0.158.0/examples/jsm/loaders/GLTFLoader.js",
                 "SkeletonUtils": "https://esm.sh/three@0.158.0/examples/jsm/utils/SkeletonUtils.js",
                 "rapier": "https://esm.sh/@dimforge/rapier3d-compat@0.12.0",
-                "seedrandom": "https://esm.sh/seedrandom",
-                "three-pathfinding": "https://cdn.jsdelivr.net/npm/three-pathfinding@1.3.0/+esm"
+                "three-pathfinding": "https://cdn.jsdelivr.net/npm/three-pathfinding@1.3.0/+esm",
+                "stats.js": "https://esm.sh/stats.js@0.17.0"
             }
         }
     </script>
 
-        <!-- "BufferGeometryUtils": "https://esm.sh/three@0.158.0/examples/jsm/utils/BufferGeometryUtils.js", -->
-
-        <!-- Your Three.js app -->
-        <script type="module" src="main.js"></script>
+    <!-- Your Three.js app -->
+    <script type="module" src="main.js"></script>
         
-        <!-- FPS counter -->
-        <script src="https://cdn.jsdelivr.net/npm/stats.js@0.17.0/build/stats.min.js"></script>
-
 </body>
 
 </html>

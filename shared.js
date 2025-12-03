@@ -2,99 +2,99 @@
 import * as THREE from 'three';
 import * as RAPIER from 'rapier';
 import * as SkeletonUtils from 'SkeletonUtils';
-import seedrandom from 'seedrandom';
+// import seedrandom from 'seedrandom';
 //OTHER IMPORTS FORBIDDEN! CIRCULAR DEPENDENCIES
 
 /*-------------------------*/
 // GRID AND CELL DIMENSION //
 /*-------------------------*/
-export const gridSize = 100;
-export const gridDivisions = 100;
-export const cellSize = gridSize / gridDivisions; //TODO: when not 1 this will break (myfunction load atlas planes are 1,1)
-if (cellSize != 1) {
-    throw new Error("cellsize", cellSize, "different from 1, this is not supported currently");
-}
+// export const gridSize = 100;
+// export const gridDivisions = 100;
+// export const cellSize = gridSize / gridDivisions; //TODO: when not 1 this will break (myfunction load atlas planes are 1,1)
+// if (cellSize != 1) {
+//     throw new Error("cellsize", cellSize, "different from 1, this is not supported currently");
+// }
 
 /*-----------------------------------------------------*/
 // PSEUDO RANDOMNESS
 /*-----------------------------------------------------*/
 // pseudoseed
-export let rng = seedrandom(); // Create a seeded random generator
+// export let rng = seedrandom(); // Create a seeded random generator
 
 // Reset RNG with a new seed
-export function setSeed(newSeed) {
-    rng = seedrandom(newSeed);
-}
+// export function setSeed(newSeed) {
+//     rng = seedrandom(newSeed);
+// }
 
 // Function to generate a random float position between min and max using rng()
-export function getRandom(min, max) {
-    return rng() * (max - min) + min;
-}
+// export function getRandom(min, max) {
+//     return rng() * (max - min) + min;
+// }
 
 // Random int in [min, max] inclusive
-export function getRandomInt(min, max) {
-    return Math.floor(getRandom(min, max + 1));
-}
+// export function getRandomInt(min, max) {
+//     return Math.floor(getRandom(min, max + 1));
+// }
 
-export function branchChance(p) {
-    return getRandomInt(0, 100) < p * 100;
-}
+// export function branchChance(p) {
+//     return getRandomInt(0, 100) < p * 100;
+// }
 
 /*------------------*/
 // CANVAS VARIABLES //
 /*------------------*/
 export const canvas = document.getElementById('three-canvas');
 export const container = document.getElementById('canvas-container');
-export const uipanel = document.getElementById('ui-panel');
+// export const uipanel = document.getElementById('ui-panel');
 
-export const matpopup = document.getElementById("matpopup");
-export const meshpopup = document.getElementById("meshpopup");
-export const mazewallpopup = document.getElementById("mazewallpopup");
-export const mazefloorpopup = document.getElementById("mazefloorpopup");
+// export const matpopup = document.getElementById("matpopup");
+// export const meshpopup = document.getElementById("meshpopup");
+// export const mazewallpopup = document.getElementById("mazewallpopup");
+// export const mazefloorpopup = document.getElementById("mazefloorpopup");
 
-export const matpopupCanvas = document.getElementById("matpopupCanvas");
-export const meshpopupCanvas = document.getElementById("meshpopupCanvas");
-export const mazewallpopupCanvas = document.getElementById("mazewallpopupCanvas");
-export const mazefloorpopupCanvas = document.getElementById("mazefloorpopupCanvas");
+// export const matpopupCanvas = document.getElementById("matpopupCanvas");
+// export const meshpopupCanvas = document.getElementById("meshpopupCanvas");
+// export const mazewallpopupCanvas = document.getElementById("mazewallpopupCanvas");
+// export const mazefloorpopupCanvas = document.getElementById("mazefloorpopupCanvas");
 
 /*-------------------------*/
 // SCENE, CAMERA, RENDERER //
 /*-------------------------*/
-export const scene = new THREE.Scene();
-export const camera = new THREE.PerspectiveCamera(
-    75,
-    // 90,
-    container.clientWidth / container.clientHeight,
-    0.1, //near plane
-    1000 //far plane
-);
-export const renderer = new THREE.WebGLRenderer({
-    canvas: canvas,
-    alpha: true,
-});
+// export const scene = new THREE.Scene();
+// export const camera = new THREE.PerspectiveCamera(
+//     75,
+//     // 90,
+//     container.clientWidth / container.clientHeight,
+//     0.1, //near plane
+//     1000 //far plane
+// );
+// export const renderer = new THREE.WebGLRenderer({
+//     canvas: canvas,
+//     alpha: true,
+// });
 
 /*-------*/
 // CLOCK //
 /*-------*/
-export const clock = new THREE.Clock();
+// export const clock = new THREE.Clock();
 
 /*-------------------------*/
 // LIGHTS VARIABLES        //
 /*-------------------------*/
 // ambient light in editor and game mode
-export const AMBIENTLIGHTEDITCOLOR = new THREE.Color(1, 1, 1).multiplyScalar(0.45);
-// export const AMBIENTLIGHTGAMECOLOR = new THREE.Color(0.5, 0.5, 1).multiplyScalar(0.30);
-export const AMBIENTLIGHTGAMECOLOR = new THREE.Color(0.5, 0.5, 1).multiplyScalar(1);
-export let ambientLight = new THREE.AmbientLight(AMBIENTLIGHTEDITCOLOR); // Soft light;
+// export const AMBIENTLIGHTEDITCOLOR = new THREE.Color(1, 1, 1).multiplyScalar(0.45);
+// // export const AMBIENTLIGHTGAMECOLOR = new THREE.Color(0.5, 0.5, 1).multiplyScalar(0.30);
+// export const AMBIENTLIGHTGAMECOLOR = new THREE.Color(0.5, 0.5, 1).multiplyScalar(1);
+// export let ambientLight = new THREE.AmbientLight(AMBIENTLIGHTEDITCOLOR); // Soft light;
 
 /*------------------*/
 // SHADOW VARIABLES //
 /*------------------*/
-export const shadowEnabled = false;
-if (shadowEnabled) {
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap; // smoother shadows                            // important
-}
+// export const shadowEnabled = false;
+// if (shadowEnabled) {
+//     renderer.shadowMap.enabled = true;
+//     renderer.shadowMap.type = THREE.PCFSoftShadowMap; // smoother shadows                            // important
+// }
 
 /*---------------------------------*/
 // NAVMESH VARIABLES
@@ -501,17 +501,17 @@ colliderDebugGroup.name = "colliderDebugGroup";
 // FPS VIEW CONTROL VARIABLE                //
 // camera holder: FPS-style rotation system //
 /*------------------------------------------*/
-export const pitchObject = new THREE.Object3D(); // Up/down rotation (X axis)
-export const yawObject = new THREE.Object3D();   // Left/right rotation (Y axis)
+// export const pitchObject = new THREE.Object3D(); // Up/down rotation (X axis)
+// export const yawObject = new THREE.Object3D();   // Left/right rotation (Y axis)
 
 /*---------------------------------*/
 // resetCamera
 /*---------------------------------*/
-export function resetCamera() {
-    pitchObject.rotation.set(0, 0, 0);
-    yawObject.position.set(cameraOffsetX, cameraOffsetY, cameraOffsetZ);
-    yawObject.rotation.set(0, 0, 0);
-}
+// export function resetCamera() {
+//     pitchObject.rotation.set(0, 0, 0);
+//     yawObject.position.set(cameraOffsetX, cameraOffsetY, cameraOffsetZ);
+//     yawObject.rotation.set(0, 0, 0);
+// }
 
 /*------*/
 // MISC //
@@ -532,15 +532,15 @@ export const MODEINVENTORY = 3;
 export const MODEGAMEOVER = 4;
 
 // editor variables
-export const editorState = {
-    mode: MODEEDITOR,
-    editorRunning: false,        //TODO: maybe make it one running variable only
-    gameRunning: false,
-    pause: true,
-    renderOneFrame: true,
-    hasClicked: false,
-    mouseIsDown: false
-};
+// export const editorState = {
+//     mode: MODEEDITOR,
+//     editorRunning: false,        //TODO: maybe make it one running variable only
+//     gameRunning: false,
+//     pause: true,
+//     renderOneFrame: true,
+//     hasClicked: false,
+//     mouseIsDown: false
+// };
 
 /*---------------------------------------------------------*/
 // proxies to editor/game loop
@@ -648,24 +648,24 @@ function startEditorUI() {
     console.log("startEditorUI");
 
     // Lock on right mouse button down
-    onMouseDown = (e) => {
-        if (e.button === 2 && document.pointerLockElement !== canvas) {
-            canvas.requestPointerLock();
-            setRightMouseDown(true);
-            crosshair.style.display = "block";
-        }
-    };
-    canvas.addEventListener("mousedown", onMouseDown);
+    // onMouseDown = (e) => {
+    //     if (e.button === 2 && document.pointerLockElement !== canvas) {
+    //         canvas.requestPointerLock();
+    //         setRightMouseDown(true);
+    //         crosshair.style.display = "block";
+    //     }
+    // };
+    // canvas.addEventListener("mousedown", onMouseDown);
 
-    // Unlock on right mouse button up
-    onMouseUp = (e) => {
-        if (e.button === 2 && document.pointerLockElement === canvas) {
-            document.exitPointerLock();
-            setRightMouseDown(false);
-            crosshair.style.display = "none";
-        }
-    };
-    document.addEventListener("mouseup", onMouseUp);
+    // // Unlock on right mouse button up
+    // onMouseUp = (e) => {
+    //     if (e.button === 2 && document.pointerLockElement === canvas) {
+    //         document.exitPointerLock();
+    //         setRightMouseDown(false);
+    //         crosshair.style.display = "none";
+    //     }
+    // };
+    // document.addEventListener("mouseup", onMouseUp);
 
     document.addEventListener("mousemove", onMouseMoveEditor, false);
 
@@ -707,9 +707,9 @@ function stopGameLoopUI() {
 /*---------------------------------*/
 // doPause
 /*---------------------------------*/
-export function doPause() {
-    setPause(!editorState.pause);
-}
+// export function doPause() {
+//     setPause(!editorState.pause);
+// }
 
 /*---------------------------------*/
 // setPause
@@ -1495,7 +1495,7 @@ export const debugLine = new THREE.Line(debugLineGeometry, debugLineMaterial);
 
 // Add it to the scene but keep it invisible
 debugLine.visible = false;
-scene.add(debugLine);
+// scene.add(debugLine);
 
 
 

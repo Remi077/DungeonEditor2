@@ -1,38 +1,325 @@
 // @ts-nocheck
 import * as THREE from 'three';
 import * as RAPIER from 'rapier';
-import * as Shared from '../shared.js';
-import * as Stats from '../Stats.js';
-import * as GameHUD from './gameHUD.js';
+import * as Shared from '../Shared.js';
+// import * as Stats from './GameStats.js';
+import * as GameHUD from './GameHUD.js';
 import Pathfinding from "three-pathfinding";
+
+
+export default class GameState {
+    constructor(game) {
+        this.game = game;
+
+        this.crosshair = null;
+        this.healthContainer = null;
+        this.healthBar = null;
+        this.hotbar = null;
+        this.inventoryContainer = null;
+
+        this.styleTag = null;
+
+        this.KeyToActionMap = {
+            "KeyD": "moveCamRight",
+            "KeyA": "moveCamLeft",
+            "KeyW": "moveCamFront",
+            "KeyS": "moveCamBack",
+        }
+
+        this.KeyToActionOnceMap = {
+            "KeyG": "startGame",
+            "Space": "jump",
+            "KeyE": "interact",
+            "KeyH": "hideCol",
+            "KeyI": "toggleInventory",
+            "Digit1": "Item1",
+            "Digit2": "Item2",
+            "Digit3": "Item3",
+            "Digit4": "Item4",
+            "Digit5": "Item5",
+            "Digit6": "Item6",
+            "Digit7": "Item7",
+        }
+
+        this.Actions = {};
+
+    }
+
+    onEnter() {
+        // ---------------------------
+        // Inject CSS for this state
+        // ---------------------------
+        this.styleTag = document.createElement('style');
+        this.styleTag.textContent = `
+            #crosshair {
+                position: absolute;
+                color: white;
+                font-size: 24px;
+                pointer-events: none;
+                z-index: 10;
+                display: none;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+            }
+
+            #health-container {
+                position: fixed;
+                top: 20px;
+                left: 20px;
+                width: 200px;
+                height: 20px;
+                background: #300;
+                border: 2px solid #900;
+                border-radius: 4px;
+            }
+
+            #health-bar {
+                width: 100%;
+                height: 100%;
+                background: #0f0;
+                transition: width 0.2s ease-out;
+            }
+
+            #hotbar {
+                position: absolute;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                display: flex;
+                gap: 12px;
+                padding: 10px 16px;
+                background: rgba(0, 0, 0, 0.45);
+                border-radius: 10px;
+                backdrop-filter: blur(4px);
+            }
+
+            .slot {
+                width: 64px;
+                height: 64px;
+                background: rgba(255,255,255,0.15);
+                border: 2px solid rgba(255,255,255,0.2);
+                border-radius: 6px;
+                position: relative;
+            }
+
+            .slot.selected {
+                border: 2px solid white;
+                box-shadow: 0 0 8px white;
+            }
+
+            #inventory-grid-container {
+                position: absolute;
+                bottom: 100px;
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 12px;
+                background: rgba(0,0,0,0.7);
+                border-radius: 10px;
+                display: none;
+                z-index: 100;
+            }
+
+            #inventory-grid {
+                display: grid;
+                grid-template-columns: repeat(8, 64px);
+                grid-template-rows: repeat(4, 64px);
+                gap: 8px;
+            }
+
+            .inv-slot {
+                width: 64px;
+                height: 64px;
+                background: rgba(255,255,255,0.1);
+                border: 2px solid rgba(255,255,255,0.2);
+                border-radius: 6px;
+                position: relative;
+                cursor: pointer;
+            }
+
+            .inv-slot .icon {
+                width: 100%;
+                height: 100%;
+                background-image: url("./assets/textures/items.png");
+                background-size: 128px 128px;
+                background-repeat: no-repeat;
+                background-position -9999px -9999px;
+            }
+        `;
+        document.head.appendChild(this.styleTag);
+
+        // -------------------------
+        // Locate canvas-container
+        // -------------------------
+        const canvasContainer = this.game.canvasContainer;
+
+        // =========== CROSSHAIR ===========
+        this.crosshair = document.createElement('div');
+        this.crosshair.id = 'crosshair';
+        this.crosshair.textContent = '+';
+        canvasContainer.appendChild(this.crosshair);
+
+        // =========== HEALTH BAR ===========
+        this.healthContainer = document.createElement('div');
+        this.healthContainer.id = 'health-container';
+
+        this.healthBar = document.createElement('div');
+        this.healthBar.id = 'health-bar';
+        this.healthContainer.appendChild(this.healthBar);
+
+        canvasContainer.appendChild(this.healthContainer);
+
+        // =========== HOTBAR ===========
+        this.hotbar = document.createElement('div');
+        this.hotbar.id = 'hotbar';
+        for (let i = 0; i < 7; i++) {
+            const slot = document.createElement('div');
+            slot.className = 'slot';
+            slot.dataset.index = i;
+            this.hotbar.appendChild(slot);
+        }
+        canvasContainer.appendChild(this.hotbar);
+
+        // =========== INVENTORY GRID ===========
+        this.inventoryContainer = document.createElement('div');
+        this.inventoryContainer.id = 'inventory-grid-container';
+
+        const grid = document.createElement('div');
+        grid.id = 'inventory-grid';
+
+        for (let i = 0; i < 32; i++) {
+            const slot = document.createElement('div');
+            slot.className = 'inv-slot';
+
+            const icon = document.createElement('div');
+            icon.className = 'icon';
+
+            slot.appendChild(icon);
+            grid.appendChild(slot);
+        }
+
+        this.inventoryContainer.appendChild(grid);
+        canvasContainer.appendChild(this.inventoryContainer);
+
+        //clear all game actions
+        this.Actions = {};
+
+        //input management
+        const input = this.game.input;
+
+        input.clearAllListeners(); //important when switching state
+
+        input.on('keydown', (e) => {this.keydown(e) });
+        input.on('keypressonce', (e) => {this.keypressonce(e) });
+        input.on('resize', (e) => {this.resize(e) });
+
+        //game scene
+        this.ambientLight = new THREE.AmbientLight(
+            new THREE.Color(0.5, 0.5, 1).multiplyScalar(1)
+        ); // Soft light
+
+        this.game.scene.add(this.ambientLight);
+
+        //initialize and place camera holder if not in scene
+        const yawObject = this.game.yawObject;
+        const pitchObject = this.game.pitchObject;
+        if (yawObject.parent !== scene)
+        {
+            pitchObject.name = "pitchObject";
+            pitchObject.add(this.game.camera);
+            yawObject.name = "yawObject";
+            yawObject.add(pitchObject);
+            const pointLight = new THREE.PointLight(new THREE.Vector3(0, 0, 0), 1, 100);
+            yawObject.add(pointLight);
+            scene.add(yawObject);
+
+            pitchObject.rotation.set(0, 0, 0);
+            yawObject.position.set(Shared.cameraOffsetX, Shared.cameraOffsetY, Shared.cameraOffsetZ);
+            yawObject.rotation.set(0, 0, 0);
+        }
+
+    }
+
+    keydown(e) {
+        const action = this.KeyToActionMap[e.code];
+        if (action) {
+            console.log("keydown", action);
+            this.Actions[action] = true;
+        }
+    }
+
+    keypressonce(e) {
+        const action = this.KeyToActionOnceMap[e.code];
+        if (action) {
+            console.log("keypressonce", action);
+            this.ActionsOnce[action] = true;
+        }
+    }    
+
+    resize(e) {
+        const canvasContainer = this.game.canvasContainer;
+        this.game.renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+        this.game.camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
+        this.game.camera.updateProjectionMatrix();
+    }
+
+    onExit() {
+        if (this.crosshair) this.crosshair.remove();
+        if (this.healthContainer) this.healthContainer.remove();
+        if (this.hotbar) this.hotbar.remove();
+        if (this.inventoryContainer) this.inventoryContainer.remove();
+
+        if (this.styleTag) {
+            this.styleTag.remove();
+            this.styleTag = null;
+        }
+
+        //input management
+        this.game.input.clearAllListeners(); //cleanup
+
+        //clear scene
+        this.game.scene.remove(this.ambientLight);
+        this.ambientLight.dispose?.(); // optional, safe
+
+    }
+
+}
+
+
+
+
+
+
+
+
 
 /*---------------------------------*/
 // actions variables
 /*---------------------------------*/
-export let Actions = {};
+// export let Actions = {};
 let gameId = null;
 let enemyId = null;
 
-export let ActionToKeyMap = {
-    moveCamRight: { key: 'KeyD' },
-    moveCamLeft: { key: 'KeyA' },
-    moveCamFront: { key: 'KeyW' },
-    moveCamBack: { key: 'KeyS' },
-    startGame: { key: 'KeyG', OnPress: true },
-    jump: { key: 'Space', OnPress: true },
-    interact: { key: 'KeyE', OnPress: true },
-    hideCol: { key: 'KeyH', OnPress: true },
-    toggleInventory: { key: 'KeyI', OnPress: true },
+// export let ActionToKeyMap = {
+//     moveCamRight: { key: 'KeyD' },
+//     moveCamLeft: { key: 'KeyA' },
+//     moveCamFront: { key: 'KeyW' },
+//     moveCamBack: { key: 'KeyS' },
+//     startGame: { key: 'KeyG', OnPress: true },
+//     jump: { key: 'Space', OnPress: true },
+//     interact: { key: 'KeyE', OnPress: true },
+//     hideCol: { key: 'KeyH', OnPress: true },
+//     toggleInventory: { key: 'KeyI', OnPress: true },
 
-    Item1: { key: 'Digit1', OnPress: true },
-    Item2: { key: 'Digit2', OnPress: true },
-    Item3: { key: 'Digit3', OnPress: true },
-    Item4: { key: 'Digit4', OnPress: true },
-    Item5: { key: 'Digit5', OnPress: true },
-    Item6: { key: 'Digit6', OnPress: true },
-    Item7: { key: 'Digit7', OnPress: true },
+//     Item1: { key: 'Digit1', OnPress: true },
+//     Item2: { key: 'Digit2', OnPress: true },
+//     Item3: { key: 'Digit3', OnPress: true },
+//     Item4: { key: 'Digit4', OnPress: true },
+//     Item5: { key: 'Digit5', OnPress: true },
+//     Item6: { key: 'Digit6', OnPress: true },
+//     Item7: { key: 'Digit7', OnPress: true },
 
-};
+// };
 
 /*---------------------------------*/
 /* startGameLoop */
@@ -45,7 +332,7 @@ export function startGameLoop() {
     Shared.editorState.gameRunning = true;
     Shared.setPause(false);
     requestAnimationFrame(gameLoopFirstFrame);
-    Shared.clock.start();
+    // Shared.clock.start();
     Shared.ambientLight.color.set(Shared.AMBIENTLIGHTGAMECOLOR);
     Shared.playerState.verticalSpeed = 0;
     Shared.playerState.collisionmask = Shared.COL_MASKS.PLAYER;
@@ -254,7 +541,7 @@ function gameLoop(now) {
     if (!Shared.editorState.pause) { // && !skipOneFrame) {
 
         //fps counter
-        Stats.stats.begin();
+        // Stats.stats.begin();
 
         //initialize gameplay variables this loop
         deltaTime = Shared.clock.getDelta();       // Time elapsed since last frame

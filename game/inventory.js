@@ -1,5 +1,5 @@
 // @ts-nocheck
-import * as Shared from '../shared.js';
+import * as Shared from '../Shared.js';
 
 /*-----------------------------------------------------*/
 //  BUTTONS

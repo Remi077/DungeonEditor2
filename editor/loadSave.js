@@ -5,7 +5,7 @@ import * as SkeletonUtils from 'SkeletonUtils';
 
 import * as RAPIER from 'rapier';
 
-import * as Shared from '../shared.js';
+import * as Shared from '../Shared.js';
 import { Pathfinding } from 'three-pathfinding';
 
 /*------*/
@@ -54,14 +54,14 @@ import { Pathfinding } from 'three-pathfinding';
 export async function loadTest(scene) {
 
     loadLevel(scene);
-    await(loadCharacter(Shared.playerState, scene, './assets/glb/player.glb'));
-    await(loadCharacter(Shared.EnemyTemplateState, scene, './assets/glb/zombie.glb'));
-    await(loadNavMesh(scene, './assets/glb/navmesh.glb'));
+    // await(loadCharacter(Shared.playerState, scene, './assets/glb/player.glb'));
+    // await(loadCharacter(Shared.EnemyTemplateState, scene, './assets/glb/zombie.glb'));
+    // await(loadNavMesh(scene, './assets/glb/navmesh.glb'));
 
     //add player to the level
-    Shared.rigGroup.add(Shared.playerState.root);
+    // Shared.rigGroup.add(Shared.playerState.root);
 
-    await (loadItems());
+    // await (loadItems());
 }
 
 async function loadItems(scene) {
