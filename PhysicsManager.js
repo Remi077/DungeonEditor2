@@ -236,7 +236,7 @@ export default class PhysicsManager {
     }
 
     reset() {
-        for(const rb of this.bodies.values()) this.world.removeRigidBody(rb);
+        for (const rb of this.bodies.values()) this.world.removeRigidBody(rb);
         this.bodies.clear();
         this.colliders.clear();
     }

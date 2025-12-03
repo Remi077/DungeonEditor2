@@ -39,7 +39,7 @@ export default class EditorState {
             "KeyA": "moveCamLeft",
             "KeyW": "moveCamFront",
             "KeyS": "moveCamBack",
-        }
+        };
 
         this.KeyToActionOnceMap = {
             "Ctrl+KeyS": "saveLevel",
@@ -48,7 +48,7 @@ export default class EditorState {
             "KeyM": "loadTest",
             "KeyG": "startGame",
             "KeyH": "hideCol",
-        }
+        };
 
         //used in update loop
         this.moveVector = new THREE.Vector3();
@@ -492,7 +492,7 @@ export default class EditorState {
         renderer.setScissorTest(false);
 
         // Simulate heavy computation
-        if(0) {
+        if (0) {
             const start = performance.now();
             while (performance.now() - start < 200) {// 200ms delay
                 // Busy-wait loop (blocks the main thread)

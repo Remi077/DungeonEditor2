@@ -50,7 +50,7 @@ export default class GameOverState {
         this.overlay.className = 'gameover-overlay';
 
         const title = document.createElement('h1');
-        MeshToonMaterial.textContent = "GAME OVER";
+        title.textContent = "GAME OVER";
         this.overlay.appendChild(title);
 
         // (Optional future buttons)

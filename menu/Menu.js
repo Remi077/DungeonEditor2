@@ -64,7 +64,7 @@ export default class MenuState {
                     display: flex;
                     flex-direction: column;
                     align-items: center;
-                    justify-contents: center;
+                    justify-content: center;
                     font-family: sans-serif;
                     z-index: 1000;
                 }

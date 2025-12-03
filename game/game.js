@@ -24,7 +24,7 @@ export default class GameState {
             "KeyA": "moveCamLeft",
             "KeyW": "moveCamFront",
             "KeyS": "moveCamBack",
-        }
+        };
 
         this.KeyToActionOnceMap = {
             "KeyG": "startGame",
@@ -39,7 +39,7 @@ export default class GameState {
             "Digit5": "Item5",
             "Digit6": "Item6",
             "Digit7": "Item7",
-        }
+        };
 
         this.Actions = {};
 
@@ -144,6 +144,15 @@ export default class GameState {
                 background-size: 128px 128px;
                 background-repeat: no-repeat;
                 background-position -9999px -9999px;
+            }
+
+            .inv-slot .count {
+                position: absolute;
+                bottom: 4px;
+                right: 6px;
+                font-size: 16px;
+                color: white;
+                text-shadow: 0 0 4px black;
             }
         `;
         document.head.appendChild(this.styleTag);
