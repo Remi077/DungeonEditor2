@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'GLTFLoader';
+import * as Shared from '../Shared.js';
 
-import TransformComponent from './Entities/Components/TransformComponent';
-import PhysicsBodyComponent from './Entities/Components/PhysicsBodyComponent';
-import AnimatorComponent from './Entities/Components/AnimatorComponent';
-import PlayerControllerComponent from './Entities/Components/PlayerControllerComponent';
-import GameplayComponent from './Entities/Components/GameplayComponent';
-import WeaponComponent from './Entities/Components/WeaponComponent';
-import AIComponent from './Entities/Components/AIComponent'; // optional, for NPCs
+import TransformComponent from './Entities/Components/TransformComponent.js';
+import PhysicsBodyComponent from './Entities/Components/PhysicsBodyComponent.js';
+import AnimatorComponent from './Entities/Components/AnimatorComponent.js';
+import PlayerControllerComponent from './Entities/Components/PlayerControllerComponent.js';
+import GameplayComponent from './Entities/Components/GameplayComponent.js';
+import WeaponComponent from './Entities/Components/WeaponComponent.js';
+import AIComponent from './Entities/Components/AIComponent.js'; // optional, for NPCs
 
 
 class CharacterPrefab {
@@ -15,13 +16,19 @@ class CharacterPrefab {
         this.name = "";
         this.root = null;        // template armature hierarchy
         this.weaponBoneName = "";
-        this.weaponName = "";
+        this.weaponMeshName = "";
 
+        //Animations
         this.animationClips = new Map();  // parsed once
-        this.lowerBodyClip = null;
 
-        this.capsuleRadius = 0;
-        this.capsuleHeight = 0;
+        //Collider + Physics
+        this.weaponBodyDesc = null;
+        this.weaponColliderDesc = null;
+        this.weaponOffsetRootToBody = new THREE.Vector3();
+
+        //Physics template
+        this.capsuleRadius = Shared.playerRadius; //temp should be calculated from mesh BB or dedicated mesh
+        this.capsuleHeight = Shared.playerHeight; // temp see above
         this.colliderOffset = new THREE.Vector3();
 
         this.isLoaded = false;
@@ -56,7 +63,7 @@ export default class CharacterManager {
         this.processAnimations(gltf.animations, this.prefab);
 
         // 3. Compute collision data once
-        this.computeColliderFromMesh(this.prefab);        
+        this.computeColliderFromMesh(gltf.scene, this.prefab, isPlayerPrefab);        
 
         // 4. store the raw prefab for instancing
         this.charaPrefabMap.set(characterType, gltf);
@@ -76,24 +83,106 @@ export default class CharacterManager {
     }
 
     processHierarchy(scene, prefab, isPlayerPrefab) {
-        scene.children.forEach((child) => {
-            scene.traverse(child => {
-                if (child.name.startsWith("Armature")) prefab.root = child;
-                if (child.isSkinnedMesh) {child.frustumCulled = !isPlayerPrefab;};
-                if (child.name.startsWith("weapon")) {
-                    child.frustumCulled = !isPlayerPrefab;
-                    prefab.weaponName = prefab.weapon?.name;
-                    prefab.weaponBoneName = prefab.weapon?.parent?.name;
-                }
-            });
+        scene.traverse(child => {
+            if (child.name.startsWith("Armature")) prefab.root = child;
+            if (child.isSkinnedMesh) {child.frustumCulled = !isPlayerPrefab;};
+            if (child.name.startsWith("weapon")) {
+                child.frustumCulled = !isPlayerPrefab;
+                prefab.weaponBoneName = prefab.weapon?.parent?.name;
+                prefab.weaponMeshName = prefab.weapon?.name;
+            }
         });
     }
 
     processAnimations(animations, prefab) {
         animations.forEach(clip => {
             prefab.animationClips.set(clip.name, clip);
+            if (clip.name === Shared.ANIM_WALK_NAME) {
+                const walkLowerClip = this.makePartialClip(clip, Shared.lowerBodyBones);
+                prefab.animationClips.set(walkLowerClip.name, walkLowerClip);
+            }
         });
     }
+
+    makePartialClip(clip, boneNames) {
+        const filteredTracks = clip.tracks.filter(track => {
+            return boneNames.some(name => track.name.startsWith(name));
+        });
+        return new THREE.AnimationClip(clip.name + '_partial', clip.duration, filteredTracks);
+    }
+
+    computeColliderFromMesh(scene, prefab, isPlayerPrefab) {
+        scene.traverse((child) => {
+            if (!child.isMesh) return;
+            if (!child.name.startsWith("Collider_Kine")) return;
+
+            // Example name: Collider_Kine_weapon
+            const [,relatedName] = child.name.match(/Collider_Kine_(.*)$/);
+            if (!relatedName) return;
+
+            // --- 1. LOCAL transforms of collider placeholder object ---
+            const childRot = child.quaternion.clone();
+            const childPos = child.position.clone();
+            const childScale = child.scale.clone();
+
+            // --- 2. Compute bounding box ---
+            child.geometry.computeBoundingBox();
+            const bbox = child.geometry.boundingBox.clone();
+
+            const size = new THREE.Vector3();
+            bbox.getSize(size);
+
+            const center = new THREE.Vector3();
+            bbox.getCenter(center);
+
+            // Apply object scale
+            size.multiply(childScale);
+
+            // Half extents for RAPIER cuboid
+            const halfExtents = {
+                x: size.x * 0.5,
+                y: size.y * 0.5,
+                z: size.z * 0.5,
+            };
+
+            // --- 3. Compute final center position (apply rotation to bbox center) ---
+            const rotatedCenter = center.clone().applyQuaternion(childRot);
+            const worldCenter = childPos.clone().add(rotatedCenter);
+
+            // --- 4. Find the corresponding mesh the collider belongs to ---
+            const relatedMesh = scene.getObjectByName(relatedName);
+            if (!relatedMesh)
+                throw new Error(`Collider '${child.name}' references missing mesh '${relatedName}'`);
+
+            const meshWorldPos = relatedMesh.getWorldPosition(new THREE.Vector3());
+            const offsetRootToBody = worldCenter.clone().sub(meshWorldPos);
+
+            // --- 5. Create reusable body and collider descriptors ---
+            const bodyDesc = {
+                translation: worldCenter,
+                rotation: childRot,
+            };
+
+            const colliderDesc = {
+                halfExtents: halfExtents,
+            };
+
+            // --- 6. Collision groups ---
+            if(isPlayerPrefab)
+                colliderDesc.collisionGroups = Shared.COL_MASKS.PLAYERWPN;
+            else
+                colliderDesc.collisionGroups = Shared.COL_MASKS.ENEMYWPN;
+
+            // --- 7. Store inside prefab ---
+            prefab.weaponBodyDesc = bodyDesc;
+            prefab.weaponColliderDesc = colliderDesc;
+            prefab.weaponOffsetRootToBody.copy(offsetRootToBody);
+
+            // optionally:
+            prefab.weaponName = relatedName;
+        })
+    }
+
 
     spawnPlayer(characterType, spawnPosition) {
 
@@ -140,7 +229,6 @@ export default class CharacterManager {
         //add extra options
         if (options?.isPlayer) {
             entity.addComponent(new PlayerControllerComponent(this.game.systems.input));
-            entity.
         } else {
             entity.addComponent(new AIComponent());
         }

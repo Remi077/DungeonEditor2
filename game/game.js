@@ -248,7 +248,8 @@ export default class GameState {
         }
 
 
-
+        //spawn player
+        this.game.systems.characterManager.spawnPlayer('player', new THREE.Vector3(0,0,0));
 
 
 

@@ -446,7 +446,7 @@ async function loadCharacter(characterState, scene, pathToGlb) {
                     characterState.animationClips.set(newClipName, clip);
                     characterState.animationActions.set(newClipName, mixer.clipAction(clip));
                     if (newClipName === Shared.ANIM_WALK_NAME) {
-                        const walkLowerClip = Shared.mayfyutikePartialClip(clip, Shared.lowerBodyBones);
+                        const walkLowerClip = Shared.makePartialClip(clip, Shared.lowerBodyBones);
                         characterState.animationClips.set(Shared.ANIM_WALK_NAME_L, walkLowerClip);
                         characterState.animationActions.set(Shared.ANIM_WALK_NAME_L, mixer.clipAction(walkLowerClip));
                     }

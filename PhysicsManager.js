@@ -22,6 +22,16 @@ export default class PhysicsManager {
         this.debugLines = new THREE.LineSegments(this.debugGeo, this.debugMat);
         this.debugLines.frustumCulled = false;
 
+        this.bodyDesc = {
+            translation : null,
+            rotation : null,
+        }
+        this.colliderDesc = {
+            halfExtents : null,
+            rotation : null,
+            collisionGroup : null,
+        }
+
         this.accumulator = 0;
     }
 
