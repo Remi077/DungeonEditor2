@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 export default class GameplayComponent {
     constructor() {
+        this.type = 'Gameplay';
         this.health = 100;
         this.maxHealth = 100;
         this.invincibility = false;

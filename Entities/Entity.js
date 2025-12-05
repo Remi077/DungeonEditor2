@@ -1,5 +1,5 @@
 // @ts-nocheck
-class Entity {
+export default class Entity {
     constructor() {
         this.components = {};
     }

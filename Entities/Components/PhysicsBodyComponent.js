@@ -1,6 +1,7 @@
 
 export default class PhysicsBodyComponent {
     constructor(body = null, collider = null, bodyDesc = null, colliderDesc = null) {
+        this.type = 'Physics';
         this.body = body;
         this.collider = collider;
         this.bodyDesc = bodyDesc;

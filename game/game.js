@@ -5,6 +5,7 @@ import * as Shared from '../Shared.js';
 // import * as Stats from './GameStats.js';
 import * as GameHUD from './GameHUD.js';
 import Pathfinding from "three-pathfinding";
+import Stats from "stats.js";
 
 
 export default class GameState {
@@ -27,7 +28,7 @@ export default class GameState {
         };
 
         this.KeyToActionOnceMap = {
-            "KeyG": "startGame",
+            "KeyG": "startEditor",
             "Space": "jump",
             "KeyE": "interact",
             "KeyH": "hideCol",
@@ -41,7 +42,14 @@ export default class GameState {
             "Digit7": "Item7",
         };
 
-        this.Actions = {};
+        //stats
+        this.fpsPanel = new Stats();//extra fps panel
+        this.fpsPanel.showPanel(0);//fps
+
+        this.player = null; // player handle
+
+        //used in update(dt)
+        this.worldQuat = new THREE.Quaternion();
 
     }
 
@@ -210,17 +218,37 @@ export default class GameState {
         this.inventoryContainer.appendChild(grid);
         canvasContainer.appendChild(this.inventoryContainer);
 
+        // --- extra FPS Panel ---
+        this.fpsPanel = new Stats();//extra fps panel
+        this.fpsPanel.showPanel(0);//fps
+        const fpsPanel = this.fpsPanel;
+        Object.assign(fpsPanel.dom.style, {
+            position: 'absolute',
+            top: '100px',
+            left: 'auto',
+            right: '100px',
+            margin: '0',
+            transform: 'scale(2)',
+            transformOrigin: 'top right'
+        });
+        this.game.mainContainer.appendChild(fpsPanel.dom);
+
         //clear all game actions
         this.Actions = {};
+        this.ActionsOnce = {};
 
         //input management
         const input = this.game.input;
-
         input.clearAllListeners(); //important when switching state
 
         input.on('keydown', (e) => {this.keydown(e) });
+        input.on('keyup', (e) => { this.keyup(e) });
         input.on('keypressonce', (e) => {this.keypressonce(e) });
         input.on('resize', (e) => {this.resize(e) });
+        input.on('mousedown', (e) => { this.mousedown(e) });
+        input.on('mouseup', (e) => { this.mouseup(e) });
+        input.on('mousemove', (e) => { this.mousemove(e) });
+        input.on('resize', (e) => { this.resize(e) });
 
         //game scene
         this.ambientLight = new THREE.AmbientLight(
@@ -249,7 +277,10 @@ export default class GameState {
 
 
         //spawn player
-        this.game.systems.characterManager.spawnPlayer('player', new THREE.Vector3(0,0,0));
+        this.player = this.game.systems.characterManager.spawnPlayer('player', 
+            yawObject.position.clone()
+            // new THREE.Vector3(0,0,0)
+        );
 
 
 
@@ -269,15 +300,6 @@ export default class GameState {
     // this.game.ecs.register(this.player);
 
 
-
-
-
-
-
-
-
-
-
     }
 
     keydown(e) {
@@ -288,13 +310,62 @@ export default class GameState {
         }
     }
 
+    keyup(e) {
+        const action = this.KeyToActionMap[e.code];
+        if (action) {
+            console.log("keyup", action);
+            this.Actions[action] = false;
+        }
+    }
+
     keypressonce(e) {
-        const action = this.KeyToActionOnceMap[e.code];
+        const action = this.KeyToActionOnceMap[e.detail.code];
         if (action) {
             console.log("keypressonce", action);
             this.ActionsOnce[action] = true;
         }
     }    
+
+    mousedown(e) {
+        const canvas = this.game.canvas;
+        if (e.button === 2 &&
+            document.pointerLockElement !== canvas) {
+                canvas.requestPointerLock();
+                this.crosshair.style.display = "block";
+        }
+    }
+
+    mouseup(e) {
+        const canvas = this.game.canvas;
+        if (e.button === 2 &&
+            document.pointerLockElement === canvas) {
+                document.exitPointerLock();
+                this.crosshair.style.display = "none";
+        }
+    }
+
+    mousemove(e) {
+        if (
+            !(this.game.input.isMouseDown(2)) //||
+            // !(this.game.input.isMouseOver(this.game.canvas))
+        ) return; //right click
+
+        const dx = e.movementX;
+        const dy = e.movementY;
+
+        // console.log(dx,dy);
+
+        const sensitivity = 0.002;
+
+        const yawObject = this.game.yawObject;
+        const pitchObject = this.game.pitchObject;
+        yawObject.rotation.y -= e.movementX * sensitivity; // Y-axis (left/right)
+        pitchObject.rotation.x -= e.movementY * sensitivity; // X-axis (up/down)
+
+        // Clamp pitch to prevent flipping
+        const maxPitch = Math.PI / 2;
+        pitchObject.rotation.x = Math.max(-maxPitch, Math.min(maxPitch, pitchObject.rotation.x));
+    }
 
     resize(e) {
         const canvasContainer = this.game.canvasContainer;
@@ -308,6 +379,11 @@ export default class GameState {
         if (this.healthContainer) this.healthContainer.remove();
         if (this.hotbar) this.hotbar.remove();
         if (this.inventoryContainer) this.inventoryContainer.remove();
+        if (this.fpsPanel && this.fpsPanel.dom && this.fpsPanel.dom.parentNode) {
+            this.fpsPanel.dom.parentNode.removeChild(this.fpsPanel.dom);
+        }
+        // Optionally null out the reference
+        this.fpsPanel = null;
 
         if (this.styleTag) {
             this.styleTag.remove();
@@ -320,8 +396,101 @@ export default class GameState {
         //clear scene
         this.game.scene.remove(this.ambientLight);
         this.ambientLight.dispose?.(); // optional, safe
+    }
+
+
+    update(dt) {
+
+        //fps counter
+        this.fpsPanel.begin(); // start measuring frame
+
+        const Actions = this.Actions;
+        const ActionsOnce = this.ActionsOnce;
+
+        const visualComponent = this.player.components['Visual'];
+        const transformComponent = this.player.components['Transform'];
+        const AnimatorComponent = this.player.components['Animator'];
+        const root = visualComponent.root;
+        const moveVector = transformComponent.moveVector;
+        const worldQuat = this.worldQuat;
+        const yawObject = this.game.yawObject;
+
+        moveVector.set(0,0,0);
+        if (Actions.moveCamLeft)  moveVector.x = -1;
+        if (Actions.moveCamRight) moveVector.x =  1;
+        if (Actions.moveCamFront) moveVector.z = -1;
+        if (Actions.moveCamBack)  moveVector.z =  1;
+        moveVector.normalize();
+
+        this.game.pitchObject.getWorldQuaternion(worldQuat);
+        moveVector.applyQuaternion(worldQuat);
+
+        // Apply 180° yaw offset to align mesh (-Z forward) with camera (+Z forward)
+        const yawOffset = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+        const targetQuat = new THREE.Quaternion().multiplyQuaternions(yawObject.quaternion, yawOffset);
+        root.quaternion.slerp(targetQuat, 0.1);
+        const newPos = root.position;
+        const move = moveVector.clone().multiplyScalar(transformComponent.moveSpeed * dt);
+        newPos.add(move);
+        yawObject.position.copy(newPos);
+        yawObject.position.y += Shared.cameraHeight; //keep same height for now
+
+
+
+        //animations
+        // if (
+        //     Actions.moveCamLeft ||
+        //     Actions.moveCamRight ||
+        //     Actions.moveCamFront ||
+        //     Actions.moveCamBack
+        // ) playClip(Shared.playerState,Shared.ANIM_WALK_NAME_L);
+        // else stopClip(Shared.playerState);
+
+        if (ActionsOnce.startEditor) 
+            this.game.stateManager.setState('editor');
+        // if (ActionsOnce.jump) jump();
+        // if (ActionsOnce.interact) interact();
+        // if (ActionsOnce.hideCol) toggleHideCollider();
+        // if (ActionsOnce.toggleInventory) Shared.toggleInventory();
+
+        // if (ActionsOnce.Item1) Shared.highlightSelectedSlot(1);
+        // if (ActionsOnce.Item2) Shared.highlightSelectedSlot(2);
+        // if (ActionsOnce.Item3) Shared.highlightSelectedSlot(3);
+        // if (ActionsOnce.Item4) Shared.highlightSelectedSlot(4);
+        // if (ActionsOnce.Item5) Shared.highlightSelectedSlot(5);
+        // if (ActionsOnce.Item6) Shared.highlightSelectedSlot(6);
+        // if (ActionsOnce.Item7) Shared.highlightSelectedSlot(7);
+
+
+        //transform component
+        
+
+
+
+
+
+
+
+
+
+
+        //clear the onpress/onrelease actions now that they have been sampled
+        //in that loop to avoid resampling
+        for (let key in this.ActionsOnce) this.ActionsOnce[key] = false;
 
     }
+
+    render(dt) {
+        const renderer = this.game.renderer;
+        const canvasContainer = this.game.canvasContainer;
+        const scene = this.game.scene;
+        const camera = this.game.camera;
+        renderer.setViewport(0, 0, canvasContainer.clientWidth, canvasContainer.clientHeight);//TODO: you just need to do that once?
+        renderer.render(scene, camera);        
+
+        this.fpsPanel.end(); //end measuring frame
+    }
+
 
 }
 

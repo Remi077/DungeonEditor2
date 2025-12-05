@@ -1,5 +1,6 @@
 export default class WeaponComponent {
     constructor() {
+        this.type = 'Weapon';
         this.weapon = null;
         this.weaponBody = null;
         this.weaponBodyDesc = null;

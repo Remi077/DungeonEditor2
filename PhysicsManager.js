@@ -140,6 +140,25 @@ export default class PhysicsManager {
         return col;
     }
 
+    createKinematicRigidBody(translation) {
+        const rigidBodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
+            .setTranslation( translation.x, translation.y, translation.z) // initial position
+        const rb = this.world.createRigidBody(rigidBodyDesc);
+        this.bodies.set(rb.handle, rb);
+        return rb;
+    }
+
+    createCapsuleCollider(radius, halfHeight, collisionGroup, rigidBody) {
+        const colliderDesc = RAPIER.ColliderDesc.capsule(halfHeight, radius)
+        .setFriction(0.9)
+        .setRestitution(0)
+        .setCollisionGroups(collisionGroup);
+
+        const col = this.world.createCollider(colliderDesc, rigidBody);
+        this.colliders.set(col.handle, col);
+        return col;
+    }
+
     getNumColliders() {
         return this.world.colliders.len();
     }

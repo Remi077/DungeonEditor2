@@ -10,6 +10,7 @@ export const ENEMY_STATES = {
 
 export default class AIComponent {
     constructor() {
+        this.type = 'AI';
         this.timeSinceLastCalculatedPath = Math.random() * calculatePathPeriod;
         this.pathBuffer = null;
         this.lastKnownPlayerPosition = null;

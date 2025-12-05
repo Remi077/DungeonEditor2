@@ -1,5 +1,6 @@
 export default class AnimatorComponent {
     constructor(skeleton = null, mixer = null) {
+        this.type = 'Animator';
         this.skeleton = skeleton;
         this.mixer = mixer;
         this.animationClips = new Map();   // name -> clip

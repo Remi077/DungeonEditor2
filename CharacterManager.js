@@ -1,8 +1,11 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'GLTFLoader';
 import * as Shared from '../Shared.js';
+import * as SkeletonUtils from 'SkeletonUtils';
 
+import Entity from './Entities/Entity.js'; // optional, for NPCs
 import TransformComponent from './Entities/Components/TransformComponent.js';
+import VisualComponent from './Entities/Components/VisualComponent.js';
 import PhysicsBodyComponent from './Entities/Components/PhysicsBodyComponent.js';
 import AnimatorComponent from './Entities/Components/AnimatorComponent.js';
 import PlayerControllerComponent from './Entities/Components/PlayerControllerComponent.js';
@@ -29,7 +32,8 @@ class CharacterPrefab {
         //Physics template
         this.capsuleRadius = Shared.playerRadius; //temp should be calculated from mesh BB or dedicated mesh
         this.capsuleHeight = Shared.playerHeight; // temp see above
-        this.colliderOffset = new THREE.Vector3();
+        this.colliderOffset = this.capsuleHeight * 0.5;
+        this.collisionGroup = null;
 
         this.isLoaded = false;
     }
@@ -66,7 +70,7 @@ export default class CharacterManager {
         this.computeColliderFromMesh(gltf.scene, this.prefab, isPlayerPrefab);        
 
         // 4. store the raw prefab for instancing
-        this.charaPrefabMap.set(characterType, gltf);
+        this.charaPrefabMap.set(characterType, this.prefab);
     }
 
     async loadGlb(arrayBuffer) {
@@ -158,25 +162,30 @@ export default class CharacterManager {
             const offsetRootToBody = worldCenter.clone().sub(meshWorldPos);
 
             // --- 5. Create reusable body and collider descriptors ---
-            const bodyDesc = {
+            const weaponBodyDesc = {
                 translation: worldCenter,
                 rotation: childRot,
             };
 
-            const colliderDesc = {
+            const weaponColliderDesc = {
                 halfExtents: halfExtents,
             };
 
             // --- 6. Collision groups ---
             if(isPlayerPrefab)
-                colliderDesc.collisionGroups = Shared.COL_MASKS.PLAYERWPN;
+                weaponColliderDesc.collisionGroups = Shared.COL_MASKS.PLAYERWPN;
             else
-                colliderDesc.collisionGroups = Shared.COL_MASKS.ENEMYWPN;
+                weaponColliderDesc.collisionGroups = Shared.COL_MASKS.ENEMYWPN;
 
             // --- 7. Store inside prefab ---
-            prefab.weaponBodyDesc = bodyDesc;
-            prefab.weaponColliderDesc = colliderDesc;
+            prefab.weaponBodyDesc = weaponBodyDesc;
+            prefab.weaponColliderDesc = weaponColliderDesc;
             prefab.weaponOffsetRootToBody.copy(offsetRootToBody);
+
+            // --- 8. Store collider info for character capsule ---
+            prefab.capsuleRadius = Shared.playerRadius; //temp should be calculated from mesh BB or dedicated mesh
+            prefab.capsuleHeight = Shared.playerHeight; // temp see above
+            prefab.collisionGroup = isPlayerPrefab ? Shared.COL_MASKS.PLAYER : Shared.COL_MASKS.ENEMY;
 
             // optionally:
             prefab.weaponName = relatedName;
@@ -209,18 +218,51 @@ export default class CharacterManager {
     }
 
     instantiateCharacter(prefab, options) {
-        const root = prefab.scene.clone(true);
+        const entity = new Entity();
+
+        const camPos = this.game.yawObject.position;
+        const rootPos = camPos.clone();
+        rootPos.y -= Shared.cameraHeight;
+        const bodyPos = rootPos.clone();
+        bodyPos.y += prefab.colliderOffset;
+
+        // 1. VisualComponent with cloned armature / skinned mesh
+        const root = SkeletonUtils.clone(prefab.root); // Clone skinned mesh + skeleton
+        const visualComponent = new VisualComponent(root)
+        visualComponent.setFrustumCulled(!(options?.isPlayer));
+
+        // 2. Traverse cloned root to find skeleton
+        let clonedSkeleton = null;
+        root.traverse(obj => {
+            if (obj.isSkinnedMesh && !clonedSkeleton) {
+                clonedSkeleton = obj.skeleton;
+            }
+        });
+
+        // 3. Create PhysicsBodyComponent with capsule collider
+        const physicsManager = this.game.systems.physicsManager;
+
+        const playerBody = physicsManager.createKinematicRigidBody(
+            bodyPos || new THREE.Vector3(0, 0, 0)
+        );
+        const playerCollider = physicsManager.createCapsuleCollider(
+             prefab.capsuleRadius,
+             (prefab.capsuleHeight * 0.5) - prefab.capsuleRadius,
+             prefab.collisionGroup
+        , playerBody);
+        const physicsBodyComponent = new PhysicsBodyComponent(playerBody, playerCollider);
+
 
         // Prepare animations
         const mixer = new THREE.AnimationMixer(root);
         const clips = prefab.animations;
 
-        const entity = new Entity();
 
-        //components
+        //add components
+        entity.addComponent(visualComponent);
         entity.addComponent(new TransformComponent());
-        //entity.addComponent(new PhysicsBodyComponent(playerBody, playerCollider));
-        //entity.addComponent(new AnimatorComponent(skeleton, mixer));
+        entity.addComponent(new AnimatorComponent(clonedSkeleton, mixer));
+        entity.addComponent(physicsBodyComponent);
         //entity.addComponent(new PlayerControllerComponent(inputManager));
         //entity.addComponent(new GameplayComponent());
         //entity.addComponent(new WeaponComponent());
@@ -233,8 +275,12 @@ export default class CharacterManager {
             entity.addComponent(new AIComponent());
         }
 
+
         // Add to scene
-        this.game.services.scene.add(root);
+        this.game.scene.add(root);
+
+        //move root to yawObject position
+        root.position.copy(rootPos);
 
         this.entities.push(entity);
 

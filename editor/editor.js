@@ -56,8 +56,6 @@ export default class EditorState {
         this.worldQuat = new THREE.Quaternion();
 
         //stats
-        this.fpsPanel = new Stats();//extra fps panel
-        this.fpsPanel.showPanel(0);//fps
         this.frameCount = 0;
         this.drawCalls = 0;
         this.lastFrameTime = 0;
@@ -139,6 +137,8 @@ export default class EditorState {
         this.uiPanel.appendChild(stats);
 
         // --- extra FPS Panel ---
+        this.fpsPanel = new Stats();//extra fps panel
+        this.fpsPanel.showPanel(0);//fps
         const fpsPanel = this.fpsPanel;
         Object.assign(fpsPanel.dom.style, {
             position: 'relative',
@@ -316,6 +316,11 @@ export default class EditorState {
         // Remove all UI
         if (this.uiPanel) this.uiPanel.remove();
         if (this.crosshair) this.crosshair.remove();
+        if (this.fpsPanel && this.fpsPanel.dom && this.fpsPanel.dom.parentNode) {
+            this.fpsPanel.dom.parentNode.removeChild(this.fpsPanel.dom);
+        }
+        // Optionally null out the reference
+        this.fpsPanel = null;
 
         if (this.styleTag) {
             this.styleTag.remove();
