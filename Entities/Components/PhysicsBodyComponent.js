@@ -17,5 +17,6 @@ export default class PhysicsBodyComponent {
         this.capsuleRadius = null;
         this.capsuleTotalHeight = null;
         this.capsuleCylinderHalfHeight = null;
+        this.collisionGroup = null;
     }
 }

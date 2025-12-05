@@ -32,7 +32,7 @@ class CharacterPrefab {
         //Physics template
         this.capsuleRadius = Shared.playerRadius; //temp should be calculated from mesh BB or dedicated mesh
         this.capsuleHeight = Shared.playerHeight; // temp see above
-        this.colliderOffset = this.capsuleHeight * 0.5;
+        this.offsetRootToBody = this.capsuleHeight * 0.5;
         this.collisionGroup = null;
 
         this.isLoaded = false;
@@ -224,7 +224,7 @@ export default class CharacterManager {
         const rootPos = camPos.clone();
         rootPos.y -= Shared.cameraHeight;
         const bodyPos = rootPos.clone();
-        bodyPos.y += prefab.colliderOffset;
+        bodyPos.y += prefab.offsetRootToBody;
 
         // 1. VisualComponent with cloned armature / skinned mesh
         const root = SkeletonUtils.clone(prefab.root); // Clone skinned mesh + skeleton
@@ -256,6 +256,8 @@ export default class CharacterManager {
         physicsBodyComponent.capsuleTotalHeight = prefab.capsuleHeight;
         physicsBodyComponent.capsuleCylinderHalfHeight = (prefab.capsuleHeight * 0.5) - prefab.capsuleRadius;
         physicsBodyComponent.kcc = physicsManager.createKCC();
+        physicsBodyComponent.collisionGroup = prefab.collisionGroup;
+        physicsBodyComponent.offsetRootToBody = prefab.offsetRootToBody;
 
         // Prepare animations
         const mixer = new THREE.AnimationMixer(root);

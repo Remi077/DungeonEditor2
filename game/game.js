@@ -404,6 +404,8 @@ export default class GameState {
         //fps counter
         this.fpsPanel.begin(); // start measuring frame
 
+
+        // gather inputs
         const Actions = this.Actions;
         const ActionsOnce = this.ActionsOnce;
 
@@ -416,6 +418,7 @@ export default class GameState {
         const worldQuat = this.worldQuat;
         const yawObject = this.game.yawObject;
 
+        // gather input
         moveVector.set(0,0,0);
         if (Actions.moveCamLeft)  moveVector.x = -1;
         if (Actions.moveCamRight) moveVector.x =  1;
@@ -423,21 +426,61 @@ export default class GameState {
         if (Actions.moveCamBack)  moveVector.z =  1;
         moveVector.normalize();
 
-        this.game.pitchObject.getWorldQuaternion(worldQuat);
+        // this.game.pitchObject.getWorldQuaternion(worldQuat);
+        this.game.yawObject.getWorldQuaternion(worldQuat);
         moveVector.applyQuaternion(worldQuat);
 
+        // calculate desired movement
         // Apply 180° yaw offset to align mesh (-Z forward) with camera (+Z forward)
         const yawOffset = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
         const targetQuat = new THREE.Quaternion().multiplyQuaternions(yawObject.quaternion, yawOffset);
-        root.quaternion.slerp(targetQuat, 0.1);
-        const newPos = root.position;
-        const move = moveVector.clone().multiplyScalar(transformComponent.moveSpeed * dt);
-        newPos.add(move);
-        yawObject.position.copy(newPos);
+        const slerpQuat = root.quaternion.clone().slerp(targetQuat, 0.1);
+        const move = moveVector.clone().multiplyScalar(transformComponent.moveSpeed);
+        let nextVerticalSpeed = 0
+        nextVerticalSpeed = Math.max(-Shared.maxFallSpeed, transformComponent.verticalSpeed - (Shared.gravity * dt));
+        move.y += nextVerticalSpeed
+        move.multiplyScalar(dt);
+
+        // check for collision and correct movement
+        const kcc = physicsBodyComponent.kcc;
+        physicsBodyComponent.kcc.computeColliderMovement(
+            physicsBodyComponent.collider,
+            move,
+            null,
+            physicsBodyComponent.collisionGroup,
+            null
+        );
+        const correctedMovement = kcc.computedMovement();
+        const correctedMovementVector = new THREE.Vector3(
+            correctedMovement.x,
+            correctedMovement.y,
+            correctedMovement.z
+        );
+        const grounded = kcc.computedGrounded();
+        const newPos = correctedMovementVector.clone().add(physicsBodyComponent.body.translation());
+        if (grounded) {
+            if (ActionsOnce.jump)
+                transformComponent.verticalSpeed = Shared.jumpSpeed;
+        } else { 
+            transformComponent.verticalSpeed = nextVerticalSpeed;
+        }
+
+        //update body position + rotation
+        physicsBodyComponent.body.setNextKinematicTranslation(newPos);
+        physicsBodyComponent.body.setNextKinematicRotation(slerpQuat);
+
+        // step physics world
+        this.game.systems.physicsManager.step(dt);
+
+        // update visual position + rotation
+        root.quaternion.copy(physicsBodyComponent.body.rotation());
+        root.position.copy(physicsBodyComponent.body.translation());
+        root.position.y -= physicsBodyComponent.offsetRootToBody;
+
+        // keep camera holder at same position as body
+        yawObject.position.copy(root.position);
         yawObject.position.y += Shared.cameraHeight; //keep same height for now
 
-        const kcc = physicsBodyComponent.kcc;
-        
 
         //animations
         // if (

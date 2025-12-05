@@ -160,7 +160,7 @@ export default class PhysicsManager {
     }
 
     createKCC(){
-        const kcc = Shared.physWorld.createCharacterController(Shared.skin); //0.1 is skin distance
+        const kcc = this.world.createCharacterController(Shared.skin); //0.1 is skin distance
         // Don’t allow climbing slopes larger than 45 degrees.
         kcc.setMaxSlopeClimbAngle(45 * Math.PI / 180);
         // Automatically slide down on slopes smaller than 30 degrees.

@@ -10,5 +10,6 @@ export default class TransformComponent {
         this.moveSpeed = moveSpeed;  // from characterState
         this.tweakPos = null;
         this.tweakRot = null;
+        this.verticalSpeed = 0;
     }
 }
