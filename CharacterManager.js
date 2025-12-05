@@ -252,6 +252,10 @@ export default class CharacterManager {
         , playerBody);
         const physicsBodyComponent = new PhysicsBodyComponent(playerBody, playerCollider);
 
+        physicsBodyComponent.capsuleRadius = prefab.capsuleRadius;
+        physicsBodyComponent.capsuleTotalHeight = prefab.capsuleHeight;
+        physicsBodyComponent.capsuleCylinderHalfHeight = (prefab.capsuleHeight * 0.5) - prefab.capsuleRadius;
+        physicsBodyComponent.kcc = physicsManager.createKCC();
 
         // Prepare animations
         const mixer = new THREE.AnimationMixer(root);
@@ -263,14 +267,13 @@ export default class CharacterManager {
         entity.addComponent(new TransformComponent());
         entity.addComponent(new AnimatorComponent(clonedSkeleton, mixer));
         entity.addComponent(physicsBodyComponent);
-        //entity.addComponent(new PlayerControllerComponent(inputManager));
         //entity.addComponent(new GameplayComponent());
         //entity.addComponent(new WeaponComponent());
         //entity.addComponent(new AIComponent()); // optional, for NPCs
 
         //add extra options
         if (options?.isPlayer) {
-            entity.addComponent(new PlayerControllerComponent(this.game.systems.input));
+            entity.addComponent(new PlayerControllerComponent(this.game.input));
         } else {
             entity.addComponent(new AIComponent());
         }

@@ -410,6 +410,7 @@ export default class GameState {
         const visualComponent = this.player.components['Visual'];
         const transformComponent = this.player.components['Transform'];
         const AnimatorComponent = this.player.components['Animator'];
+        const physicsBodyComponent = this.player.components['Physics'];
         const root = visualComponent.root;
         const moveVector = transformComponent.moveVector;
         const worldQuat = this.worldQuat;
@@ -435,7 +436,8 @@ export default class GameState {
         yawObject.position.copy(newPos);
         yawObject.position.y += Shared.cameraHeight; //keep same height for now
 
-
+        const kcc = physicsBodyComponent.kcc;
+        
 
         //animations
         // if (

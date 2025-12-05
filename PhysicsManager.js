@@ -159,6 +159,20 @@ export default class PhysicsManager {
         return col;
     }
 
+    createKCC(){
+        const kcc = Shared.physWorld.createCharacterController(Shared.skin); //0.1 is skin distance
+        // Don’t allow climbing slopes larger than 45 degrees.
+        kcc.setMaxSlopeClimbAngle(45 * Math.PI / 180);
+        // Automatically slide down on slopes smaller than 30 degrees.
+        kcc.setMinSlopeSlideAngle(40 * Math.PI / 180);
+        // Autostep if the step height is smaller than 0.5, its width is larger than 0.2,
+        // and allow stepping on dynamic bodies.
+        kcc.enableAutostep(0.5, 0.2, true);
+        // Snap to the ground if the vertical distance to the ground is smaller than 0.5.
+        kcc.enableSnapToGround(0.5);
+        return kcc;
+    }
+
     getNumColliders() {
         return this.world.colliders.len();
     }
