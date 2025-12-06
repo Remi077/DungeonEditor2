@@ -47,7 +47,7 @@ export default class CharacterManager {
 
         this.charaPrefabMap = new Map(); // multiple character types
 
-        this.entities = [];
+        // this.entities = [];
     }
 
     async loadCharacter(path, characterType) {
@@ -263,10 +263,15 @@ export default class CharacterManager {
         const mixer = new THREE.AnimationMixer(root);
         const clips = prefab.animations;
 
+        const transformComponent = new TransformComponent();
+        if (options?.isPlayer) {
+            // Apply 180° yaw offset to align mesh (-Z forward) with camera (+Z forward)
+            transformComponent.tweakRot = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+        }
 
         //add components
         entity.addComponent(visualComponent);
-        entity.addComponent(new TransformComponent());
+        entity.addComponent(transformComponent);
         entity.addComponent(new AnimatorComponent(clonedSkeleton, mixer));
         entity.addComponent(physicsBodyComponent);
         //entity.addComponent(new GameplayComponent());
@@ -287,7 +292,8 @@ export default class CharacterManager {
         //move root to yawObject position
         root.position.copy(rootPos);
 
-        this.entities.push(entity);
+        // this.entities.push(entity);
+        this.game.entities.push(entity);
 
         return entity;
     }

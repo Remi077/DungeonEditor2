@@ -241,10 +241,10 @@ export default class GameState {
         const input = this.game.input;
         input.clearAllListeners(); //important when switching state
 
-        input.on('keydown', (e) => {this.keydown(e) });
+        input.on('keydown', (e) => { this.keydown(e) });
         input.on('keyup', (e) => { this.keyup(e) });
-        input.on('keypressonce', (e) => {this.keypressonce(e) });
-        input.on('resize', (e) => {this.resize(e) });
+        input.on('keypressonce', (e) => { this.keypressonce(e) });
+        input.on('resize', (e) => { this.resize(e) });
         input.on('mousedown', (e) => { this.mousedown(e) });
         input.on('mouseup', (e) => { this.mouseup(e) });
         input.on('mousemove', (e) => { this.mousemove(e) });
@@ -260,8 +260,7 @@ export default class GameState {
         //initialize and place camera holder if not in scene
         const yawObject = this.game.yawObject;
         const pitchObject = this.game.pitchObject;
-        if (yawObject.parent !== this.game.scene)
-        {
+        if (yawObject.parent !== this.game.scene) {
             pitchObject.name = "pitchObject";
             pitchObject.add(this.game.camera);
             yawObject.name = "yawObject";
@@ -277,27 +276,27 @@ export default class GameState {
 
 
         //spawn player
-        this.player = this.game.systems.characterManager.spawnPlayer('player', 
+        this.player = this.game.systems.characterManager.spawnPlayer('player',
             yawObject.position.clone()
             // new THREE.Vector3(0,0,0)
         );
 
 
 
-    // // 1. Level is ready (already loaded by LevelManager)
-    // await this.game.systems.levelManager.ensureLoaded();
+        // // 1. Level is ready (already loaded by LevelManager)
+        // await this.game.systems.levelManager.ensureLoaded();
 
-    // // 2. Load the player
-    // const gltf = await this.game.systems.characterManager.loadCharacter('./assets/characters/player.glb');
+        // // 2. Load the player
+        // const gltf = await this.game.systems.characterManager.loadCharacter('./assets/characters/player.glb');
 
-    // // 3. Create player entity
-    // this.player = this.game.systems.characterManager.createPlayer(gltf);
+        // // 3. Create player entity
+        // this.player = this.game.systems.characterManager.createPlayer(gltf);
 
-    // // 4. Place player in scene
-    // this.game.scene.add(this.player.get(ModelComponent).object3D);
+        // // 4. Place player in scene
+        // this.game.scene.add(this.player.get(ModelComponent).object3D);
 
-    // // 5. Register in ECS
-    // this.game.ecs.register(this.player);
+        // // 5. Register in ECS
+        // this.game.ecs.register(this.player);
 
 
     }
@@ -324,14 +323,14 @@ export default class GameState {
             console.log("keypressonce", action);
             this.ActionsOnce[action] = true;
         }
-    }    
+    }
 
     mousedown(e) {
         const canvas = this.game.canvas;
         if (e.button === 2 &&
             document.pointerLockElement !== canvas) {
-                canvas.requestPointerLock();
-                this.crosshair.style.display = "block";
+            canvas.requestPointerLock();
+            this.crosshair.style.display = "block";
         }
     }
 
@@ -339,8 +338,8 @@ export default class GameState {
         const canvas = this.game.canvas;
         if (e.button === 2 &&
             document.pointerLockElement === canvas) {
-                document.exitPointerLock();
-                this.crosshair.style.display = "none";
+            document.exitPointerLock();
+            this.crosshair.style.display = "none";
         }
     }
 
@@ -405,84 +404,34 @@ export default class GameState {
         this.fpsPanel.begin(); // start measuring frame
 
 
-        // gather inputs
-        const Actions = this.Actions;
-        const ActionsOnce = this.ActionsOnce;
+        //loop through entities and update their rigidbodies        
+        const entities = this.game.entities;
+        for (let i = 0; i < entities.length; i++) {
+            const entity = entities[i];
 
-        const visualComponent = this.player.components['Visual'];
-        const transformComponent = this.player.components['Transform'];
-        const AnimatorComponent = this.player.components['Animator'];
-        const physicsBodyComponent = this.player.components['Physics'];
-        const root = visualComponent.root;
-        const moveVector = transformComponent.moveVector;
-        const worldQuat = this.worldQuat;
-        const yawObject = this.game.yawObject;
+            this.calculateDesiredMovement(dt, entity);
+            this.updateMeshRotPos(entity);
+            this.scheduleColliderMovement(entity);
 
-        // gather input
-        moveVector.set(0,0,0);
-        if (Actions.moveCamLeft)  moveVector.x = -1;
-        if (Actions.moveCamRight) moveVector.x =  1;
-        if (Actions.moveCamFront) moveVector.z = -1;
-        if (Actions.moveCamBack)  moveVector.z =  1;
-        moveVector.normalize();
-
-        // this.game.pitchObject.getWorldQuaternion(worldQuat);
-        this.game.yawObject.getWorldQuaternion(worldQuat);
-        moveVector.applyQuaternion(worldQuat);
-
-        // calculate desired movement
-        // Apply 180° yaw offset to align mesh (-Z forward) with camera (+Z forward)
-        const yawOffset = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
-        const targetQuat = new THREE.Quaternion().multiplyQuaternions(yawObject.quaternion, yawOffset);
-        const slerpQuat = root.quaternion.clone().slerp(targetQuat, 0.1);
-        const move = moveVector.clone().multiplyScalar(transformComponent.moveSpeed);
-        let nextVerticalSpeed = 0
-        nextVerticalSpeed = Math.max(-Shared.maxFallSpeed, transformComponent.verticalSpeed - (Shared.gravity * dt));
-        move.y += nextVerticalSpeed
-        move.multiplyScalar(dt);
-
-        // check for collision and correct movement
-        const kcc = physicsBodyComponent.kcc;
-        physicsBodyComponent.kcc.computeColliderMovement(
-            physicsBodyComponent.collider,
-            move,
-            null,
-            physicsBodyComponent.collisionGroup,
-            null
-        );
-        const correctedMovement = kcc.computedMovement();
-        const correctedMovementVector = new THREE.Vector3(
-            correctedMovement.x,
-            correctedMovement.y,
-            correctedMovement.z
-        );
-        const grounded = kcc.computedGrounded();
-        const newPos = correctedMovementVector.clone().add(physicsBodyComponent.body.translation());
-        if (grounded) {
-            if (ActionsOnce.jump)
-                transformComponent.verticalSpeed = Shared.jumpSpeed;
-        } else { 
-            transformComponent.verticalSpeed = nextVerticalSpeed;
         }
-
-        //update body position + rotation
-        physicsBodyComponent.body.setNextKinematicTranslation(newPos);
-        physicsBodyComponent.body.setNextKinematicRotation(slerpQuat);
 
         // step physics world
         this.game.systems.physicsManager.step(dt);
 
-        // update visual position + rotation
-        root.quaternion.copy(physicsBodyComponent.body.rotation());
-        root.position.copy(physicsBodyComponent.body.translation());
-        root.position.y -= physicsBodyComponent.offsetRootToBody;
+        // sync the mesh position/rotation with physics bodies
+        // for (let i = 0; i < entities.length; i++) {
+        //     const entity = entities[i];
+        //     this.syncMeshToRigidBody(entity);
+        // }
 
         // keep camera holder at same position as body
+        const yawObject = this.game.yawObject;
+        const root = this.player.components['Visual'].root;
         yawObject.position.copy(root.position);
         yawObject.position.y += Shared.cameraHeight; //keep same height for now
 
 
-        //animations
+        // update animations
         // if (
         //     Actions.moveCamLeft ||
         //     Actions.moveCamRight ||
@@ -491,7 +440,8 @@ export default class GameState {
         // ) playClip(Shared.playerState,Shared.ANIM_WALK_NAME_L);
         // else stopClip(Shared.playerState);
 
-        if (ActionsOnce.startEditor) 
+        const ActionsOnce = this.ActionsOnce;
+        if (ActionsOnce.startEditor)
             this.game.stateManager.setState('editor');
         // if (ActionsOnce.jump) jump();
         // if (ActionsOnce.interact) interact();
@@ -508,7 +458,7 @@ export default class GameState {
 
 
         //transform component
-        
+
 
 
 
@@ -531,11 +481,91 @@ export default class GameState {
         const scene = this.game.scene;
         const camera = this.game.camera;
         renderer.setViewport(0, 0, canvasContainer.clientWidth, canvasContainer.clientHeight);//TODO: you just need to do that once?
-        renderer.render(scene, camera);        
+        renderer.render(scene, camera);
 
         this.fpsPanel.end(); //end measuring frame
     }
 
+    calculateDesiredMovement(dt, entity) {
+        const PlayerControllerComponent = entity.components['PlayerController'];
+        const transformComponent = entity.components['Transform'];
+        const visualComponent = this.player.components['Visual'];
+        const physicsBodyComponent = entity.components['Physics'];
+        const moveVector = transformComponent.moveVector;
+        const isPlayer = PlayerControllerComponent.isPlayer;
+        const root = visualComponent.root;
+        const yawObject = this.game.yawObject;
+
+        if (isPlayer) {
+
+            //calculate moveVector from inputs + camera orientation + vertical speed 
+            moveVector.set(0, 0, 0);
+            const Actions = this.Actions;
+            const ActionsOnce = this.ActionsOnce;
+            if (Actions.moveCamLeft) moveVector.x = -1;
+            if (Actions.moveCamRight) moveVector.x = 1;
+            if (Actions.moveCamFront) moveVector.z = -1;
+            if (Actions.moveCamBack) moveVector.z = 1;
+            moveVector.normalize();
+            this.game.yawObject.getWorldQuaternion(this.worldQuat);
+            moveVector.applyQuaternion(this.worldQuat);
+            moveVector.multiplyScalar(transformComponent.moveSpeed);
+            if (physicsBodyComponent.isTouchingGround) {
+                if (ActionsOnce.jump) {
+                    transformComponent.verticalSpeed = Shared.jumpSpeed;
+                } else {
+                    transformComponent.verticalSpeed = - 0.1; //small downward force to keep grounded
+                }
+            } else {
+                transformComponent.verticalSpeed = Math.max(-Shared.maxFallSpeed, transformComponent.verticalSpeed - (Shared.gravity * dt));
+            }
+            moveVector.y += transformComponent.verticalSpeed;
+            moveVector.multiplyScalar(dt);
+
+            //calculate desired rotation from camera orientation
+            const targetQuat = new THREE.Quaternion().multiplyQuaternions(yawObject.quaternion, transformComponent.tweakRot);
+            const slerpQuat = root.quaternion.clone().slerp(targetQuat, 0.1);
+            transformComponent.newRotation.copy(slerpQuat);
+
+        }
+    }
+
+    updateMeshRotPos(entity) {
+        const physicsBodyComponent = entity.components['Physics'];
+        const visualComponent = entity.components['Visual'];
+        const transformComponent = entity.components['Transform'];
+        const root = visualComponent.root;
+        //update rotation
+        root.quaternion.copy(transformComponent.newRotation);
+        root.position.copy(transformComponent.newPosition);
+        root.position.y -= physicsBodyComponent.offsetRootToBody;
+    }
+
+    scheduleColliderMovement(entity) {
+        const physicsBodyComponent = entity.components['Physics'];
+        const transformComponent = entity.components['Transform'];
+        // check for collision and correct movement
+        const result = this.game.systems.physicsManager.scheduleColliderMovement(
+            physicsBodyComponent.kcc,
+            physicsBodyComponent.body,
+            physicsBodyComponent.collider,
+            transformComponent.moveVector,
+            transformComponent.newRotation,
+            physicsBodyComponent.collisionGroup
+        );
+        physicsBodyComponent.isTouchingGround = result.isTouchingGround;
+        transformComponent.newPosition = result.newPosition;
+    }
+
+    syncMeshToRigidBody(entity) {
+        const physicsBodyComponent = entity.components['Physics'];
+        const visualComponent = entity.components['Visual'];
+        this.game.systems.physicsManager.syncMeshToRigidBody(
+            visualComponent.root,
+            physicsBodyComponent.body,
+            physicsBodyComponent.offsetRootToBody
+        );
+    }
 
 }
 
@@ -597,7 +627,7 @@ export function startGameLoop() {
     if (firstInit) {
         firstInit = false;
 
-        Shared.buildInventoryGrid(4,8);
+        Shared.buildInventoryGrid(4, 8);
 
 
         const campos = Shared.yawObject.position;
@@ -610,7 +640,7 @@ export function startGameLoop() {
         const playerBodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
             .setTranslation(campos.x, campos.y + Shared.cameraHeightFromCapsuleCenter, campos.z); // initial position where camera is
 
-        const playerBody = Shared.createRigidBodyCustom(playerBodyDesc,"playerBody");
+        const playerBody = Shared.createRigidBodyCustom(playerBodyDesc, "playerBody");
 
         // --- Create character controller ---
         const kcc = Shared.physWorld.createCharacterController(Shared.skin); //0.1 is skin distance
@@ -631,11 +661,11 @@ export function startGameLoop() {
 
         // --- Create capsule collider ---
         const playerColliderDesc = RAPIER.ColliderDesc.capsule(Shared.playerState.capsuleCylinderhalfHeight, Shared.playerState.capsuleRadius)
-        .setFriction(0.9)
-        .setRestitution(0)
-        .setCollisionGroups(Shared.COL_MASKS.PLAYER);
+            .setFriction(0.9)
+            .setRestitution(0)
+            .setCollisionGroups(Shared.COL_MASKS.PLAYER);
         // .setFriction(1.5)
-            
+
         const playerCollider = Shared.createColliderCustom(playerColliderDesc, playerBody, "playerCollider");
 
         Shared.playerState.body = playerBody;
@@ -643,10 +673,10 @@ export function startGameLoop() {
         Shared.playerState.collider.userData.characterState = Shared.playerState;
         Shared.playerState.colliderDesc = playerColliderDesc;
         Shared.playerState.offsetRootToBody = new THREE.Vector3(
-            0,Shared.playerState.capsuleCylinderhalfHeight + Shared.playerState.capsuleRadius, 0
+            0, Shared.playerState.capsuleCylinderhalfHeight + Shared.playerState.capsuleRadius, 0
         );
         Shared.playerState.tweakRot = Math.PI
-        Shared.playerState.tweakPos = new THREE.Vector3(0.1,0,0.1);
+        Shared.playerState.tweakPos = new THREE.Vector3(0.1, 0, 0.1);
 
         Shared.playerState.kcc = kcc;
         Shared.playerState.attackDamageStart = 0.2;
@@ -660,8 +690,8 @@ export function startGameLoop() {
         // const enemyColliderDesc = RAPIER.ColliderDesc.capsule(Shared.halfHeight, Shared.playerRadius)
         EnemyTemplateState.capsuleTotalHeight = 1.8;
         EnemyTemplateState.capsuleRadius = 0.2;
-        EnemyTemplateState.capsuleCylinderhalfHeight = (EnemyTemplateState.capsuleTotalHeight/2) - 
-        EnemyTemplateState.capsuleRadius;
+        EnemyTemplateState.capsuleCylinderhalfHeight = (EnemyTemplateState.capsuleTotalHeight / 2) -
+            EnemyTemplateState.capsuleRadius;
         // const enemyColliderDesc = RAPIER.ColliderDesc.capsule(Shared.halfHeight, 0.3)
         const enemyColliderDesc = RAPIER.ColliderDesc.capsule(EnemyTemplateState.capsuleCylinderhalfHeight,
             EnemyTemplateState.capsuleRadius)
@@ -680,18 +710,18 @@ export function startGameLoop() {
         EnemyTemplateState.collisionmask = Shared.COL_MASKS.ENEMY
         EnemyTemplateState.colliderDesc = enemyColliderDesc
         // EnemyTemplateState.offsetRootToBody = new THREE.Vector3(0, Shared.halfHeight + Shared.playerRadius, 0);
-        EnemyTemplateState.offsetRootToBody = new THREE.Vector3(0, 
+        EnemyTemplateState.offsetRootToBody = new THREE.Vector3(0,
             EnemyTemplateState.capsuleCylinderhalfHeight + EnemyTemplateState.capsuleRadius, 0);
         EnemyTemplateState.attackDamageStart = 0.5;
-        EnemyTemplateState.attackDamageEnd = 0.5+0.3;
+        EnemyTemplateState.attackDamageEnd = 0.5 + 0.3;
         EnemyTemplateState.healthBar = GameHUD.createHealthBar(0.5, 0.05)
-        EnemyTemplateState.healthBar.position.y = Shared.playerHeight+0.3;
+        EnemyTemplateState.healthBar.position.y = Shared.playerHeight + 0.3;
         EnemyTemplateState.root.add(EnemyTemplateState.healthBar);
 
         /*--------------------------------------------*/
         // DEBUG ENEMY BY SEEING IT THROUGH THE WALLS //
         /*--------------------------------------------*/
-        if (0){
+        if (0) {
             let enemyMat = null;
 
             // Correct syntax: forEach(callback)
@@ -719,7 +749,7 @@ export function startGameLoop() {
         Shared.enemySpawnGroup.children.forEach(
             child => {
                 num--;
-                if (num<0) return;
+                if (num < 0) return;
                 const p = child.getWorldPosition(new THREE.Vector3());
                 const q = child.getWorldQuaternion(new THREE.Quaternion());
                 const myClonedEnemy = Shared.EnemyTemplateState.clone(
@@ -816,7 +846,7 @@ function gameLoop(now) {
         /*-----------------------------------------------------*/
         /* INITIALIZE PLAYER MOVE AND ROTATION BASED ON INPUTS */
         /*-----------------------------------------------------*/
-        if (!Shared.playerState.isInWater){
+        if (!Shared.playerState.isInWater) {
             Shared.playerState.moveVector.applyQuaternion(Shared.yawObject.quaternion);
         } else {
             const worldQuat = new THREE.Quaternion();
@@ -845,14 +875,14 @@ function gameLoop(now) {
 
         //check if player is in water
         const prevIsInWater = isInWater;
-        const belowChin  = Shared.yawObject.position.clone()
+        const belowChin = Shared.yawObject.position.clone()
         belowChin.y -= 0.3;
         isInWater = checkIsInWater(belowChin);
         if (!prevIsInWater && isInWater) console.log("ENTERSWATER");
         if (prevIsInWater && !isInWater) console.log("EXITSWATER");
         Shared.playerState.isInWater = isInWater;
         Shared.playerState.isAtSurface = false;
-        if (isInWater){
+        if (isInWater) {
             const isHeadInWater = checkIsInWater(Shared.yawObject.position);
             if (!isHeadInWater) {
                 console.log("ATSURFACE")
@@ -916,22 +946,22 @@ function enemyLoop() {
             const isAlive = ec.health > 0;
             let targetPos;
             let inReach;
-            
+
             // Compute direction but ignore vertical difference:
-            if (isAlive){
+            if (isAlive) {
                 // ec.enemyState = Shared.ENEMY_STATES.CHASE; //temp
 
 
                 //check if enemy sees player (dont do this every frame)
-                if (ec.timeSinceLastSightCheck > 0.3){
+                if (ec.timeSinceLastSightCheck > 0.3) {
                     ec.timeSinceLastSightCheck = 0;
                     ec.playerSeen = canEnemySeeTarget(ec, Shared.playerState.root)
                     if (ec.playerSeen) {
                         ec.lastSeenPlayerPosition = Shared.playerState.root.position.clone();
-                        console.log("PLAYER DETECTED at",ec.lastSeenPlayerPosition);
+                        console.log("PLAYER DETECTED at", ec.lastSeenPlayerPosition);
                         ec.timeSinceLastSeen = 0;
                     }
-                } else{
+                } else {
                     ec.timeSinceLastSightCheck += deltaTime;
                 }
 
@@ -939,7 +969,7 @@ function enemyLoop() {
 
                 // enemy state machine
 
-                switch (ec.enemyState){
+                switch (ec.enemyState) {
                     case Shared.ENEMY_STATES.IDLE:
                         //stay still
                         ec.moveVector.set(0, 0, 0);
@@ -949,7 +979,7 @@ function enemyLoop() {
                             ec.enemyState = Shared.ENEMY_STATES.CHASE;
                         }
                         //else after a certain time, patrol
-                        else if (ec.timeSinceChangedState > 5){
+                        else if (ec.timeSinceChangedState > 5) {
                             ec.timeSinceChangedState = 0;
                             if (ec.patrolPath.length > 0)
                                 ec.enemyState = Shared.ENEMY_STATES.PATROL;
@@ -960,14 +990,14 @@ function enemyLoop() {
                         playClip(ec, "Walk", true);
                         targetPos = ec.patrolPath[0].clone();
                         inReach = moveTo(ec, targetPos, 1);
-                        if (inReach) 
+                        if (inReach)
                             rotateLeft(ec.patrolPath)
                         //if detects player go to chase
                         if (ec.playerSeen) {
                             ec.enemyState = Shared.ENEMY_STATES.CHASE;
                         }
                         //else after a certain time, idle
-                        else if (ec.timeSinceChangedState > 10){//TODO: we could store in ec a random walk time (same for idle)
+                        else if (ec.timeSinceChangedState > 10) {//TODO: we could store in ec a random walk time (same for idle)
                             ec.timeSinceChangedState = 0;
                             ec.enemyState = Shared.ENEMY_STATES.IDLE;
                         }
@@ -981,12 +1011,12 @@ function enemyLoop() {
                             attack(ec);
                         //if line of sight breaks for a certain time, search
                         if (!ec.playerSeen) {
-                            console.log("timeSinceLastSeen",ec.timeSinceLastSeen)
+                            console.log("timeSinceLastSeen", ec.timeSinceLastSeen)
                             ec.timeSinceLastSeen += deltaTime;
                             if (ec.timeSinceLastSeen > 1) {
                                 console.log("SEARCH");
                                 ec.enemyState = Shared.ENEMY_STATES.SEARCH;
-                                if (1) drawDebugSphere(ec.lastSeenPlayerPosition,Shared.scene);
+                                if (1) drawDebugSphere(ec.lastSeenPlayerPosition, Shared.scene);
                             }
                         }
                         break;
@@ -1017,7 +1047,7 @@ function enemyLoop() {
                 updateEnemyPhysics(ec);
 
                 //disappear the health bar after a certain time showing up
-                if (ec.healthBar.visible){
+                if (ec.healthBar.visible) {
                     ec.timeSinceHealthBarShowedUp += deltaTime;
                     if (ec.timeSinceHealthBarShowedUp > healthBarDuration)
                         ec.healthBar.visible = false;
@@ -1170,7 +1200,7 @@ function moveTo(enemycharacterState, targetPos, withinDistance) {
 
 function canEnemySeeTarget(ec, target, sightDistance = 10, fovDegrees = 90) {
     const targetPos = target.position.clone();
-    targetPos.y += Shared.playerHeight/2;//TOIMPROVE
+    targetPos.y += Shared.playerHeight / 2;//TOIMPROVE
     const enemyEyes = ec.root.position.clone();
     enemyEyes.y += (ec.capsuleTotalHeight * 0.9);
 
@@ -1187,9 +1217,9 @@ function canEnemySeeTarget(ec, target, sightDistance = 10, fovDegrees = 90) {
         (ec.enemyState === Shared.ENEMY_STATES.IDLE) ||
         (ec.enemyState === Shared.ENEMY_STATES.PATROL)
     ) //when in chase/search mode enemy can see from all angles (otherwise too easy to run in the back of enemies)
-    {        
+    {
         if (angle > THREE.MathUtils.degToRad(fovDegrees / 2)) return false; // outside FOV
-    
+
     }
     // 3️⃣ Collect raycastable objects
     const raycastTargets = [];
@@ -1214,7 +1244,7 @@ function canEnemySeeTarget(ec, target, sightDistance = 10, fovDegrees = 90) {
     // 5️⃣ Check if first hit is the target or its descendant    
     // Check if the first hit is target or a descendant of target
     let hitObj = intersects[0].object;
-    console.log("ENEMY" + ec.name + "sees "+hitObj.name);
+    console.log("ENEMY" + ec.name + "sees " + hitObj.name);
     while (hitObj) {
         if (hitObj === target) {
 
@@ -1227,7 +1257,7 @@ function canEnemySeeTarget(ec, target, sightDistance = 10, fovDegrees = 90) {
 
             // Toggle visibility
             Shared.debugLine.visible = true;
-            
+
             return true;
         }
         // Stop if we've reached a Group or the Scene
@@ -1366,7 +1396,7 @@ function executeActions() {
             Actions.moveCamRight ||
             Actions.moveCamFront ||
             Actions.moveCamBack
-        ) playClip(Shared.playerState,Shared.ANIM_WALK_NAME_L);
+        ) playClip(Shared.playerState, Shared.ANIM_WALK_NAME_L);
         else stopClip(Shared.playerState);
 
     } else {
@@ -1380,7 +1410,7 @@ function executeActions() {
 /*---------------------------------*/
 function jump() {
     // if (Shared.playerState.isTouchingGround)
-        Shared.playerState.jumpPressed = true;
+    Shared.playerState.jumpPressed = true;
 }
 
 /*---------------------------------*/
@@ -1392,15 +1422,15 @@ function computeNextPos(characterState, deltaTime) {
     const collider = characterState.collider;
     const movement = characterState.moveVector.clone().multiplyScalar(characterState.moveSpeed);
     let nextVerticalSpeed = 0
-    if (!characterState.isInWater){
+    if (!characterState.isInWater) {
         nextVerticalSpeed = Math.max(-Shared.maxFallSpeed, characterState.verticalSpeed - (Shared.gravity * deltaTime));
     } else {
-        nextVerticalSpeed = (Math.abs(characterState.verticalSpeed) < 0.00001) ? 0 : (characterState.verticalSpeed*0.93)
+        nextVerticalSpeed = (Math.abs(characterState.verticalSpeed) < 0.00001) ? 0 : (characterState.verticalSpeed * 0.93)
         // if (nextVerticalSpeed!=0)
-            // console.log(nextVerticalSpeed);
+        // console.log(nextVerticalSpeed);
     }
     movement.y += nextVerticalSpeed
-    
+
     //add repulsion forces from hit
     movement.add(characterState.hitRepulsionForce);
     // console.log(characterState.name,characterState.hitRepulsionForce);
@@ -1417,7 +1447,7 @@ function computeNextPos(characterState, deltaTime) {
     );
     let correctedMovement = kcc.computedMovement();
     let grounded = kcc.computedGrounded();
-    
+
     //collision debug
     for (let i = 0; i < kcc.numComputedCollisions(); i++) {
         let collision = kcc.computedCollision(i);
@@ -1430,18 +1460,18 @@ function computeNextPos(characterState, deltaTime) {
         (grounded && (!characterState.isInWater)) ||
         (characterState.isAtSurface) //you can jump when (grounded and not in water) or at surface of water
     ) {
-        if (characterState.jumpPressed){
+        if (characterState.jumpPressed) {
             characterState.verticalSpeed = Shared.jumpSpeed;
             // characterState.jumpPressed = false;
             console.log("jump");
         }
         // console.log("grounded"+characterState.verticalSpeed );
         // characterState.moveSpeed = Shared.moveSpeed; //TOFIX
-    }else{
+    } else {
         // console.log("notgrounded"+characterState.verticalSpeed );
         characterState.verticalSpeed = nextVerticalSpeed;//accumulate vertical speed
         // characterState.moveSpeed = Shared.moveSpeed*0.5; //TOFIX
-    } 
+    }
     characterState.jumpPressed = false;
 
     characterState.newPos = characterState.curPos.clone().add(correctedMovement);
@@ -1504,7 +1534,7 @@ function raycastActionnables() {
         ) {
             selectObject = closestHit.object;
             // if (selectObject.userData.actionnableParent != null)
-                // selectObject = selectObject.userData.actionnableParent
+            // selectObject = selectObject.userData.actionnableParent
         }
     }
 
@@ -1514,7 +1544,7 @@ function raycastActionnables() {
 // onMouseClick
 /*---------------------------------*/
 function onMouseClick(event) {
-    if (!Shared.inventoryOpen){
+    if (!Shared.inventoryOpen) {
         if (selectObject) {
             selectObject?.userData?.actionnableData?.action(selectObject, Shared.playerState);
         }
@@ -1528,13 +1558,13 @@ function onMouseClick(event) {
 // syncCameraTo
 /*---------------------------------*/
 // const camPlayerTweak = new THREE.Vector3(0,Shared.cameraHeightFromCapsuleCenter + 0.2,0);
-const camPlayerTweak = new THREE.Vector3(0,Shared.cameraHeightFromCapsuleCenter,0);
-function syncCameraTo(characterState, tweak=null) {
+const camPlayerTweak = new THREE.Vector3(0, Shared.cameraHeightFromCapsuleCenter, 0);
+function syncCameraTo(characterState, tweak = null) {
     const t = characterState.newPos;
     Shared.yawObject.position.set(
-        t.x + (tweak ? tweak.x : 0), 
-        t.y + (tweak ? tweak.y : 0), 
-        t.z + (tweak ? tweak.z : 0) );
+        t.x + (tweak ? tweak.x : 0),
+        t.y + (tweak ? tweak.y : 0),
+        t.z + (tweak ? tweak.z : 0));
 }
 
 const psyncObjectTo = new THREE.Vector3();
@@ -1696,17 +1726,17 @@ function animateLoop() {
     Shared.enemyGroup.children.forEach(enemy => {
         const ec = Shared.characterStateNameMap.get(enemy.userData.name);
         const isAlive = ec.health > 0;
-        if (isAlive){
-            switch (ec.enemyState){
+        if (isAlive) {
+            switch (ec.enemyState) {
                 case Shared.ENEMY_STATES.PATROL:
-                    makeRigLookAt(ec,ec.patrolPath[0]);
-                break;
+                    makeRigLookAt(ec, ec.patrolPath[0]);
+                    break;
                 case Shared.ENEMY_STATES.CHASE:
-                    makeRigLookAt(ec,Shared.yawObject);
-                break;
+                    makeRigLookAt(ec, Shared.yawObject);
+                    break;
                 case Shared.ENEMY_STATES.SEARCH:
-                    makeRigLookAt(ec,ec.lastSeenPlayerPosition);
-                break;
+                    makeRigLookAt(ec, ec.lastSeenPlayerPosition);
+                    break;
             }
         }
     })
@@ -1718,7 +1748,7 @@ function animateLoop() {
 /*----------------*/
 /* playClip */
 /*----------------*/
-function playClip(characterState,clipName,r=false, v=false) {
+function playClip(characterState, clipName, r = false, v = false) {
     // const clipInfo = Shared.clipActions.get(clipName);
     const nextAction = characterState.animationActions.get(clipName);
     const currentMixer = characterState.mixer;
@@ -1728,8 +1758,8 @@ function playClip(characterState,clipName,r=false, v=false) {
     if (!r)
         nextAction.reset().play();//start next action before fading out previous one
 
-    if (r){
-    //start at random point in the anim
+    if (r) {
+        //start at random point in the anim
         const clip = nextAction.getClip();
         const randomOffset = Math.random() * clip.duration;
         nextAction.reset();
@@ -1740,9 +1770,10 @@ function playClip(characterState,clipName,r=false, v=false) {
     if (characterState.currentAction && characterState.currentAction !== nextAction) {
         characterState.currentAction.crossFadeTo(nextAction, 0.3, true);
         // characterState.currentAction.crossFadeTo(nextAction, 0.9, true);
-        if (v)console.log("FADEOUT TO ",clipName);
+        if (v) console.log("FADEOUT TO ", clipName);
     } else {
-    if (v)console.log("SETACTION TO ",clipName);}
+        if (v) console.log("SETACTION TO ", clipName);
+    }
     // nextAction.reset().play();
     characterState.currentAction = nextAction;
 }
@@ -1751,11 +1782,11 @@ function playClip(characterState,clipName,r=false, v=false) {
 /*----------------*/
 /* playClipOnce */
 /*----------------*/
-function playClipOnce(characterState,clipName, clamp = true, endAction = null) {
+function playClipOnce(characterState, clipName, clamp = true, endAction = null) {
     // const clipInfo = Shared.clipActions.get(clipName);
     const nextAction = characterState.animationActions.get(clipName);
-    if (nextAction === undefined){
-        console.warn(clipName+" is not a valid clip for character "+characterState.name);
+    if (nextAction === undefined) {
+        console.warn(clipName + " is not a valid clip for character " + characterState.name);
         return;
     }
     const currentMixer = characterState.mixer;
@@ -1830,7 +1861,7 @@ function attack(characterState) {
         characterState.isAttacking = true;
 
         const clampAttackAnimation = characterState.isPlayer; //clamp attack last frame if player
-        playClipOnce(characterState,Shared.ANIM_ATTACK_NAME, clampAttackAnimation, ()=>endAttack(characterState));
+        playClipOnce(characterState, Shared.ANIM_ATTACK_NAME, clampAttackAnimation, () => endAttack(characterState));
         characterState.attackLoopId = requestAnimationFrame(() => attackLoop(characterState));
         characterState.timeSinceStartAttack = 0;
     }
@@ -1841,7 +1872,7 @@ function attack(characterState) {
 /* endAttack */
 /*----------------*/
 function endAttack(characterState) {
-    console.log(characterState.name+"ENDATTACK");
+    console.log(characterState.name + "ENDATTACK");
     characterState.isAttacking = false;
     cancelAnimationFrame(characterState.attackLoopId);
 }
@@ -1850,10 +1881,10 @@ function attackLoop(characterState) {
 
     characterState.timeSinceStartAttack += deltaTime;
     if (
-        characterState.isAttacking && 
+        characterState.isAttacking &&
         characterState.timeSinceStartAttack >= characterState.attackDamageStart &&
-        ( characterState.attackDamageEnd ?
-            (characterState.timeSinceStartAttack < characterState.attackDamageEnd) : true )
+        (characterState.attackDamageEnd ?
+            (characterState.timeSinceStartAttack < characterState.attackDamageEnd) : true)
     ) {
 
         // console.log("attackloop")
@@ -1869,13 +1900,14 @@ function attackLoop(characterState) {
             pos, //shapePos: pos,
             rot, //shapeRot: rot,
             weaponColliderDesc.shape, //shape: weaponColliderDesc.shape,
-            (otherCollider) =>{
+            (otherCollider) => {
                 const hitCharacter = otherCollider.userData?.characterState
-                console.log("enemy hit something",otherCollider.userData?.name)
+                console.log("enemy hit something", otherCollider.userData?.name)
                 // const hitCharacter = Shared.characterStateNameMap.get(otherCollider.name);
                 if (hitCharacter) {
-                    console.log("HIT",hitCharacter.name);
-                    hitCollider(hitCharacter, characterState);}
+                    console.log("HIT", hitCharacter.name);
+                    hitCollider(hitCharacter, characterState);
+                }
             }
             , //callback: null, // callback: (collider: Collider) => boolean,
             null, //filterFlags?: QueryFilterFlags,
@@ -1896,7 +1928,7 @@ const invincibleDuration = 1;//1s
 const repulsionDuration = 0.3;//1s
 const maxHitRepulsionForce = 5;//1s
 const healthBarDuration = 3;//time showing health bar after hit
-function hitCollider(hitCharacter, hitter){
+function hitCollider(hitCharacter, hitter) {
 
     if (hitCharacter.invincibility || hitCharacter.health <= 0) {
         // console.log("hitCollider skip")
@@ -1907,7 +1939,7 @@ function hitCollider(hitCharacter, hitter){
     console.log("hitCharacter ", hitCharacter.name)
     // hitCharacter.health -= 10;
     hitCharacter.health -= 50;
-    if (hitCharacter.isPlayer){
+    if (hitCharacter.isPlayer) {
         GameHUD.updateHealthBar(hitCharacter.health, hitCharacter.maxHealth);
     } else {
         GameHUD.updateFloatingHealthBar(hitCharacter);
@@ -1925,36 +1957,39 @@ function hitCollider(hitCharacter, hitter){
         // stopClip(hitCharacter);
         if (hitCharacter.isPlayer) {
             Shared.setMode(Shared.MODEGAMEOVER);
-        }else{
+        } else {
             stopAllActions(hitCharacter);
-            playClipOnce(hitCharacter,"Die",true,die);}
+            playClipOnce(hitCharacter, "Die", true, die);
+        }
     } else {
-        hitCharacter.root.traverse((child) =>{
+        hitCharacter.root.traverse((child) => {
             // if (child.isSkinnedMesh){
-            if (child.isMesh && 
+            if (child.isMesh &&
                 (child.name !== "hp_bg") && (child.name !== "hp_fg")
-            ){
+            ) {
                 child.material?.color?.set(0xff0000);
-            }}
-        )        
-        playClipOnce(hitCharacter,"Hurt",false);
+            }
+        }
+        )
+        playClipOnce(hitCharacter, "Hurt", false);
         endAttack(hitCharacter); //character cancels his attack when hurt
         requestAnimationFrame(() => invincibleFrames(hitCharacter));
     }
     // invincibleFrames(hitCharacter);
-    
+
 }
 
-function invincibleFrames(hitCharacter){
+function invincibleFrames(hitCharacter) {
     hitCharacter.timeSinceLastHit += deltaTime;
     if (hitCharacter.timeSinceLastHit > repulsionDuration) {
         hitCharacter.hitRepulsionForce.set(0, 0, 0);
-        hitCharacter.root.traverse((child) =>{
+        hitCharacter.root.traverse((child) => {
             // if (child.isSkinnedMesh){
-            if (child.isMesh && 
-                (child.name !== "hp_bg") && (child.name !== "hp_fg")){
+            if (child.isMesh &&
+                (child.name !== "hp_bg") && (child.name !== "hp_fg")) {
                 child.material?.color?.set(0xffffff);
-            }}
+            }
+        }
         )
     }
     if (hitCharacter.timeSinceLastHit > invincibleDuration) {
@@ -1970,7 +2005,7 @@ function invincibleFrames(hitCharacter){
     }
 }
 
-function die(thisCharacter){
+function die(thisCharacter) {
     thisCharacter.body.setEnabled(false);
     thisCharacter.healthBar.visible = false;
     Shared.physWorld.removeCollider(thisCharacter.collider, true);
@@ -2028,7 +2063,7 @@ function checkIsInWater(point) {
     let isWater = false;
 
     Shared.physWorld.intersectionsWithPoint(
-        point, 
+        point,
         (h) => {
             if (!isWater) {
                 // const col = Shared.physWorld.getCollider(h);

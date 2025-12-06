@@ -265,6 +265,36 @@ export default class PhysicsManager {
         }
     }
 
+    scheduleColliderMovement(kcc, body, collider, desiredMovement, desiredRotation, collisionGroups=null) {
+        kcc.computeColliderMovement(
+            collider,
+            desiredMovement,
+            null,
+            collisionGroups,
+            null
+        );
+        const correctedMovement = kcc.computedMovement();
+        const correctedMovementVector = new THREE.Vector3(
+            correctedMovement.x,
+            correctedMovement.y,
+            correctedMovement.z
+        );
+        const newPos = correctedMovementVector.clone().add( body.translation() );
+        body.setNextKinematicTranslation(newPos);
+        body.setNextKinematicRotation(desiredRotation);
+        return {
+            newPosition: newPos,
+            isTouchingGround: kcc.computedGrounded()
+        };
+    }
+
+    syncMeshToRigidBody(mesh, rigidBody, offset = new THREE.Vector3(0,0,0)) {
+        const t = rigidBody.translation();
+        const r = rigidBody.rotation();
+        mesh.position.set(t.x + offset.x, t.y + offset.y, t.z + offset.z);
+        mesh.quaternion.set(r.x, r.y, r.z, r.w);
+    }
+
     //visibility helpers
     hide() {
         this.debugLines.visible = false;

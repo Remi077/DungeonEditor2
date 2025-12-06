@@ -8,7 +8,6 @@ export default class PhysicsBodyComponent {
         this.colliderDesc = colliderDesc;
         this.kcc = null;
         this.offsetRootToBody = null;
-        this.verticalSpeed = 0;
         this.jumpPressed = false;
         this.isTouchingGround = false;
         this.isTouchingCeiling = false;
