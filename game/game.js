@@ -480,7 +480,7 @@ export default class GameState {
         if (ActionsOnce.startEditor)
             this.game.stateManager.setState('editor');
         // if (ActionsOnce.jump) jump();
-        // if (ActionsOnce.interact) interact();
+        if (ActionsOnce.interact) interact();
         if (ActionsOnce.hideCol) {this.game.systems.physicsManager.toggle();};
         // if (ActionsOnce.toggleInventory) Shared.toggleInventory();
 
@@ -511,6 +511,12 @@ export default class GameState {
 
     }
 
+    interact(){
+        console.log("interact");
+        //perform raycast from camera center
+        //if object hit is interactable, call its interact function component
+    }
+
     render(dt) {
         const renderer = this.game.renderer;
         const canvasContainer = this.game.canvasContainer;
@@ -527,9 +533,9 @@ export default class GameState {
         const transformComponent = entity.components['Transform'];
         const visualComponent = this.player.components['Visual'];
         const physicsBodyComponent = entity.components['Physics'];
-        const moveVector = transformComponent.moveVector;
-        const isPlayer = PlayerControllerComponent.isPlayer;
-        const root = visualComponent.root;
+        const moveVector = transformComponent?.moveVector;
+        const isPlayer = PlayerControllerComponent?.isPlayer;
+        const root = visualComponent?.root;
         const yawObject = this.game.yawObject;
 
         if (isPlayer) {
@@ -574,7 +580,7 @@ export default class GameState {
         //update rotation
         root.quaternion.copy(transformComponent.newRotation);
         root.position.copy(transformComponent.newPosition);
-        root.position.y -= physicsBodyComponent.offsetRootToBody;
+        root.position.sub(physicsBodyComponent?.offsetRootToBody);
     }
 
     scheduleColliderMovement(entity) {

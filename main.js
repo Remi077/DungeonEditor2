@@ -22,6 +22,7 @@ import PhysicsManager from './PhysicsManager.js';
 import LevelManager from './LevelManager.js';
 import CharacterManager from './CharacterManager.js';
 import AnimatorManager from './AnimatorManager.js';
+import InteractableManager from './InteractableManager.js';
 // import * as Stats from '../GameStats.js';
 
 /*-----------------------------------------------------*/
@@ -190,15 +191,14 @@ const game = {
         levelManager: null,
         characterManager: null,
         AnimatorManager: new AnimatorManager(),
-        //movement: new MovementSystem(),
+        interactableManager: new InteractableManager(),
         //ai: new AISystem(),
-        //animation: new AnimationSystem(),
     },
     entities: [],
     stateManager: stateManager
 }
 
-game.systems.levelManager = new LevelManager(game.scene, game.systems.physicsManager);
+game.systems.levelManager = new LevelManager(game);
 game.systems.characterManager = new CharacterManager(game);
 
 //tweaks

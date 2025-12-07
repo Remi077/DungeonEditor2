@@ -12,6 +12,5 @@ export default class TransformComponent {
         this.verticalSpeed = 0;
         this.tweakPos = null;
         this.tweakRot = null;
-        this.verticalSpeed = 0;
     }
 }

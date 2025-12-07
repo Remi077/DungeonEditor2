@@ -94,7 +94,7 @@ export default class PhysicsManager {
             .setTranslation(center.x, center.y, center.z)
             .setRotation(mesh.quaternion);
 
-        const body = this.createRigidBody(bodyDesc);
+        const body = this.createRigidBody(bodyDesc, { userData: { name: mesh.name } });
 
         const colliderDesc = RAPIER.ColliderDesc.cuboid(
             halfExtents.x,
@@ -123,9 +123,10 @@ export default class PhysicsManager {
         return { halfExtents: size.multiplyScalar(0.5), center: worldCenter };
     }
 
-    createRigidBody(options) {
-        const rb = this.world.createRigidBody(options);
+    createRigidBody(bodydesc, options) {
+        const rb = this.world.createRigidBody(bodydesc);
         this.bodies.set(rb.handle, rb);
+        rb.userData = options.userData || null;
         return rb;
     }
 
@@ -140,12 +141,22 @@ export default class PhysicsManager {
         return col;
     }
 
-    createKinematicRigidBody(translation) {
+    createKinematicRigidBody(translation,name) {
         const rigidBodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
             .setTranslation( translation.x, translation.y, translation.z) // initial position
         const rb = this.world.createRigidBody(rigidBodyDesc);
+        rb.userData = { name };
         this.bodies.set(rb.handle, rb);
         return rb;
+    }
+
+    getRigidBodyByName(name) {
+        for (const rb of this.bodies.values()) {
+            if (rb.userData && rb.userData.name === name) {
+                return rb;
+            }
+        }
+        return null;
     }
 
     createCapsuleCollider(radius, halfHeight, collisionGroup, rigidBody) {
