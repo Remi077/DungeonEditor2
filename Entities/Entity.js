@@ -1,6 +1,7 @@
 // @ts-nocheck
 export default class Entity {
-    constructor() {
+    constructor(name) {
+        this.name = name;
         this.components = {};
     }
     addComponent(component) {

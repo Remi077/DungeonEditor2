@@ -574,8 +574,9 @@ export default class GameState {
 
     updateMeshRotPos(entity) {
         const physicsBodyComponent = entity.components['Physics'];
-        const visualComponent = entity.components['Visual'];
         const transformComponent = entity.components['Transform'];
+        if (!transformComponent || !physicsBodyComponent) return;
+        const visualComponent = entity.components['Visual'];
         const root = visualComponent.root;
         //update rotation
         root.quaternion.copy(transformComponent.newRotation);

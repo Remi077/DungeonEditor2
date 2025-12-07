@@ -136,7 +136,7 @@ export default class LevelManager {
             const transformComponent = new TransformComponent()
             
             //new entity
-            const entity = new Entity();
+            const entity = new Entity(child.name);
 
             //animator component
             if (animatedSet.has(child.name)) {
@@ -179,7 +179,7 @@ export default class LevelManager {
 
             // add visual and transform components
             entity.addComponent(visualComponent);
-            entity.addComponent(transformComponent);
+            // entity.addComponent(transformComponent);
             entity.addComponent(new InteractableComponent(
                 () => {
                  this.game.systems.interactableManager.doorInteract(entity);   //interaction logic here

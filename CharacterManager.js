@@ -218,7 +218,7 @@ export default class CharacterManager {
     }
 
     instantiateCharacter(prefab, options) {
-        const entity = new Entity();
+        const entity = new Entity(prefab.name);
 
         const camPos = this.game.yawObject.position;
         const rootPos = camPos.clone();
