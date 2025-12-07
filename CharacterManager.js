@@ -103,7 +103,7 @@ export default class CharacterManager {
             prefab.animationClips.set(clip.name, clip);
             if (clip.name === Shared.ANIM_WALK_NAME) {
                 const walkLowerClip = this.makePartialClip(clip, Shared.lowerBodyBones);
-                prefab.animationClips.set(walkLowerClip.name, walkLowerClip);
+                prefab.animationClips.set(Shared.ANIM_WALK_NAME_L, walkLowerClip);
             }
         });
     }
@@ -261,7 +261,7 @@ export default class CharacterManager {
 
         // Prepare animations
         const mixer = new THREE.AnimationMixer(root);
-        const clips = prefab.animations;
+        // const clips = prefab.animations;
 
         const transformComponent = new TransformComponent();
         if (options?.isPlayer) {
@@ -269,10 +269,32 @@ export default class CharacterManager {
             transformComponent.tweakRot = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
         }
 
+        //AnimatorComponent
+        const animatorComponent = new AnimatorComponent(clonedSkeleton, mixer);
+        prefab.animationClips.forEach((clip, name) => {
+            animatorComponent.animationClips.set(name, clip);
+            const action = mixer.clipAction(clip);
+                console.log("Clip duration:", clip.name, action._clip.duration);
+            // console.log("Clip:", clip.name, action);
+            // console.log("Tracks:", action._clip.tracks.map(t => t.name));
+            // console.log("Bones:");
+            // root.traverse(o => { if (o.isBone) console.log(o.name); });
+            // detect attack clips by name or metadata
+            if (clip.name.startsWith("Attack")) {
+                console.log("Clip duration:", action._clip.duration);
+                action.setLoop(THREE.LoopOnce, 0);
+                action.clampWhenFinished = true;   // <- KEEPS last frame visible
+                // action.enabled = true;
+            }
+            animatorComponent.animationActions.set(name, action);
+        });
+        animatorComponent.weaponBone = clonedSkeleton.getBoneByName(prefab.weaponBoneName);
+        animatorComponent.headBone = clonedSkeleton.getBoneByName("Head");
+
         //add components
         entity.addComponent(visualComponent);
         entity.addComponent(transformComponent);
-        entity.addComponent(new AnimatorComponent(clonedSkeleton, mixer));
+        entity.addComponent(animatorComponent);
         entity.addComponent(physicsBodyComponent);
         //entity.addComponent(new GameplayComponent());
         //entity.addComponent(new WeaponComponent());

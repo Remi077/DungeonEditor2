@@ -6,6 +6,7 @@ import * as Shared from '../Shared.js';
 import * as GameHUD from './GameHUD.js';
 import Pathfinding from "three-pathfinding";
 import Stats from "stats.js";
+import AnimatorManager from '../AnimatorManager.js';
 
 
 export default class GameState {
@@ -65,7 +66,7 @@ export default class GameState {
                 font-size: 24px;
                 pointer-events: none;
                 z-index: 10;
-                display: none;
+                display: block;
                 top: 50%;
                 left: 50%;
                 transform: translate(-50%, -50%);
@@ -233,6 +234,10 @@ export default class GameState {
         });
         this.game.mainContainer.appendChild(fpsPanel.dom);
 
+        // lock pointer on click canvas
+        const canvas = this.game.canvas;
+        canvas.requestPointerLock();
+
         //clear all game actions
         this.Actions = {};
         this.ActionsOnce = {};
@@ -276,10 +281,12 @@ export default class GameState {
 
 
         //spawn player
-        this.player = this.game.systems.characterManager.spawnPlayer('player',
-            yawObject.position.clone()
-            // new THREE.Vector3(0,0,0)
-        );
+        if (!this.player){
+            this.player = this.game.systems.characterManager.spawnPlayer('player',
+                yawObject.position.clone()
+                // new THREE.Vector3(0,0,0)
+            );
+        }
 
 
 
@@ -326,28 +333,34 @@ export default class GameState {
     }
 
     mousedown(e) {
-        const canvas = this.game.canvas;
-        if (e.button === 2 &&
-            document.pointerLockElement !== canvas) {
-            canvas.requestPointerLock();
-            this.crosshair.style.display = "block";
+        const animatorManager = this.game.systems.AnimatorManager;
+        if (e.button === 0) { //left click
+            animatorManager.play(this.player, Shared.ANIM_ATTACK_NAME);
+            // console.log("Play attack animation");
+            // animatorManager.play(this.player, "Attack_Right");
         }
+        // const canvas = this.game.canvas;
+        // if (e.button === 2 &&
+        //     document.pointerLockElement !== canvas) {
+        //     canvas.requestPointerLock();
+        //     this.crosshair.style.display = "block";
+        // }
     }
 
     mouseup(e) {
-        const canvas = this.game.canvas;
-        if (e.button === 2 &&
-            document.pointerLockElement === canvas) {
-            document.exitPointerLock();
-            this.crosshair.style.display = "none";
-        }
+        // const canvas = this.game.canvas;
+        // if (e.button === 2 &&
+        //     document.pointerLockElement === canvas) {
+        //     document.exitPointerLock();
+        //     this.crosshair.style.display = "none";
+        // }
     }
 
     mousemove(e) {
-        if (
-            !(this.game.input.isMouseDown(2)) //||
-            // !(this.game.input.isMouseOver(this.game.canvas))
-        ) return; //right click
+        // if (
+        //     !(this.game.input.isMouseDown(2)) //||
+        //     // !(this.game.input.isMouseOver(this.game.canvas))
+        // ) return; //right click
 
         const dx = e.movementX;
         const dy = e.movementY;
@@ -406,14 +419,37 @@ export default class GameState {
 
         //loop through entities and update their rigidbodies        
         const entities = this.game.entities;
+        const animatorManager = this.game.systems.AnimatorManager;
         for (let i = 0; i < entities.length; i++) {
             const entity = entities[i];
 
-            this.calculateDesiredMovement(dt, entity);
-            this.updateMeshRotPos(entity);
-            this.scheduleColliderMovement(entity);
+            //kinematic collider driven by animation
+            //update mesh and animation before scheduling collider movement
+            //as some colliders track a bone
+            this.calculateDesiredMovement(dt, entity); //calculate next position
+            this.updateMeshRotPos(entity); //apply it to mesh
+            animatorManager.update(dt, entity); //update skinnedmesh
+            this.scheduleColliderMovement(entity); //apply it to collider (schedule)
 
         }
+
+        //update animations
+        for (let i = 0; i < entities.length; i++) {
+            const entity = entities[i];
+            const Actions = this.Actions;
+            if (Actions.moveCamLeft ||
+            Actions.moveCamRight ||
+            Actions.moveCamFront ||
+            Actions.moveCamBack) {
+                animatorManager.play(entity, Shared.ANIM_WALK_NAME_L);
+                // animatorManager.play(entity, Shared.ANIM_ATTACK_NAME);
+            } else {
+                animatorManager.stop(entity, Shared.ANIM_WALK_NAME_L);
+            }
+            // animatorManager.play(entity, Shared.ANIM_ATTACK_NAME);
+        }
+
+        // animatorManager.update(dt, entities);
 
         // step physics world
         this.game.systems.physicsManager.step(dt);
@@ -445,7 +481,7 @@ export default class GameState {
             this.game.stateManager.setState('editor');
         // if (ActionsOnce.jump) jump();
         // if (ActionsOnce.interact) interact();
-        // if (ActionsOnce.hideCol) toggleHideCollider();
+        if (ActionsOnce.hideCol) {this.game.systems.physicsManager.toggle();};
         // if (ActionsOnce.toggleInventory) Shared.toggleInventory();
 
         // if (ActionsOnce.Item1) Shared.highlightSelectedSlot(1);

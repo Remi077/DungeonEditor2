@@ -21,6 +21,7 @@ import InputManager from './InputManager.js';
 import PhysicsManager from './PhysicsManager.js';
 import LevelManager from './LevelManager.js';
 import CharacterManager from './CharacterManager.js';
+import AnimatorManager from './AnimatorManager.js';
 // import * as Stats from '../GameStats.js';
 
 /*-----------------------------------------------------*/
@@ -188,6 +189,7 @@ const game = {
         physicsManager: new PhysicsManager(),
         levelManager: null,
         characterManager: null,
+        AnimatorManager: new AnimatorManager(),
         //movement: new MovementSystem(),
         //ai: new AISystem(),
         //animation: new AnimationSystem(),
