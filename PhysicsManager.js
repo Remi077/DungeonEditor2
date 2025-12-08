@@ -276,7 +276,7 @@ export default class PhysicsManager {
         }
     }
 
-    scheduleColliderMovement(kcc, body, collider, desiredMovement, desiredRotation, collisionGroups=null) {
+    calculateCorrectMovement(kcc, body, collider, desiredMovement, desiredRotation, collisionGroups=null) {
         kcc.computeColliderMovement(
             collider,
             desiredMovement,
@@ -291,12 +291,20 @@ export default class PhysicsManager {
             correctedMovement.z
         );
         const newPos = correctedMovementVector.clone().add( body.translation() );
-        body.setNextKinematicTranslation(newPos);
-        body.setNextKinematicRotation(desiredRotation);
+        // body.setNextKinematicTranslation(newPos);
+        // body.setNextKinematicRotation(desiredRotation);
         return {
             newPosition: newPos,
             isTouchingGround: kcc.computedGrounded()
         };
+    }
+
+    //sync body to mesh
+    scheduleSyncBody(body, target, off = new THREE.Vector3(0,0,0)) {
+        const newoff = off.clone().applyQuaternion(target.quaternion);
+        const newPos = target.position.clone().add(newoff);
+        body.setNextKinematicTranslation(newPos);
+        body.setNextKinematicRotation(target.quaternion);
     }
 
     syncMeshToRigidBody(mesh, rigidBody, offset = new THREE.Vector3(0,0,0)) {

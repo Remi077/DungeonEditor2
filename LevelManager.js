@@ -1,6 +1,6 @@
 // @ts-nocheck
 import * as THREE from 'three';
-import Entity from './Entities/Entity.js'; // optional, for NPCs
+import Entity, { ENTITY_TYPES } from './Entities/Entity.js'; // optional, for NPCs
 import { GLTFLoader } from 'GLTFLoader';
 import VisualComponent from './Entities/Components/VisualComponent.js';
 import TransformComponent from './Entities/Components/TransformComponent.js';
@@ -136,7 +136,7 @@ export default class LevelManager {
             const transformComponent = new TransformComponent()
             
             //new entity
-            const entity = new Entity(child.name);
+            const entity = new Entity(child.name, ENTITY_TYPES.ACTIONNABLE);
 
             //animator component
             if (animatedSet.has(child.name)) {
@@ -155,10 +155,13 @@ export default class LevelManager {
                     );
 
                     if (filtered.tracks.length > 0) {
+                        const action = mixer.clipAction(filtered);
+                        action.setLoop(THREE.LoopOnce, 0);
+                        action.clampWhenFinished = true;
                         animator.animationClips.set(clip.name, filtered);
                         animator.animationActions.set(
                             clip.name,
-                            mixer.clipAction(filtered)
+                            action
                         );
                     }
                 }
@@ -185,6 +188,9 @@ export default class LevelManager {
                  this.game.systems.interactableManager.doorInteract(entity);   //interaction logic here
                 }
             ));
+
+            //add a pointer to the entity on the mesh (for raycast)
+            child.userData.entity = entity;
 
             //add entity to game entities list
             this.game.entities.push(entity);

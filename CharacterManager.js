@@ -3,7 +3,7 @@ import { GLTFLoader } from 'GLTFLoader';
 import * as Shared from '../Shared.js';
 import * as SkeletonUtils from 'SkeletonUtils';
 
-import Entity from './Entities/Entity.js'; // optional, for NPCs
+import Entity, { ENTITY_TYPES } from './Entities/Entity.js'; // optional, for NPCs
 import TransformComponent from './Entities/Components/TransformComponent.js';
 import VisualComponent from './Entities/Components/VisualComponent.js';
 import PhysicsBodyComponent from './Entities/Components/PhysicsBodyComponent.js';
@@ -218,7 +218,7 @@ export default class CharacterManager {
     }
 
     instantiateCharacter(prefab, options) {
-        const entity = new Entity(prefab.name);
+        const entity = new Entity(prefab.name, ENTITY_TYPES.CHARACTER);
 
         const camPos = this.game.yawObject.position;
         const rootPos = camPos.clone();
@@ -274,14 +274,14 @@ export default class CharacterManager {
         prefab.animationClips.forEach((clip, name) => {
             animatorComponent.animationClips.set(name, clip);
             const action = mixer.clipAction(clip);
-                console.log("Clip duration:", clip.name, action._clip.duration);
+                // console.log("Clip duration:", clip.name, action._clip.duration);
             // console.log("Clip:", clip.name, action);
             // console.log("Tracks:", action._clip.tracks.map(t => t.name));
             // console.log("Bones:");
             // root.traverse(o => { if (o.isBone) console.log(o.name); });
             // detect attack clips by name or metadata
             if (clip.name.startsWith("Attack")) {
-                console.log("Clip duration:", action._clip.duration);
+                // console.log("Clip duration:", action._clip.duration);
                 action.setLoop(THREE.LoopOnce, 0);
                 action.clampWhenFinished = true;   // <- KEEPS last frame visible
                 // action.enabled = true;

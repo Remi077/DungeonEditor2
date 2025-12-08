@@ -1,3 +1,4 @@
+import { ENTITY_COMPONENT_TAGS } from '../Entity.js';
 export const calculatePathPeriod = 1.5;
 
 export const ENEMY_STATES = {
@@ -10,7 +11,7 @@ export const ENEMY_STATES = {
 
 export default class AIComponent {
     constructor() {
-        this.type = 'AI';
+        this.type = ENTITY_COMPONENT_TAGS.AI;
         this.timeSinceLastCalculatedPath = Math.random() * calculatePathPeriod;
         this.pathBuffer = null;
         this.lastKnownPlayerPosition = null;

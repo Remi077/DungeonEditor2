@@ -1,6 +1,8 @@
+import { ENTITY_COMPONENT_TAGS } from '../Entity.js';
+
 export default class WeaponComponent {
     constructor() {
-        this.type = 'Weapon';
+        this.type = ENTITY_COMPONENT_TAGS.WEAPON;
         this.weapon = null;
         this.weaponBody = null;
         this.weaponBodyDesc = null;

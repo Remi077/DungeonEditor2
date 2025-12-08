@@ -190,8 +190,8 @@ const game = {
         physicsManager: new PhysicsManager(),
         levelManager: null,
         characterManager: null,
-        AnimatorManager: new AnimatorManager(),
-        interactableManager: new InteractableManager(),
+        animatorManager: new AnimatorManager(),
+        interactableManager: null,
         //ai: new AISystem(),
     },
     entities: [],
@@ -200,6 +200,7 @@ const game = {
 
 game.systems.levelManager = new LevelManager(game);
 game.systems.characterManager = new CharacterManager(game);
+game.systems.interactableManager = new InteractableManager(game);
 
 //tweaks
 //tweak global renderer

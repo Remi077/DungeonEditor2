@@ -1,7 +1,26 @@
 // @ts-nocheck
+
+export const ENTITY_TYPES = {
+    CHARACTER : 'Character',
+    ACTIONNABLE : 'Actionnable',
+}
+
+export const ENTITY_COMPONENT_TAGS = {
+    AI: 'AI',
+    ANIMATOR: 'Animator',
+    GAMEPLAY: 'Gameplay',
+    INTERACTABLE: 'Interactable',
+    PHYSICS: 'Physics',
+    PLAYERCONTROLLER: 'PlayerController',
+    TRANSFORM: 'Transform',
+    VISUAL: 'Visual',
+    WEAPON: 'Weapon',
+}
+
 export default class Entity {
-    constructor(name) {
+    constructor(name, type) {
         this.name = name;
+        this.type = type;
         this.components = {};
     }
     addComponent(component) {

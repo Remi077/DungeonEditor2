@@ -1,7 +1,9 @@
 
+import { ENTITY_COMPONENT_TAGS } from '../Entity.js';
+
 export default class PhysicsBodyComponent {
     constructor(body = null, collider = null, bodyDesc = null, colliderDesc = null) {
-        this.type = 'Physics';
+        this.type = ENTITY_COMPONENT_TAGS.PHYSICS;
         this.body = body;
         this.collider = collider;
         this.bodyDesc = bodyDesc;

@@ -1,6 +1,7 @@
 // @ts-nocheck
 import * as THREE from 'three';
 import * as Shared from '../Shared.js';
+import { ENTITY_COMPONENT_TAGS } from './Entities/Entity.js';
 
 export default class AnimatorManager {
     constructor() {
@@ -18,7 +19,7 @@ export default class AnimatorManager {
 
     update(dt, entity) {
         // for (const entity of entities) {
-            const anim = entity.components['Animator'];
+            const anim = entity.get(ENTITY_COMPONENT_TAGS.ANIMATOR);
             if (!anim || !anim.mixer) return;
             
             // console.log("Before update:", anim.mixer.time);
@@ -27,21 +28,34 @@ export default class AnimatorManager {
         // }
     }
 
-    play(entity, clipName) {
-        const anim = entity.get('Animator');
+    play(entity, clipName = null, backward = false) {
+        const anim = entity.get(ENTITY_COMPONENT_TAGS.ANIMATOR);
         if (!anim) return;
 
-        const action = anim.animationActions.get(clipName);
+        const action = clipName ? anim.animationActions.get(clipName) : 
+            anim.animationActions.values().next().value; // return first value
         if (!action) {
             console.warn("Animation not found:", clipName);
             return;
+        }
+
+        if (backward) {
+
+            const clip = action.getClip();
+            action.time = clip.duration;
+            action.paused = false;
+            action.timeScale = -1;
+        } else {
+            // action.paused = true;
+            action.timeScale = 1;
         }
 
         // SPECIAL CASE: Attack or any non-looping animation
         if (action.loop === THREE.LoopOnce) {
             
             if (anim.singlecurrentAction === action) return;
-            action.reset();
+            if (!backward)
+                action.reset();
             action.play();
             anim.singlecurrentAction = action;
 
@@ -62,7 +76,9 @@ export default class AnimatorManager {
             if (anim.currentAction) {
                 anim.currentAction.fadeOut(0.15);
             }
-            action.reset().fadeIn(0.15).play();
+            if (!backward)
+                action.reset();
+            action.fadeIn(0.15).play();
             console.log("Playing animation:", clipName);
             // action.reset().play();
             // action.play();
@@ -75,7 +91,7 @@ export default class AnimatorManager {
 
 
     stop(entity, clipName) {
-        const anim = entity.get('Animator');
+        const anim = entity.get(ENTITY_COMPONENT_TAGS.ANIMATOR);
         const action = anim.animationActions.get(clipName);
         if (!anim) return;
         if (!action) {

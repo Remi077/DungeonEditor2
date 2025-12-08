@@ -1,34 +1,28 @@
 // @ts-nocheck
 import * as THREE from 'three';
-import Entity from './Entities/Entity.js'; // optional, for NPCs
+import Entity, { ENTITY_COMPONENT_TAGS } from './Entities/Entity.js'; // optional, for NPCs
 
 
 export default class InteractableManager {
-    constructor() {
+    constructor(game) {
+        this.game = game;
+        this.animatorManager = game.systems.animatorManager;
     }
 
     doorInteract(doorEntity) {
-        const visual = doorEntity.get('Visual');
-        const transform = doorEntity.get('Transform');
-        const animator = doorEntity.get('Animator');
-        if (!animator || !visual) return;
+        const animator = doorEntity.get(ENTITY_COMPONENT_TAGS.ANIMATOR);
+        const interact = doorEntity.get(ENTITY_COMPONENT_TAGS.INTERACTABLE);
+        if (!animator || !interact) return;
 
-        const doorOpenAction = animator.animationActions.get('DoorOpen');
-        const doorCloseAction = animator.animationActions.get('DoorClose');
-
-        if (doorEntity.isOpen) {
+        if (interact.open) {
             // Close the door
-            if (doorCloseAction) {
-                doorCloseAction.reset().play();
-            }
-            doorEntity.isOpen = false;
+            this.animatorManager.play(doorEntity, null, true); // play backwards
+            interact.open = false;
         } else {
             // Open the door
-            if (doorOpenAction) {
-                doorOpenAction.reset().play();
-            }
-            doorEntity.isOpen = true;
-        }   
+            this.animatorManager.play(doorEntity, null); // play forwards
+            interact.open = true;
+        }
     }
 
 

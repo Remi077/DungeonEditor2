@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import * as RAPIER from 'rapier';
 import * as Shared from '../Shared.js';
+import { ENTITY_COMPONENT_TAGS, ENTITY_TYPES } from '../Entities/Entity.js';
 // import * as Stats from './GameStats.js';
 import * as GameHUD from './GameHUD.js';
 import Pathfinding from "three-pathfinding";
@@ -311,7 +312,7 @@ export default class GameState {
     keydown(e) {
         const action = this.KeyToActionMap[e.code];
         if (action) {
-            console.log("keydown", action);
+            // console.log("keydown", action);
             this.Actions[action] = true;
         }
     }
@@ -319,7 +320,7 @@ export default class GameState {
     keyup(e) {
         const action = this.KeyToActionMap[e.code];
         if (action) {
-            console.log("keyup", action);
+            // console.log("keyup", action);
             this.Actions[action] = false;
         }
     }
@@ -327,15 +328,19 @@ export default class GameState {
     keypressonce(e) {
         const action = this.KeyToActionOnceMap[e.detail.code];
         if (action) {
-            console.log("keypressonce", action);
+            // console.log("keypressonce", action);
             this.ActionsOnce[action] = true;
         }
     }
 
     mousedown(e) {
-        const animatorManager = this.game.systems.AnimatorManager;
+        const animatorManager = this.game.systems.animatorManager;
         if (e.button === 0) { //left click
             animatorManager.play(this.player, Shared.ANIM_ATTACK_NAME);
+
+            //raycast
+            this.raycastActionnables(); //raycast against actionnable objects
+
             // console.log("Play attack animation");
             // animatorManager.play(this.player, "Attack_Right");
         }
@@ -419,34 +424,21 @@ export default class GameState {
 
         //loop through entities and update their rigidbodies        
         const entities = this.game.entities;
-        const animatorManager = this.game.systems.AnimatorManager;
+        const animatorManager = this.game.systems.animatorManager;
         for (let i = 0; i < entities.length; i++) {
             const entity = entities[i];
 
             //kinematic collider driven by animation
             //update mesh and animation before scheduling collider movement
             //as some colliders track a bone
-            this.calculateDesiredMovement(dt, entity); //calculate next position
-            this.updateMeshRotPos(entity); //apply it to mesh
-            animatorManager.update(dt, entity); //update skinnedmesh
-            this.scheduleColliderMovement(entity); //apply it to collider (schedule)
+            this.calculateDesiredMovement(dt, entity); //calculate desired movement
+            this.calculateCorrectMovement(entity); //calculate corrected movement (after collision)
+            this.syncMesh(entity); //apply corrected movement to mesh
+            animatorManager.update(dt, entity); //update animated bone/mesh position
+            this.scheduleSyncBody(entity); //sync the kinematic rigidbodies to their mesh/bones (schedule)
 
-        }
-
-        //update animations
-        for (let i = 0; i < entities.length; i++) {
-            const entity = entities[i];
-            const Actions = this.Actions;
-            if (Actions.moveCamLeft ||
-            Actions.moveCamRight ||
-            Actions.moveCamFront ||
-            Actions.moveCamBack) {
-                animatorManager.play(entity, Shared.ANIM_WALK_NAME_L);
-                // animatorManager.play(entity, Shared.ANIM_ATTACK_NAME);
-            } else {
-                animatorManager.stop(entity, Shared.ANIM_WALK_NAME_L);
-            }
-            // animatorManager.play(entity, Shared.ANIM_ATTACK_NAME);
+            //update animations
+            this.updateAnimation(entity);
         }
 
         // animatorManager.update(dt, entities);
@@ -462,7 +454,7 @@ export default class GameState {
 
         // keep camera holder at same position as body
         const yawObject = this.game.yawObject;
-        const root = this.player.components['Visual'].root;
+        const root = this.player.get(ENTITY_COMPONENT_TAGS.VISUAL).root;
         yawObject.position.copy(root.position);
         yawObject.position.y += Shared.cameraHeight; //keep same height for now
 
@@ -493,18 +485,6 @@ export default class GameState {
         // if (ActionsOnce.Item7) Shared.highlightSelectedSlot(7);
 
 
-        //transform component
-
-
-
-
-
-
-
-
-
-
-
         //clear the onpress/onrelease actions now that they have been sampled
         //in that loop to avoid resampling
         for (let key in this.ActionsOnce) this.ActionsOnce[key] = false;
@@ -529,10 +509,10 @@ export default class GameState {
     }
 
     calculateDesiredMovement(dt, entity) {
-        const PlayerControllerComponent = entity.components['PlayerController'];
-        const transformComponent = entity.components['Transform'];
-        const visualComponent = this.player.components['Visual'];
-        const physicsBodyComponent = entity.components['Physics'];
+        const PlayerControllerComponent = entity.get(ENTITY_COMPONENT_TAGS.PLAYERCONTROLLER);
+        const transformComponent = entity.get(ENTITY_COMPONENT_TAGS.TRANSFORM);
+        const visualComponent = this.player.get(ENTITY_COMPONENT_TAGS.VISUAL);
+        const physicsBodyComponent = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
         const moveVector = transformComponent?.moveVector;
         const isPlayer = PlayerControllerComponent?.isPlayer;
         const root = visualComponent?.root;
@@ -572,23 +552,12 @@ export default class GameState {
         }
     }
 
-    updateMeshRotPos(entity) {
-        const physicsBodyComponent = entity.components['Physics'];
-        const transformComponent = entity.components['Transform'];
+    calculateCorrectMovement(entity) {
+        const physicsBodyComponent = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
+        const transformComponent = entity.get(ENTITY_COMPONENT_TAGS.TRANSFORM);
         if (!transformComponent || !physicsBodyComponent) return;
-        const visualComponent = entity.components['Visual'];
-        const root = visualComponent.root;
-        //update rotation
-        root.quaternion.copy(transformComponent.newRotation);
-        root.position.copy(transformComponent.newPosition);
-        root.position.sub(physicsBodyComponent?.offsetRootToBody);
-    }
-
-    scheduleColliderMovement(entity) {
-        const physicsBodyComponent = entity.components['Physics'];
-        const transformComponent = entity.components['Transform'];
         // check for collision and correct movement
-        const result = this.game.systems.physicsManager.scheduleColliderMovement(
+        const result = this.game.systems.physicsManager.calculateCorrectMovement(
             physicsBodyComponent.kcc,
             physicsBodyComponent.body,
             physicsBodyComponent.collider,
@@ -600,15 +569,118 @@ export default class GameState {
         transformComponent.newPosition = result.newPosition;
     }
 
-    syncMeshToRigidBody(entity) {
-        const physicsBodyComponent = entity.components['Physics'];
-        const visualComponent = entity.components['Visual'];
-        this.game.systems.physicsManager.syncMeshToRigidBody(
-            visualComponent.root,
-            physicsBodyComponent.body,
-            physicsBodyComponent.offsetRootToBody
-        );
+    syncMesh(entity) {
+        const physicsBodyComponent = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
+        const transformComponent = entity.get(ENTITY_COMPONENT_TAGS.TRANSFORM);
+        if (!transformComponent || !physicsBodyComponent) return;
+        const visualComponent = entity.get(ENTITY_COMPONENT_TAGS.VISUAL);
+        const root = visualComponent.root;
+        //update rotation
+        root.quaternion.copy(transformComponent.newRotation);
+        root.position.copy(transformComponent.newPosition);
+        root.position.sub(physicsBodyComponent?.offsetRootToBody);
     }
+
+    scheduleSyncBody(entity) {
+        const physicsBodyComponent = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
+        const visualComponent = entity.get(ENTITY_COMPONENT_TAGS.VISUAL);
+        const body = physicsBodyComponent?.body;
+        const off = physicsBodyComponent?.offsetRootToBody;
+        const target = visualComponent?.root;
+        if (!body || !target) return;
+        const result = this.game.systems.physicsManager.scheduleSyncBody(body, target, off);
+    }
+
+    // syncMeshToRigidBody(entity) {
+    //     const physicsBodyComponent = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
+    //     const visualComponent = entity.get(ENTITY_COMPONENT_TAGS.VISUAL);
+    //     this.game.systems.physicsManager.syncMeshToRigidBody(
+    //         visualComponent.root,
+    //         physicsBodyComponent.body,
+    //         physicsBodyComponent.offsetRootToBody
+    //     );
+    // }
+
+    updateAnimation(entity) {
+        const PlayerControllerComponent = entity.get(ENTITY_COMPONENT_TAGS.PLAYERCONTROLLER);
+        const isPlayer = PlayerControllerComponent?.isPlayer;
+        const animatorManager = this.game.systems.animatorManager;
+
+        if (isPlayer) {
+            const Actions = this.Actions;
+            if (
+                Actions.moveCamLeft ||
+                Actions.moveCamRight ||
+                Actions.moveCamFront ||
+                Actions.moveCamBack
+            ) {
+                animatorManager.play(entity, Shared.ANIM_WALK_NAME_L);
+            } else {
+                animatorManager.stop(entity, Shared.ANIM_WALK_NAME_L);
+            }
+        }
+    }
+
+
+    raycastActionnables() {
+        let selectObject = null;
+        const raycastTargets = [];
+        const raycaster = this.game.raycaster;
+        const screenCenter = this.game.screenCenter;
+        const camera = this.game.camera;
+        const levelManager = this.game.systems.levelManager;
+
+        //TODO: only call this function when clicked
+        //TODO: optimize with octree or BVH tree
+        levelManager.actionnablesGroup.traverse((child) => {
+            if (child.isMesh) raycastTargets.push(child);
+        });
+        levelManager.staticGroup.traverse((child) => {
+            if (child.isMesh) raycastTargets.push(child);
+        });
+        // levelManager.enemyGroup.traverse((child) => {
+        //     if (child.isMesh) raycastTargets.push(child);
+        // });
+        // const raycastTargets = raycastChunkArray;
+        raycaster.setFromCamera(screenCenter, camera);
+        let doesIntersect = false;
+        const visibleTargets = raycastTargets.filter(obj => obj.visible);
+        const hits = raycaster.intersectObjects(visibleTargets, true);//true means recursive raycast, it parses children too
+
+        let closestHit = null;
+
+        for (const hit of hits) {
+            if (!closestHit || hit.distance < closestHit.distance) {
+                closestHit = hit;
+            }
+        }
+
+        if (closestHit && closestHit.distance < 3) {
+            doesIntersect = true;
+        }
+
+        if (doesIntersect) {
+
+            console.log("HIT", closestHit.object.name);
+            const selectEntity = closestHit.object?.userData?.entity;
+
+            if (selectEntity?.type === ENTITY_TYPES.ACTIONNABLE) {
+                console.log("hit actionnable");
+                const interactableComponent = selectEntity.get(ENTITY_COMPONENT_TAGS.INTERACTABLE);
+                interactableComponent?.interact();
+            }
+
+            // if (closestHit.object?.userData?.type == "actionnable" //||
+                // closestHit.object?.userData?.type == "enemy"
+            // ) {
+                // selectObject = closestHit.object;
+                // if (selectObject.userData.actionnableParent != null)
+                // selectObject = selectObject.userData.actionnableParent
+            // }
+        }
+
+    }
+
 
 }
 

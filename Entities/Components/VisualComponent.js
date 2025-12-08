@@ -1,6 +1,8 @@
+import { ENTITY_COMPONENT_TAGS } from '../Entity.js';
+
 export default class VisualComponent {
     constructor(root = null) {
-        this.type = 'Visual';
+        this.type = ENTITY_COMPONENT_TAGS.VISUAL;
         this.root = root; // THREE.Object3D (armature / visual root)
     }
 

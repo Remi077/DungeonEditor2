@@ -1,6 +1,8 @@
+import { ENTITY_COMPONENT_TAGS } from '../Entity.js';
+
 export default class AnimatorComponent {
     constructor(skeleton = null, mixer = null) {
-        this.type = 'Animator';
+        this.type = ENTITY_COMPONENT_TAGS.ANIMATOR;
         this.skeleton = skeleton;
         this.mixer = mixer;
         this.animationClips = new Map();   // name -> clip
