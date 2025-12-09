@@ -1,6 +1,7 @@
 // @ts-nocheck
 
 export const ENTITY_TYPES = {
+    PLAYER : 'Player',
     CHARACTER : 'Character',
     ACTIONNABLE : 'Actionnable',
 }

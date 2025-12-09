@@ -13,6 +13,8 @@ export default class PathFindingManager {
         this.currentPos = new THREE.Vector3();
         this.newEuler = new THREE.Euler();
         this.zone = "level";
+        this.debugGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+        this.debugMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     }
 
     async loadNavMesh(path) {
@@ -57,6 +59,7 @@ export default class PathFindingManager {
         const newRotation = transformComponent.newRotation;
         const pathbuffer = pathFindingComponent.pathbuffer;
         const currentPos = physicsBodyComponent.getBodyTranslation(this.currentPos);
+        const offsetRootToBody = physicsBodyComponent.offsetRootToBody;
 
         const withinReach = currentPos.distanceTo(targetPos) < withinDistance;
         moveVector.set(0,0,0);
@@ -66,16 +69,6 @@ export default class PathFindingManager {
             this.steerEntityTo(entity, targetPos);
 
         } else {
-
-            const start = this.projectToNavmesh(currentPos);
-            const end = this.projectToNavmesh(targetPos);
-
-            if (!start || !end) {
-                console.warn("Could not project position(s) onto navmesh.");
-            }
-
-            // use the navmesh
-            const groupID = this.pathfinder.getGroup(this.zone, currentPos);
 
             // Compute path
             if (pathFindingComponent.timeSinceLastCalculatedPath < Shared.calculatePathPeriod) {
@@ -88,6 +81,15 @@ export default class PathFindingManager {
                 //timer expired and player moved => recompute path
                 pathFindingComponent.timeSinceLastCalculatedPath = 0;
 
+                // use the navmesh
+                const groupID = this.pathfinder.getGroup(this.zone, currentPos);
+                const start = this.projectToNavmesh(currentPos);
+                const end = this.projectToNavmesh(targetPos);
+
+                if (!start || !end) {
+                    console.warn("Could not project position(s) onto navmesh.");
+                }
+
                 const path = this.pathfinder.findPath(
                     start,
                     end,
@@ -99,7 +101,10 @@ export default class PathFindingManager {
 
                 console.log(entity.name, "CALCULATE PATH", performance.now());
                 pathFindingComponent.lastKnownPlayerPosition.copy(targetPos);
-                if (0) drawDebugPath(path, this.game.scene); //TEMP TOFIX
+                if (1) {
+                    const debugSpheres = pathFindingComponent.debugSpheres;
+                    this.drawDebugPath(path, debugSpheres); //TEMP TOFIX
+                }
             }
 
             if (pathbuffer.length > 0) {
@@ -109,7 +114,9 @@ export default class PathFindingManager {
                 const dir = target.clone().sub(currentPos).setY(0);
                 const dist = dir.length();
 
-                if (currentPos.distanceTo(target) < 0.05) {
+                const currentFootPos = currentPos.clone().sub(offsetRootToBody);
+
+                if (currentFootPos.distanceTo(target) < 0.05) {
                     pathbuffer.shift();
                 } else {
                     dir.normalize();
@@ -127,9 +134,34 @@ export default class PathFindingManager {
 
         }
 
-        moveVector.multiplyScalar(dt);
+        // moveVector.multiplyScalar(dt);
         return withinReach;
 
+    }
+
+
+    drawDebugPath(path, debugSpheres) {
+
+        const scene = this.game.scene;
+
+        // Remove old debug spheres
+        if (debugSpheres && debugSpheres.length > 0) {
+            debugSpheres.forEach(sphere => scene.remove(sphere));
+            debugSpheres.length = 0; // clear array
+        }
+
+        if (!path || path.length === 0) return;
+
+        const geometry = this.debugGeometry;
+        const material = this.debugMaterial;
+
+        // Create new spheres at each path point
+        path.forEach(point => {
+            const sphere = new THREE.Mesh(geometry, material);
+            sphere.position.copy(point);
+            scene.add(sphere);
+            debugSpheres.push(sphere);
+        });
     }
 
 
@@ -157,18 +189,21 @@ export default class PathFindingManager {
     }
 
     projectToNavmesh(pos) {
-
-        // Find nearest group
+        // Find the group the position belongs to
         const groupID = this.pathfinder.getGroup(this.zone, pos);
         if (groupID === null || groupID === undefined) return null;
 
-        // Find nearest polygon node (without polygon check)
-        const node = this.pathfinder.getClosestNode(pos, this.zone, groupID, false);
-        if (!node) return null;
+        // Try to get a node only if the point is actually inside the polygon
+        let node = this.pathfinder.getClosestNode(pos, this.zone, groupID, true);
+        if (node) {
+            // Player is on navmesh: return actual position
+            return pos.clone();
+        }
 
-        // Move position to that node's centroid
-        return node.centroid.clone();
-        
+        // Fallback: get the nearest node (ignoring polygon check)
+        node = this.pathfinder.getClosestNode(pos, this.zone, groupID, false);
+        return node ? node.centroid.clone() : null;
     }
+
 
 }

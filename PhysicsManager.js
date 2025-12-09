@@ -299,10 +299,64 @@ export default class PhysicsManager {
         const newPos = correctedMovementVector.clone().add( body.translation() );
         // body.setNextKinematicTranslation(newPos);
         // body.setNextKinematicRotation(desiredRotation);
+
+
+        if (0){
+            const num = kcc.numComputedCollisions();
+            if (num > 0){
+                const normals = [];
+
+                // Collect wall normals from Rapier
+                for (let i = 0; i < num; i++) {
+                    const c = kcc.computedCollision(i);
+                    normals.push(new THREE.Vector3(c.normal1.x, c.normal1.y, c.normal1.z));
+                }
+
+                // Apply frictionless sliding using those normals
+                const slippyMovement = this.applyWallSlide(desiredMovement.clone(), normals);
+
+                // Second pass: apply the corrected horizontal slide movement
+                kcc.computeColliderMovement(
+                    collider,
+                    slippyMovement,
+                    null,
+                    collisionGroups,
+                    null
+                );
+
+                const correctedMovement = kcc.computedMovement();
+                const correctedVector = new THREE.Vector3(
+                    correctedMovement.x,
+                    correctedMovement.y,
+                    correctedMovement.z
+                );
+
+                const newPos = correctedVector.clone().add(body.translation());
+            }
+        }
+
+
         return {
             newPosition: newPos,
             isTouchingGround: kcc.computedGrounded()
         };
+    }
+
+    applyWallSlide(move, normals) {
+        // Work in direction space (no dt)
+        const dir = move.clone().normalize();
+        let correctedDir = dir.clone();
+
+        for (const n of normals) {
+            const dot = correctedDir.dot(n);
+            if (dot < 0) {
+                // Remove inward component of the *direction*
+                correctedDir.sub(n.clone().multiplyScalar(dot));
+            }
+        }
+
+        // Then re-apply the original dt magnitude
+        return correctedDir.normalize().multiplyScalar(move.length());
     }
 
     //sync body to mesh

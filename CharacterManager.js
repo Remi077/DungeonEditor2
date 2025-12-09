@@ -59,7 +59,7 @@ export default class CharacterManager {
         this.prefab = new CharacterPrefab();
         this.prefab.name = characterType;
 
-        const isPlayerPrefab = characterType === "player";
+        const isPlayerPrefab = characterType === ENTITY_TYPES.PLAYER;
 
         // 1. Parse armature / weapon / skeleton
         this.processHierarchy(gltf.scene, this.prefab, isPlayerPrefab);
@@ -184,7 +184,7 @@ export default class CharacterManager {
             prefab.weaponOffsetRootToBody.copy(offsetRootToBody);
 
             // --- 8. Store collider info for character capsule ---
-            prefab.capsuleRadius = Shared.playerRadius; //temp should be calculated from mesh BB or dedicated mesh
+            prefab.capsuleRadius = isPlayerPrefab ? Shared.playerRadius : Shared.playerRadius*0.5 ; //temp should be calculated from mesh BB or dedicated mesh
             prefab.capsuleHeight = Shared.playerHeight; // temp see above
             prefab.collisionGroup = isPlayerPrefab ? Shared.COL_MASKS.PLAYER : Shared.COL_MASKS.ENEMY;
 
@@ -220,7 +220,11 @@ export default class CharacterManager {
     }
 
     instantiateCharacter(prefab, options) {
-        const entity = new Entity(prefab.name, ENTITY_TYPES.CHARACTER);
+        const entity = new Entity(prefab.name, 
+            options?.isPlayer ?
+            ENTITY_TYPES.PLAYER :
+            ENTITY_TYPES.CHARACTER
+        );
 
         // const camPos = this.game.yawObject.position;
         // const camPos = ;
@@ -258,7 +262,7 @@ export default class CharacterManager {
         , playerBody);
         const physicsBodyComponent = new PhysicsBodyComponent(playerBody, playerCollider);
 
-        physicsBodyComponent.capsuleRadius = prefab.capsuleRadius;
+        physicsBodyComponent.capsuleRadius = prefab.capsuleRadius ;
         physicsBodyComponent.capsuleTotalHeight = prefab.capsuleHeight;
         physicsBodyComponent.capsuleCylinderHalfHeight = (prefab.capsuleHeight * 0.5) - prefab.capsuleRadius;
         physicsBodyComponent.kcc = physicsManager.createKCC();

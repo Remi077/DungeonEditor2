@@ -251,7 +251,6 @@ export default class GameState {
         input.on('keydown', (e) => { this.keydown(e) });
         input.on('keyup', (e) => { this.keyup(e) });
         input.on('keypressonce', (e) => { this.keypressonce(e) });
-        input.on('resize', (e) => { this.resize(e) });
         input.on('mousedown', (e) => { this.mousedown(e) });
         input.on('mouseup', (e) => { this.mouseup(e) });
         input.on('mousemove', (e) => { this.mousemove(e) });
@@ -354,6 +353,13 @@ export default class GameState {
     }
 
     mousedown(e) {
+
+        const canvas = this.game.canvas;
+        if (document.pointerLockElement !== canvas) {
+            canvas.requestPointerLock();
+            return;
+        }
+
         const animatorManager = this.game.systems.animatorManager;
         if (e.button === 0) { //left click
             animatorManager.play(this.player, Shared.ANIM_ATTACK_NAME);
@@ -382,6 +388,9 @@ export default class GameState {
     }
 
     mousemove(e) {
+
+        if (document.pointerLockElement !== this.game.canvas) return;
+
         // if (
         //     !(this.game.input.isMouseDown(2)) //||
         //     // !(this.game.input.isMouseOver(this.game.canvas))
@@ -538,7 +547,8 @@ export default class GameState {
         const physicsBodyComponent = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
         const body = physicsBodyComponent?.body;
         const moveVector = transformComponent?.moveVector;
-        const isPlayer = PlayerControllerComponent?.isPlayer;
+        const isPlayer = entity.type === ENTITY_TYPES.PLAYER;
+        const isCharacter = entity.type === ENTITY_TYPES.CHARACTER;
         const root = visualComponent?.root;
         const yawObject = this.game.yawObject;
 
@@ -559,7 +569,6 @@ export default class GameState {
             //calculate moveVector from inputs + camera orientation + vertical speed 
             moveVector.set(0, 0, 0);
             const Actions = this.Actions;
-            const ActionsOnce = this.ActionsOnce;
             if (Actions.moveCamLeft) moveVector.x = -1;
             if (Actions.moveCamRight) moveVector.x = 1;
             if (Actions.moveCamFront) moveVector.z = -1;
@@ -571,29 +580,15 @@ export default class GameState {
                 this.game.pitchObject.getWorldQuaternion(this.worldQuat); //move in all directions in water
             moveVector.applyQuaternion(this.worldQuat);
             moveVector.multiplyScalar(transformComponent.moveSpeed);
-            if (
-                (!physicsBodyComponent.isInWater && physicsBodyComponent.isTouchingGround)
-                || (physicsBodyComponent.isAtSurface)
-             ) {
-                if (ActionsOnce.jump) {
-                    transformComponent.verticalSpeed = Shared.jumpSpeed;
-                } else if (!physicsBodyComponent.isInWater) {
-                    transformComponent.verticalSpeed = - 0.1; //small downward force to keep grounded
-                }
-            } else if (physicsBodyComponent.isInWater) { //in water downward speed attenuates quickly to 0
-                transformComponent.verticalSpeed = (Math.abs(transformComponent.verticalSpeed) < 0.00001) ? 0 : (transformComponent.verticalSpeed * 0.93)
-            } else {
-                transformComponent.verticalSpeed = Math.max(-Shared.maxFallSpeed, transformComponent.verticalSpeed - (Shared.gravity * dt));
-            }
-            moveVector.y += transformComponent.verticalSpeed;
-            moveVector.multiplyScalar(dt);
+
 
             //calculate desired rotation from camera orientation
             const targetQuat = new THREE.Quaternion().multiplyQuaternions(yawObject.quaternion, transformComponent.tweakRot);
-            const slerpQuat = root.quaternion.clone().slerp(targetQuat, 0.1);
-            transformComponent.newRotation.copy(slerpQuat);
+            // const slerpQuat = root.quaternion.clone().slerp(targetQuat, 0.1);
+            // transformComponent.newRotation.copy(slerpQuat);
+            transformComponent.newRotation.copy(targetQuat);
 
-        } else if (entity.type === ENTITY_TYPES.CHARACTER) {
+        } else if (isCharacter) {
 
             const pathFindingManager = this.game.systems.pathFindingManager;
             this.player.get(ENTITY_COMPONENT_TAGS.PHYSICS).getBodyTranslation(this.targetPos); //lookup cost is negligible O(1)
@@ -605,6 +600,27 @@ export default class GameState {
             );
 
         }
+
+        if (isCharacter || isPlayer) {
+            if (
+                (!physicsBodyComponent.isInWater && physicsBodyComponent.isTouchingGround)
+                || (physicsBodyComponent.isAtSurface)
+            ) {
+                if (isPlayer && this.ActionsOnce.jump) {
+                    transformComponent.verticalSpeed = Shared.jumpSpeed;
+                } else if (!physicsBodyComponent.isInWater) {
+                    transformComponent.verticalSpeed = - 0.1; //small downward force to keep grounded
+                }
+            } else if (physicsBodyComponent.isInWater) { //in water downward speed attenuates quickly to 0
+                transformComponent.verticalSpeed = (Math.abs(transformComponent.verticalSpeed) < 0.00001) ? 0 : (transformComponent.verticalSpeed * 0.93)
+            } else {
+                transformComponent.verticalSpeed = Math.max(-Shared.maxFallSpeed, transformComponent.verticalSpeed - (Shared.gravity * dt));
+            }
+            moveVector.y += transformComponent.verticalSpeed;
+            moveVector.multiplyScalar(dt);
+        }
+
+
     }
 
     calculateCorrectMovement(entity) {
@@ -631,7 +647,10 @@ export default class GameState {
         const visualComponent = entity.get(ENTITY_COMPONENT_TAGS.VISUAL);
         const root = visualComponent.root;
         //update rotation
-        root.quaternion.copy(transformComponent.newRotation);
+        if (entity.type === ENTITY_TYPES.CHARACTER)
+            root.quaternion.slerp(transformComponent.newRotation, 0.1);
+        else
+            root.quaternion.copy(transformComponent.newRotation);
         root.position.copy(transformComponent.newPosition);
         root.position.sub(physicsBodyComponent?.offsetRootToBody);
     }

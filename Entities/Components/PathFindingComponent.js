@@ -8,5 +8,6 @@ export default class PathFindingComponent {
         this.timeSinceLastCalculatedPath = Math.random() * Shared.calculatePathPeriod;
         this.pathbuffer = [];
         this.lastKnownPlayerPosition = new THREE.Vector3();
+        this.debugSpheres = [];
     }
 }
