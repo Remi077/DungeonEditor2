@@ -296,7 +296,7 @@ export default class CharacterManager {
         entity.addComponent(transformComponent);
         entity.addComponent(animatorComponent);
         entity.addComponent(physicsBodyComponent);
-        //entity.addComponent(new GameplayComponent());
+        entity.addComponent(new GameplayComponent());
         //entity.addComponent(new WeaponComponent());
         //entity.addComponent(new AIComponent()); // optional, for NPCs
 

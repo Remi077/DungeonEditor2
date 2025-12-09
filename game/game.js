@@ -667,7 +667,7 @@ export default class GameState {
             if (selectEntity?.type === ENTITY_TYPES.ACTIONNABLE) {
                 console.log("hit actionnable");
                 const interactableComponent = selectEntity.get(ENTITY_COMPONENT_TAGS.INTERACTABLE);
-                interactableComponent?.interact();
+                interactableComponent?.interact(this.player);
             }
 
             // if (closestHit.object?.userData?.type == "actionnable" //||

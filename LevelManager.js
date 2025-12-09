@@ -1,6 +1,6 @@
 // @ts-nocheck
 import * as THREE from 'three';
-import Entity, { ENTITY_TYPES } from './Entities/Entity.js'; // optional, for NPCs
+import Entity, { ENTITY_TYPES, ENTITY_COMPONENT_TAGS } from './Entities/Entity.js'; // optional, for NPCs
 import { GLTFLoader } from 'GLTFLoader';
 import VisualComponent from './Entities/Components/VisualComponent.js';
 import TransformComponent from './Entities/Components/TransformComponent.js';
@@ -129,7 +129,8 @@ export default class LevelManager {
         // const animatedNodes = this.findAnimatedNodes(this.gltf);
         const animatedSet = new Set(this.animatedNodes.map(n => n.name));
 
-        Array.from(this.actionnablesGroup.children).forEach(child => {
+        // Array.from(this.actionnablesGroup.children).forEach(child => {
+        this.actionnablesGroup.traverse(child => {
 
             // Setup actionnable properties here
             const visualComponent = new VisualComponent(child)
@@ -183,11 +184,21 @@ export default class LevelManager {
             // add visual and transform components
             entity.addComponent(visualComponent);
             // entity.addComponent(transformComponent);
-            entity.addComponent(new InteractableComponent(
-                () => {
-                 this.game.systems.interactableManager.doorInteract(entity);   //interaction logic here
+            if (
+                child.name.startsWith("Action_Door")
+                || child.name.startsWith("Action_Chest")
+            ) {
+                entity.addComponent(new InteractableComponent(() => this.game.systems.interactableManager.doorInteract(entity)));
+            } else if (child.name.startsWith("Action_Switch")) {
+                entity.addComponent(new InteractableComponent(() => this.game.systems.interactableManager.switchInteract(entity)));
+            } else if (child.name.startsWith("Action_Item")) {
+                entity.addComponent(new InteractableComponent((callerEntity) => this.game.systems.interactableManager.itemInteract(entity, callerEntity)));
+            } else {
+                if (child.parent?.name.startsWith("Action_Switch")) {
+                    const parentEntity = child.parent.userData.entity;
+                    parentEntity.get(ENTITY_COMPONENT_TAGS.INTERACTABLE)?.dependentEntities?.push(entity);
                 }
-            ));
+            }
 
             //add a pointer to the entity on the mesh (for raycast)
             child.userData.entity = entity;
