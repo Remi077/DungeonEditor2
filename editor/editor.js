@@ -13,6 +13,7 @@ import * as Shared from '../shared.js';
 import * as GameHUD from '../game/gameHUD.js';
 import * as loadSave from './loadSave.js';
 import Stats from "stats.js";
+import PathFindingManager from '../PathFindingManager.js';
 
 
 export default class EditorState {
@@ -449,6 +450,8 @@ export default class EditorState {
         if (ActionsOnce.loadTest){
             const levelManager = this.game.systems.levelManager;
             levelManager.loadLevel('./assets/glb/Level1.glb').then(() => levelManager.addToScene());
+            const pathFindingManager = this.game.systems.pathFindingManager;
+            pathFindingManager.loadNavMesh('./assets/glb/navmesh.glb');
             const characterManager = this.game.systems.characterManager;
             characterManager.loadCharacter('./assets/glb/player.glb', 'player');
             characterManager.loadCharacter('./assets/glb/zombie.glb', 'zombie');

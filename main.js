@@ -23,6 +23,8 @@ import LevelManager from './LevelManager.js';
 import CharacterManager from './CharacterManager.js';
 import AnimatorManager from './AnimatorManager.js';
 import InteractableManager from './InteractableManager.js';
+import PathFindingManager from './PathFindingManager.js';
+import AIManager from './AIManager.js';
 // import * as Stats from '../GameStats.js';
 
 /*-----------------------------------------------------*/
@@ -186,22 +188,19 @@ const game = {
     screenCenter: new THREE.Vector2(0, 0),// Center of screen in NDC (Normalized Device Coordinates)
     yawObject: new THREE.Object3D(),
     pitchObject: new THREE.Object3D(),
-    systems: {
-        physicsManager: new PhysicsManager(),
-        levelManager: null,
-        characterManager: null,
-        animatorManager: new AnimatorManager(),
-        interactableManager: null,
-        //ai: new AISystem(),
-    },
+    systems: {},
     entities: new Set(),
     activeEntities: new Set(),
     stateManager: stateManager
 }
 
+game.systems.physicsManager = new PhysicsManager();
 game.systems.levelManager = new LevelManager(game);
 game.systems.characterManager = new CharacterManager(game);
+game.systems.animatorManager = new AnimatorManager(game);
 game.systems.interactableManager = new InteractableManager(game);
+game.systems.pathFindingManager = new PathFindingManager(game);
+// game.systems.aiManager = new AIManager(game);
 
 //tweaks
 //tweak global renderer

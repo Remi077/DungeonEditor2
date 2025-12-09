@@ -20,4 +20,12 @@ export default class PhysicsBodyComponent {
         this.capsuleCylinderHalfHeight = null;
         this.collisionGroup = null;
     }
+
+    //helper function to return body translation in vector3 format
+    getBodyTranslation(vec) {
+        const t = this.body.translation();
+        vec.set(t.x, t.y, t.z);
+        return vec;
+    }
+    
 }

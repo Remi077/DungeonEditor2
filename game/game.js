@@ -49,6 +49,7 @@ export default class GameState {
         this.fpsPanel.showPanel(0);//fps
 
         this.player = null; // player handle
+        this.targetPos = new THREE.Vector3();
 
         //used in update(dt)
         this.worldQuat = new THREE.Quaternion();
@@ -292,13 +293,17 @@ export default class GameState {
             );
 
             const spawnPoints = this.game?.systems?.levelManager?.enemySpawnGroup;
+            let num = 1;
             for (const spawnPoint of spawnPoints.children){
+                num --;
+                if (num < 0) return;
                 const zombiePos = spawnPoint.position.clone();
                 zombiePos.y -= 0.9;//TEMP
+                const zombieRot = spawnPoint.rotation.clone();
                 this.game.systems.characterManager.spawnCharacter(
                     'zombie',
-                    zombiePos
-                    //add rotation
+                    zombiePos,
+                    zombieRot
                 )
             }
 
@@ -529,7 +534,7 @@ export default class GameState {
     calculateDesiredMovement(dt, entity) {
         const PlayerControllerComponent = entity.get(ENTITY_COMPONENT_TAGS.PLAYERCONTROLLER);
         const transformComponent = entity.get(ENTITY_COMPONENT_TAGS.TRANSFORM);
-        const visualComponent = this.player.get(ENTITY_COMPONENT_TAGS.VISUAL);
+        const visualComponent = entity.get(ENTITY_COMPONENT_TAGS.VISUAL);
         const physicsBodyComponent = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
         const body = physicsBodyComponent?.body;
         const moveVector = transformComponent?.moveVector;
@@ -587,6 +592,17 @@ export default class GameState {
             const targetQuat = new THREE.Quaternion().multiplyQuaternions(yawObject.quaternion, transformComponent.tweakRot);
             const slerpQuat = root.quaternion.clone().slerp(targetQuat, 0.1);
             transformComponent.newRotation.copy(slerpQuat);
+
+        } else if (entity.type === ENTITY_TYPES.CHARACTER) {
+
+            const pathFindingManager = this.game.systems.pathFindingManager;
+            this.player.get(ENTITY_COMPONENT_TAGS.PHYSICS).getBodyTranslation(this.targetPos); //lookup cost is negligible O(1)
+            pathFindingManager.moveEntityToWithin(
+                entity,
+                this.targetPos,
+                1,
+                dt
+            );
 
         }
     }

@@ -10,6 +10,7 @@ export const ENTITY_COMPONENT_TAGS = {
     ANIMATOR: 'Animator',
     GAMEPLAY: 'Gameplay',
     INTERACTABLE: 'Interactable',
+    PATHFINDING: 'PathFinding',
     PHYSICS: 'Physics',
     PLAYERCONTROLLER: 'PlayerController',
     TRANSFORM: 'Transform',

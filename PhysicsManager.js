@@ -141,11 +141,16 @@ export default class PhysicsManager {
         return col;
     }
 
-    createKinematicRigidBody(translation,name) {
+    createKinematicRigidBody(translation,rotationEuler,name) {
+
+        // Convert Euler -> Quaternion
+        const euler = new THREE.Euler(rotationEuler.x, rotationEuler.y, rotationEuler.z, 'XYZ');
+        const quat = new THREE.Quaternion().setFromEuler(euler);
+
         const rigidBodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
             .setTranslation( translation.x, translation.y, translation.z) // initial position
-            //add rotation
-            const rb = this.world.createRigidBody(rigidBodyDesc);
+            .setRotation(quat.x, quat.y, quat.z, quat.w);
+        const rb = this.world.createRigidBody(rigidBodyDesc);
         rb.userData = { name };
         this.bodies.set(rb.handle, rb);
         return rb;

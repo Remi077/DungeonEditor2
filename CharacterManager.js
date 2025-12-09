@@ -12,6 +12,7 @@ import PlayerControllerComponent from './Entities/Components/PlayerControllerCom
 import GameplayComponent from './Entities/Components/GameplayComponent.js';
 import WeaponComponent from './Entities/Components/WeaponComponent.js';
 import AIComponent from './Entities/Components/AIComponent.js'; // optional, for NPCs
+import PathFindingComponent from './Entities/Components/PathFindingComponent.js'; // optional, for NPCs
 
 
 class CharacterPrefab {
@@ -206,14 +207,15 @@ export default class CharacterManager {
         return player;
     }
 
-    spawnCharacter(characterType, spawnPosition) {
+    spawnCharacter(characterType, spawnPosition, spawnRotation) {
 
         const prefab = this.charaPrefabMap.get(characterType);
         if (!prefab) throw new Error(`character prefab '${characterType}' not loaded`);
 
         return this.instantiateCharacter(prefab, {
             isPlayer: false,
-            position: spawnPosition
+            position: spawnPosition,
+            rotation: spawnRotation
         });
     }
 
@@ -225,6 +227,7 @@ export default class CharacterManager {
         const rootPos = options?.position.clone();
         const bodyPos = rootPos.clone();
         bodyPos.add(prefab.offsetRootToBody);
+        const rootRot = options?.rotation?.clone() || new THREE.Euler();
 
         // 1. VisualComponent with cloned armature / skinned mesh
         const root = SkeletonUtils.clone(prefab.root); // Clone skinned mesh + skeleton
@@ -243,8 +246,10 @@ export default class CharacterManager {
         const physicsManager = this.game.systems.physicsManager;
 
         const playerBody = physicsManager.createKinematicRigidBody(
-            bodyPos || new THREE.Vector3(0, 0, 0), options?.isPlayer ? "Player" : "NPC"
+            bodyPos || new THREE.Vector3(0, 0, 0), 
             //add rotation
+            rootRot,
+            options?.isPlayer ? "Player" : "NPC"
         );
         const playerCollider = physicsManager.createCapsuleCollider(
              prefab.capsuleRadius,
@@ -268,6 +273,8 @@ export default class CharacterManager {
         if (options?.isPlayer) {
             // Apply 180° yaw offset to align mesh (-Z forward) with camera (+Z forward)
             transformComponent.tweakRot = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+        } else {
+            transformComponent.moveSpeed *= 0.2; //TEMP: to move in constants
         }
 
         //AnimatorComponent
@@ -306,6 +313,7 @@ export default class CharacterManager {
             entity.addComponent(new PlayerControllerComponent(this.game.input));
         } else {
             entity.addComponent(new AIComponent());
+            entity.addComponent(new PathFindingComponent());
         }
 
 
@@ -314,7 +322,7 @@ export default class CharacterManager {
 
         //move root to yawObject position
         root.position.copy(rootPos);
-        //add rotation
+        root.rotation.copy(rootRot);
 
         // this.entities.push(entity);
         this.game.entities.add(entity);
