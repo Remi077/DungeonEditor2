@@ -16,13 +16,24 @@ export default class InteractableManager {
 
         if (interact.open) {
             // Close the door
-            this.animatorManager.play(doorEntity, null, true); // play backwards
+            this.animatorManager.play(
+                doorEntity, 
+                null, // pick first action
+                true, // play backwards
+                () => {this.game.activeEntities.delete(doorEntity);} //called at end of animation
+            ); 
             interact.open = false;
         } else {
             // Open the door
-            this.animatorManager.play(doorEntity, null); // play forwards
+            this.animatorManager.play(
+                doorEntity, 
+                null, // pick first action
+                false, // play forwards
+                () => {this.game.activeEntities.delete(doorEntity);} //called at end of animation
+            ); 
             interact.open = true;
         }
+        this.game.activeEntities.add(doorEntity);
     }
 
 
@@ -36,13 +47,24 @@ export default class InteractableManager {
         if (!interact || !animator) return;
         if (interact.open) {
             // Turn off the switch
-            this.animatorManager.play(switchTargetEntity, null, true); // play backwards
+            this.animatorManager.play(
+                switchTargetEntity, 
+                null, 
+                true,
+                () => {this.game.activeEntities.delete(switchTargetEntity);} //called at end of animation
+            ); // play backwards
             interact.open = false;
         } else {
             // Turn on the switch
-            this.animatorManager.play(switchTargetEntity, null); // play forwards
+            this.animatorManager.play(
+                switchTargetEntity,
+                null,
+                false,
+                () => {this.game.activeEntities.delete(switchTargetEntity);} //called at end of animation
+                ); // play forwards
             interact.open = true;
         }
+        this.game.activeEntities.add(switchTargetEntity);
     }
 
     itemInteract(itemEntity, playerEntity) {

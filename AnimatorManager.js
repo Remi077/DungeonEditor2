@@ -28,7 +28,7 @@ export default class AnimatorManager {
         // }
     }
 
-    play(entity, clipName = null, backward = false) {
+    play(entity, clipName = null, backward = false, callback = null) {
         const anim = entity.get(ENTITY_COMPONENT_TAGS.ANIMATOR);
         if (!anim) return;
 
@@ -64,6 +64,7 @@ export default class AnimatorManager {
                 if (e.action === action) {
                     anim.singlecurrentAction = null;
                     // optionally return to idle etc.
+                    callback?.();
                 }
             });
 

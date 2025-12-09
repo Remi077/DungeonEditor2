@@ -194,7 +194,8 @@ const game = {
         interactableManager: null,
         //ai: new AISystem(),
     },
-    entities: [],
+    entities: new Set(),
+    activeEntities: new Set(),
     stateManager: stateManager
 }
 

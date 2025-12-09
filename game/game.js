@@ -424,9 +424,12 @@ export default class GameState {
 
         //loop through entities and update their rigidbodies        
         const entities = this.game.entities;
+        const activeEntities = this.game.activeEntities;
         const animatorManager = this.game.systems.animatorManager;
-        for (let i = 0; i < entities.length; i++) {
-            const entity = entities[i];
+        // for (let i = 0; i < activeEntities.length; i++) {
+        //     const entity = activeEntities[i];
+        // console.log("entities", entities.size, "activeEntities", activeEntities.size);
+        for (const entity of activeEntities) {
 
             //kinematic collider driven by animation
             //update mesh and animation before scheduling collider movement

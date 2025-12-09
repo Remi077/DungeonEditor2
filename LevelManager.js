@@ -205,7 +205,7 @@ export default class LevelManager {
             child.userData.entity = entity;
 
             //add entity to game entities list
-            this.game.entities.push(entity);
+            this.game.entities.add(entity);
         });
     }
 

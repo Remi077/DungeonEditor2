@@ -315,7 +315,8 @@ export default class CharacterManager {
         root.position.copy(rootPos);
 
         // this.entities.push(entity);
-        this.game.entities.push(entity);
+        this.game.entities.add(entity);
+        this.game.activeEntities.add(entity);
 
         return entity;
     }
