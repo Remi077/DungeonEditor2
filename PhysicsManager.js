@@ -74,7 +74,7 @@ export default class PhysicsManager {
     //         this.updateDebug();
     // }
 
-    createStaticColliderFromMesh(mesh) {
+    createStaticColliderFromMesh(mesh, collisionGroups = Shared.COL_MASKS.SCENERY) {
         const { halfExtents, center } = this.computeBoundingBox(mesh);
         const colliderDesc = RAPIER.ColliderDesc.cuboid(
             halfExtents.x,
@@ -82,7 +82,7 @@ export default class PhysicsManager {
             halfExtents.z
         ).setTranslation(center.x, center.y, center.z)
         .setRotation(mesh.quaternion)
-        .setCollisionGroups(Shared.COL_MASKS.SCENERY);
+        .setCollisionGroups(collisionGroups);
 
         return this.createCollider(colliderDesc);
     }
@@ -313,6 +313,20 @@ export default class PhysicsManager {
         mesh.position.set(t.x + offset.x, t.y + offset.y, t.z + offset.z);
         mesh.quaternion.set(r.x, r.y, r.z, r.w);
     }
+
+    intersectionsWithPoint(point, colGroup) {
+        let isInside = false;
+        this.world.intersectionsWithPoint(
+            point,
+            (h) => {
+                isInside = true;
+            },
+            undefined, // optional filterFlags
+            colGroup
+        );
+        return isInside;
+    }
+
 
     //visibility helpers
     hide() {

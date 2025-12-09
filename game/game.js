@@ -513,12 +513,25 @@ export default class GameState {
         const transformComponent = entity.get(ENTITY_COMPONENT_TAGS.TRANSFORM);
         const visualComponent = this.player.get(ENTITY_COMPONENT_TAGS.VISUAL);
         const physicsBodyComponent = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
+        const body = physicsBodyComponent?.body;
         const moveVector = transformComponent?.moveVector;
         const isPlayer = PlayerControllerComponent?.isPlayer;
         const root = visualComponent?.root;
         const yawObject = this.game.yawObject;
 
         if (isPlayer) {
+
+            //check if player in water/at surface
+            const belowChin = this.game.yawObject.position.clone()
+            belowChin.y -= 0.3;
+            physicsBodyComponent.isInWater = this.checkIsInWater(belowChin);
+            if (physicsBodyComponent.isInWater) {
+                const isHeadInWater = this.checkIsInWater(this.game.yawObject.position);
+                if (!physicsBodyComponent.isAtSurface && !isHeadInWater) console.log("ATSURFACE")
+                physicsBodyComponent.isAtSurface = !isHeadInWater;
+            } else {
+                physicsBodyComponent.isAtSurface = false;
+            }
 
             //calculate moveVector from inputs + camera orientation + vertical speed 
             moveVector.set(0, 0, 0);
@@ -529,15 +542,23 @@ export default class GameState {
             if (Actions.moveCamFront) moveVector.z = -1;
             if (Actions.moveCamBack) moveVector.z = 1;
             moveVector.normalize();
-            this.game.yawObject.getWorldQuaternion(this.worldQuat);
+            if (!physicsBodyComponent.isInWater)
+                this.game.yawObject.getWorldQuaternion(this.worldQuat);
+            else
+                this.game.pitchObject.getWorldQuaternion(this.worldQuat); //move in all directions in water
             moveVector.applyQuaternion(this.worldQuat);
             moveVector.multiplyScalar(transformComponent.moveSpeed);
-            if (physicsBodyComponent.isTouchingGround) {
+            if (
+                (!physicsBodyComponent.isInWater && physicsBodyComponent.isTouchingGround)
+                || (physicsBodyComponent.isAtSurface)
+             ) {
                 if (ActionsOnce.jump) {
                     transformComponent.verticalSpeed = Shared.jumpSpeed;
-                } else {
+                } else if (!physicsBodyComponent.isInWater) {
                     transformComponent.verticalSpeed = - 0.1; //small downward force to keep grounded
                 }
+            } else if (physicsBodyComponent.isInWater) { //in water downward speed attenuates quickly to 0
+                transformComponent.verticalSpeed = (Math.abs(transformComponent.verticalSpeed) < 0.00001) ? 0 : (transformComponent.verticalSpeed * 0.93)
             } else {
                 transformComponent.verticalSpeed = Math.max(-Shared.maxFallSpeed, transformComponent.verticalSpeed - (Shared.gravity * dt));
             }
@@ -621,6 +642,10 @@ export default class GameState {
         }
     }
 
+    checkIsInWater(point) {
+        const physicsManager = this.game.systems.physicsManager;
+        return physicsManager.intersectionsWithPoint(point, Shared.COL_MASKS.WATER);
+    }
 
     raycastActionnables() {
         let selectObject = null;

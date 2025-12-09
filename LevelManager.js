@@ -8,6 +8,7 @@ import PhysicsBodyComponent from './Entities/Components/PhysicsBodyComponent.js'
 import AnimatorComponent from './Entities/Components/AnimatorComponent.js';
 import InteractableComponent from './Entities/Components/InteractableComponent.js';
 import GameStateManager from './GameStateManager.js';
+import * as Shared from '../Shared.js';
 
 export default class LevelManager {
     constructor(game) {
@@ -95,8 +96,8 @@ export default class LevelManager {
         });
 
         Array.from(this.triggerGroup.children).forEach(child => {
-           this.physics.createStaticColliderFromMesh(child)
-           .setSensor(true); 
+           this.physics.createStaticColliderFromMesh(child, Shared.COL_MASKS.WATER)
+        //    .setSensor(true); 
         });
 
     }
