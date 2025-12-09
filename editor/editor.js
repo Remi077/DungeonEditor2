@@ -451,6 +451,7 @@ export default class EditorState {
             levelManager.loadLevel('./assets/glb/Level1.glb').then(() => levelManager.addToScene());
             const characterManager = this.game.systems.characterManager;
             characterManager.loadCharacter('./assets/glb/player.glb', 'player');
+            characterManager.loadCharacter('./assets/glb/zombie.glb', 'zombie');
         }    
         if (ActionsOnce.resetLevel) this.onReset();
         // if (ActionsOnce.startGame) this.onStart();

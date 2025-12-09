@@ -220,9 +220,9 @@ export default class CharacterManager {
     instantiateCharacter(prefab, options) {
         const entity = new Entity(prefab.name, ENTITY_TYPES.CHARACTER);
 
-        const camPos = this.game.yawObject.position;
-        const rootPos = camPos.clone();
-        rootPos.y -= Shared.cameraHeight;
+        // const camPos = this.game.yawObject.position;
+        // const camPos = ;
+        const rootPos = options?.position.clone();
         const bodyPos = rootPos.clone();
         bodyPos.add(prefab.offsetRootToBody);
 
@@ -244,6 +244,7 @@ export default class CharacterManager {
 
         const playerBody = physicsManager.createKinematicRigidBody(
             bodyPos || new THREE.Vector3(0, 0, 0), options?.isPlayer ? "Player" : "NPC"
+            //add rotation
         );
         const playerCollider = physicsManager.createCapsuleCollider(
              prefab.capsuleRadius,
@@ -313,6 +314,7 @@ export default class CharacterManager {
 
         //move root to yawObject position
         root.position.copy(rootPos);
+        //add rotation
 
         // this.entities.push(entity);
         this.game.entities.add(entity);

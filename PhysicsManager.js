@@ -144,7 +144,8 @@ export default class PhysicsManager {
     createKinematicRigidBody(translation,name) {
         const rigidBodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
             .setTranslation( translation.x, translation.y, translation.z) // initial position
-        const rb = this.world.createRigidBody(rigidBodyDesc);
+            //add rotation
+            const rb = this.world.createRigidBody(rigidBodyDesc);
         rb.userData = { name };
         this.bodies.set(rb.handle, rb);
         return rb;

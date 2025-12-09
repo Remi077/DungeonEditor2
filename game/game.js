@@ -283,10 +283,25 @@ export default class GameState {
 
         //spawn player
         if (!this.player){
+
+            const playerPos = this.game.yawObject.position.clone();
+            playerPos.y -= Shared.cameraHeight;
             this.player = this.game.systems.characterManager.spawnPlayer('player',
-                yawObject.position.clone()
-                // new THREE.Vector3(0,0,0)
+                playerPos
+                //add rotation
             );
+
+            const spawnPoints = this.game?.systems?.levelManager?.enemySpawnGroup;
+            for (const spawnPoint of spawnPoints.children){
+                const zombiePos = spawnPoint.position.clone();
+                zombiePos.y -= 0.9;//TEMP
+                this.game.systems.characterManager.spawnCharacter(
+                    'zombie',
+                    zombiePos
+                    //add rotation
+                )
+            }
+
         }
 
 

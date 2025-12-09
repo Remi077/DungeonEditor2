@@ -43,7 +43,7 @@ export default class LevelManager {
             else if (child.name.startsWith("Collider_")) this.colliderGroup.add(child);
             else if (child.name.startsWith("Trigger_")) this.triggerGroup.add(child);
             else if (child.name.startsWith("Action_")) this.actionnablesGroup.add(child);
-            else if (child.name.startsWith("Enemy_")) this.enemySpawnGroup.add(child);
+            else if (child.name.startsWith("Enemy")) this.enemySpawnGroup.add(child);
             else this.staticGroup.add(child);
         });
 
