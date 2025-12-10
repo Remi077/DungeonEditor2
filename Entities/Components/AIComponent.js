@@ -1,13 +1,7 @@
+import { ENEMY_STATES } from '../../AIManager.js';
 import { ENTITY_COMPONENT_TAGS } from '../Entity.js';
 export const calculatePathPeriod = 1.5;
 
-export const ENEMY_STATES = {
-    IDLE: 1,
-    PATROL: 2,
-    CHASE: 3,
-    SEARCH: 4,
-    DEATH: 5
-};
 
 export default class AIComponent {
     constructor() {

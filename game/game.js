@@ -8,6 +8,7 @@ import * as GameHUD from './GameHUD.js';
 import Pathfinding from "three-pathfinding";
 import Stats from "stats.js";
 import AnimatorManager from '../AnimatorManager.js';
+import { ENEMY_STATES } from '../AIManager.js';
 
 
 export default class GameState {
@@ -590,14 +591,16 @@ export default class GameState {
 
         } else if (isCharacter) {
 
-            const pathFindingManager = this.game.systems.pathFindingManager;
-            this.player.get(ENTITY_COMPONENT_TAGS.PHYSICS).getBodyTranslation(this.targetPos); //lookup cost is negligible O(1)
-            pathFindingManager.moveEntityToWithin(
-                entity,
-                this.targetPos,
-                1,
-                dt
-            );
+            // const pathFindingManager = this.game.systems.pathFindingManager;
+            // this.player.get(ENTITY_COMPONENT_TAGS.PHYSICS).getBodyTranslation(this.targetPos); //lookup cost is negligible O(1)
+            // pathFindingManager.moveEntityToWithin(
+            //     entity,
+            //     this.targetPos,
+            //     1,
+            //     dt
+            // );
+            const aiManager = this.game.systems.aiManager;
+            aiManager.calculateDesiredMovement(dt, entity);
 
         }
 
@@ -676,8 +679,8 @@ export default class GameState {
     // }
 
     updateAnimation(entity) {
-        const PlayerControllerComponent = entity.get(ENTITY_COMPONENT_TAGS.PLAYERCONTROLLER);
-        const isPlayer = PlayerControllerComponent?.isPlayer;
+        const isPlayer = entity.type === ENTITY_TYPES.PLAYER;
+        const isCharacter = entity.type === ENTITY_TYPES.CHARACTER;
         const animatorManager = this.game.systems.animatorManager;
 
         if (isPlayer) {
@@ -691,6 +694,14 @@ export default class GameState {
                 animatorManager.play(entity, Shared.ANIM_WALK_NAME_L);
             } else {
                 animatorManager.stop(entity, Shared.ANIM_WALK_NAME_L);
+            }
+        } else if (isCharacter) {
+            const aiComponent = entity.get(ENTITY_COMPONENT_TAGS.AI);
+            switch (aiComponent.enemyState) {
+                case ENEMY_STATES.IDLE:    animatorManager.play(entity, "Idle"); break;
+                case ENEMY_STATES.PATROL:  animatorManager.play(entity, "Walk"); break;
+                case ENEMY_STATES.CHASE:   animatorManager.play(entity, "Walk"); break;
+                case ENEMY_STATES.SEARCH:  animatorManager.play(entity, "Walk"); break;
             }
         }
     }

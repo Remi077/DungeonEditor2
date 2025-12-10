@@ -200,7 +200,7 @@ game.systems.characterManager = new CharacterManager(game);
 game.systems.animatorManager = new AnimatorManager(game);
 game.systems.interactableManager = new InteractableManager(game);
 game.systems.pathFindingManager = new PathFindingManager(game);
-// game.systems.aiManager = new AIManager(game);
+game.systems.aiManager = new AIManager(game);
 
 //tweaks
 //tweak global renderer
