@@ -191,6 +191,7 @@ const game = {
     systems: {},
     entities: new Set(),
     activeEntities: new Set(),
+    playerEntity : null,
     stateManager: stateManager
 }
 

@@ -207,7 +207,7 @@ export default class CharacterManager {
         return player;
     }
 
-    spawnCharacter(characterType, spawnPosition, spawnRotation) {
+    spawnCharacter(characterType, spawnPosition, spawnRotation, patrolPath = []) {
 
         const prefab = this.charaPrefabMap.get(characterType);
         if (!prefab) throw new Error(`character prefab '${characterType}' not loaded`);
@@ -215,7 +215,8 @@ export default class CharacterManager {
         return this.instantiateCharacter(prefab, {
             isPlayer: false,
             position: spawnPosition,
-            rotation: spawnRotation
+            rotation: spawnRotation,
+            patrolPath: patrolPath,
         });
     }
 
@@ -278,7 +279,7 @@ export default class CharacterManager {
             // Apply 180° yaw offset to align mesh (-Z forward) with camera (+Z forward)
             transformComponent.tweakRot = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
         } else {
-            transformComponent.moveSpeed *= 0.2; //TEMP: to move in constants
+            transformComponent.moveSpeed *= 0.15; //TEMP: to move in constants
         }
 
         //AnimatorComponent
@@ -316,7 +317,11 @@ export default class CharacterManager {
         if (options?.isPlayer) {
             entity.addComponent(new PlayerControllerComponent(this.game.input));
         } else {
-            entity.addComponent(new AIComponent());
+            const aiComponent = new AIComponent();
+            const patrolPath = options?.patrolPath;
+            if (patrolPath)
+                aiComponent.patrolPath.push(...patrolPath);
+            entity.addComponent(aiComponent);
             entity.addComponent(new PathFindingComponent());
         }
 
@@ -331,6 +336,8 @@ export default class CharacterManager {
         // this.entities.push(entity);
         this.game.entities.add(entity);
         this.game.activeEntities.add(entity);
+        if (options?.isPlayer)
+            this.game.playerEntity = entity;
 
         return entity;
     }

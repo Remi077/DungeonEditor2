@@ -300,10 +300,19 @@ export default class GameState {
                 const zombiePos = spawnPoint.position.clone();
                 zombiePos.y -= 0.9;//TEMP
                 const zombieRot = spawnPoint.rotation.clone();
+                // Collect world positions of patrol points
+                const patrolPath = [];
+                spawnPoint.traverse(obj => {
+                    if (obj !== spawnPoint) {
+                        const wp = obj.getWorldPosition(new THREE.Vector3());
+                        patrolPath.push(wp);
+                    }
+                })
                 this.game.systems.characterManager.spawnCharacter(
                     'zombie',
                     zombiePos,
-                    zombieRot
+                    zombieRot,
+                    patrolPath
                 )
             }
 
