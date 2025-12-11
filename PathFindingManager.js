@@ -63,11 +63,15 @@ export default class PathFindingManager {
         const withinReach = currentPos.distanceTo(targetPos) < withinDistance;
         moveVector.set(0,0,0);
 
-        if (withinReach || 0) {
+        if (0) {
+            
+            this.steerEntity(entity, targetPos, true);
 
-            this.steerEntityTo(entity, targetPos);
+        } else if (withinReach || 0) {
 
-        } else {
+            this.steerEntity(entity, targetPos);
+
+        } else if (!withinReach) {
 
             // Compute path
             if (pathFindingComponent.timeSinceLastCalculatedPath < Shared.calculatePathPeriod) {
@@ -128,7 +132,7 @@ export default class PathFindingManager {
                 }
             } else {
                 console.log("NO MORE PATH");
-                this.steerEntityTo(entity, targetPos);
+                this.steerEntity(entity, targetPos);
             }
 
         }
@@ -138,28 +142,27 @@ export default class PathFindingManager {
 
     }
 
-
-
-    steerEntityTo(entity, targetPos) {
+    steerEntity(entity, targetPos, updatePos = false) {
         const pathFindingComponent = entity.get(ENTITY_COMPONENT_TAGS.PATHFINDING);
         const transformComponent = entity.get(ENTITY_COMPONENT_TAGS.TRANSFORM);
         const physicsBodyComponent = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
 
         if (!pathFindingComponent || !transformComponent || !physicsBodyComponent) return;
 
-        const moveVector = transformComponent.moveVector;
+        const moveVector  = transformComponent.moveVector;
         const newRotation = transformComponent.newRotation;
-        const pathbuffer = pathFindingComponent.pathbuffer;
-        const currentPos = physicsBodyComponent.body.translation();
+        const pathbuffer  = pathFindingComponent.pathbuffer;
+        const currentPos  = physicsBodyComponent.body.translation();
 
         const toTarget = targetPos.clone().sub(currentPos);
         toTarget.y = 0; // <-- remove pitch
         toTarget.normalize();
+        toTarget.multiplyScalar(transformComponent.moveSpeed);
+        if (updatePos) moveVector.copy(toTarget);
+
         const yaw = Math.atan2(toTarget.x, toTarget.z); // Compute yaw angle from direction (THREE uses Z-forward)
         this.newEuler.set(0, yaw, 0, "YXZ");
         newRotation.setFromEuler(this.newEuler); // Build quaternion with yaw only
-        toTarget.multiplyScalar(transformComponent.moveSpeed);
-        moveVector.copy(toTarget);
         //return false;
     }
 

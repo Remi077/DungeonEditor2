@@ -7,8 +7,10 @@ export const ENEMY_STATES = {
     IDLE: 1,
     PATROL: 2,
     CHASE: 3,
-    SEARCH: 4,
-    DEATH: 5
+    ATTACK: 4,
+    HURT: 5,
+    SEARCH: 6,
+    DEATH: 7
 };
 
 export default class AIManager {
@@ -20,9 +22,10 @@ export default class AIManager {
     calculateDesiredMovement(dt, entity) {
 
         const aiComponent = entity.get(ENTITY_COMPONENT_TAGS.AI);
+        const gpComponent = entity.get(ENTITY_COMPONENT_TAGS.GAMEPLAY);
         const transformComponent = entity.get(ENTITY_COMPONENT_TAGS.TRANSFORM);
         const player = this.game.playerEntity;
-        if (!aiComponent || !transformComponent || !player) return;
+        if (!aiComponent || !gpComponent || !transformComponent || !player) return;
 
         const moveVector = transformComponent.moveVector;
         const pf = this.pathFindingManager;
@@ -47,6 +50,7 @@ export default class AIManager {
 
         // enemy state machine
 
+        const enemyAttackDistance = 1.2; //TODO: move in constants or in prefab
         switch (aiComponent.enemyState) {
             case ENEMY_STATES.IDLE:
                 //stay still
@@ -84,10 +88,9 @@ export default class AIManager {
                 //chase player and attack if within reach
                 // playClip(ec, "Walk", true);
                 targetPos = this.game.yawObject.position.clone();
-                const enemyAttackDistance = 1.8; //TODO: move in constants or in prefab
                 inReach = pf.moveEntityToWithin(entity, targetPos, enemyAttackDistance, dt);
-                // if (inReach && !ec.invincibility) //enemy cannot attack if it just got hurt (invincible)
-                //     attack(ec);
+                if (inReach && !gpComponent.invincibility) //enemy cannot attack if it just got hurt (invincible)
+                    aiComponent.enemyState = ENEMY_STATES.ATTACK;
                 //if line of sight breaks for a certain time, search
                 if (!aiComponent.playerSeen) {
                     console.log("timeSinceLastSeen", aiComponent.timeSinceLastSeen)
@@ -104,6 +107,17 @@ export default class AIManager {
                     }
                 }
                 break;
+            case ENEMY_STATES.ATTACK:
+                //moveVector.set(0,0,0);
+                targetPos = this.game.yawObject.position.clone();
+                inReach = pf.moveEntityToWithin(entity, targetPos, enemyAttackDistance, dt);
+                if (!inReach)
+                    aiComponent.enemyState = ENEMY_STATES.CHASE;
+                break;
+            case ENEMY_STATES.HURT:
+                moveVector.set(0,0,0);
+                aiComponent.enemyState = ENEMY_STATES.CHASE;
+                aiComponent.enemyState = ENEMY_STATES.DEATH;
             case ENEMY_STATES.SEARCH:
                 //go to last place where player was seen
                 // playClip(ec, "Walk", true);

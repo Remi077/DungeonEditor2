@@ -711,6 +711,9 @@ export default class GameState {
                 case ENEMY_STATES.PATROL:  animatorManager.play(entity, "Walk"); break;
                 case ENEMY_STATES.CHASE:   animatorManager.play(entity, "Walk"); break;
                 case ENEMY_STATES.SEARCH:  animatorManager.play(entity, "Walk"); break;
+                case ENEMY_STATES.ATTACK:  animatorManager.play(entity, "Attack"); break;
+                case ENEMY_STATES.HURT:    animatorManager.play(entity, "Hurt"); break;
+                case ENEMY_STATES.DEATH:   animatorManager.play(entity, "Death"); break;
             }
         }
     }
