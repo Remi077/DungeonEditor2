@@ -13,8 +13,7 @@ export default class PathFindingManager {
         this.currentPos = new THREE.Vector3();
         this.newEuler = new THREE.Euler();
         this.zone = "level";
-        this.debugGeometry = new THREE.SphereGeometry(0.1, 8, 8);
-        this.debugMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+
     }
 
     async loadNavMesh(path) {
@@ -103,7 +102,7 @@ export default class PathFindingManager {
                 pathFindingComponent.lastKnownPlayerPosition.copy(targetPos);
                 if (1) {
                     const debugSpheres = pathFindingComponent.debugSpheres;
-                    this.drawDebugPath(path, debugSpheres); //TEMP TOFIX
+                    Shared.drawDebugSpheres(path, debugSpheres, this.game.scene); //TEMP TOFIX
                 }
             }
 
@@ -139,30 +138,6 @@ export default class PathFindingManager {
 
     }
 
-
-    drawDebugPath(path, debugSpheres) {
-
-        const scene = this.game.scene;
-
-        // Remove old debug spheres
-        if (debugSpheres && debugSpheres.length > 0) {
-            debugSpheres.forEach(sphere => scene.remove(sphere));
-            debugSpheres.length = 0; // clear array
-        }
-
-        if (!path || path.length === 0) return;
-
-        const geometry = this.debugGeometry;
-        const material = this.debugMaterial;
-
-        // Create new spheres at each path point
-        path.forEach(point => {
-            const sphere = new THREE.Mesh(geometry, material);
-            sphere.position.copy(point);
-            scene.add(sphere);
-            debugSpheres.push(sphere);
-        });
-    }
 
 
     steerEntityTo(entity, targetPos) {

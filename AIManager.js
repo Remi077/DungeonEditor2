@@ -27,22 +27,22 @@ export default class AIManager {
         const moveVector = transformComponent.moveVector;
         const pf = this.pathFindingManager;
 
-        const playerMesh = player.get(ENTITY_COMPONENT_TAGS.VISUAL).root;
         let targetPos = null;
         let inReach = false;
 
         //check if enemy sees player (dont do this every frame)
-        // if (aiComponent.timeSinceLastSightCheck > 0.3) {
-        //     aiComponent.timeSinceLastSightCheck = 0;
-        //     aiComponent.playerSeen = canEnemySeeTarget(aiComponent, playerMesh)
-        //     if (aiComponent.playerSeen) {
-        //         aiComponent.lastSeenPlayerPosition = playerMesh.position.clone();
-        //         console.log("PLAYER DETECTED at", aiComponent.lastSeenPlayerPosition);
-        //         aiComponent.timeSinceLastSeen = 0;
-        //     }
-        // } else {
-        //     aiComponent.timeSinceLastSightCheck += dt;
-        // }
+        if (aiComponent.timeSinceLastSightCheck > 0.3) {
+            aiComponent.timeSinceLastSightCheck = 0;
+            const {playerSeen, lastSeenPlayerPosition} = this.canEnemySeeTarget(entity, player);
+            aiComponent.playerSeen = playerSeen;
+            if (aiComponent.playerSeen) {
+                aiComponent.lastSeenPlayerPosition = lastSeenPlayerPosition;
+                console.log("PLAYER DETECTED at", aiComponent.lastSeenPlayerPosition);
+                aiComponent.timeSinceLastSeen = 0;
+            }
+        } else {
+            aiComponent.timeSinceLastSightCheck += dt;
+        }
 
 
         // enemy state machine
@@ -84,6 +84,7 @@ export default class AIManager {
                 //chase player and attack if within reach
                 // playClip(ec, "Walk", true);
                 targetPos = this.game.yawObject.position.clone();
+                const enemyAttackDistance = 1.8; //TODO: move in constants or in prefab
                 inReach = pf.moveEntityToWithin(entity, targetPos, enemyAttackDistance, dt);
                 // if (inReach && !ec.invincibility) //enemy cannot attack if it just got hurt (invincible)
                 //     attack(ec);
@@ -94,7 +95,12 @@ export default class AIManager {
                     if (aiComponent.timeSinceLastSeen > 1) {
                         console.log("SEARCH");
                         aiComponent.enemyState = ENEMY_STATES.SEARCH;
-                        if (0) drawDebugSphere(aiComponent.lastSeenPlayerPosition, Shared.scene);
+                        if (1) Shared.drawDebugSpheres(
+                            [aiComponent.lastSeenPlayerPosition],
+                            aiComponent.debugSpheres,
+                            this.game.scene,
+                            Shared.debugSphereMaterialBlue
+                        );
                     }
                 }
                 break;
@@ -128,11 +134,14 @@ export default class AIManager {
     }
 
     
-    canEnemySeeTarget(ec, target, sightDistance = 10, fovDegrees = 90) {
-        const targetPos = target.position.clone();
-        targetPos.y += Shared.playerHeight / 2;//TOIMPROVE
-        const enemyEyes = ec.root.position.clone();
-        enemyEyes.y += (ec.capsuleTotalHeight * 0.9);
+    canEnemySeeTarget(entity, targetEntity, sightDistance = 10, fovDegrees = 90) {
+
+        //get target middle body and entity eye positions
+        const targetpc = targetEntity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
+        const targetPos = targetpc.getBodyTranslation();
+        const pc = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
+        const enemyEyes = pc.getBodyTranslation();
+        enemyEyes.y += ((pc.capsuleTotalHeight/2) * 0.9);
     
     
         // 1️⃣ Early exit: too far
@@ -140,62 +149,73 @@ export default class AIManager {
         if (dist > sightDistance) return false;
     
         // 2️⃣ Check FOV
-        const enemyForward = new THREE.Vector3(0, 0, 1).applyQuaternion(ec.root.quaternion);
+        const enemyRotation = pc.getBodyQuaternion();
+        const enemyForward = new THREE.Vector3(0, 0, 1).applyQuaternion(enemyRotation);
         const toTarget = targetPos.clone().sub(enemyEyes).normalize();
         const angle = enemyForward.angleTo(toTarget); // radians
+        const ai = entity.get(ENTITY_COMPONENT_TAGS.AI);
         if (
-            (ec.enemyState === Shared.ENEMY_STATES.IDLE) ||
-            (ec.enemyState === Shared.ENEMY_STATES.PATROL)
+            (ai.enemyState === ENEMY_STATES.IDLE) ||
+            (ai.enemyState === ENEMY_STATES.PATROL)
         ) //when in chase/search mode enemy can see from all angles (otherwise too easy to run in the back of enemies)
         {
             if (angle > THREE.MathUtils.degToRad(fovDegrees / 2)) return false; // outside FOV
-    
         }
+        
         // 3️⃣ Collect raycastable objects
-        const raycastTargets = [];
-        Shared.actionnablesGroup.traverse(child => { if (child.isMesh) raycastTargets.push(child); });
-        Shared.staticGroup.traverse(child => { if (child.isMesh) raycastTargets.push(child); });
-        //TODO: can an enemy hides an other?
-        // Shared.enemyGroup.traverse(child => { if (child.isMesh && !ec.root.contains(child)) raycastTargets.push(child); });
-        Shared.rigGroup.traverse(child => { if (child.isMesh || child.isSkinnedMesh) raycastTargets.push(child); });
-        const visibleTargets = raycastTargets.filter(obj => obj.visible);
-    
+        const visibleTargets = this.game.systems.levelManager.getRaycastTargets(true, true, true);//static, actionnables and characters
+        const targetMesh = targetEntity.get(ENTITY_COMPONENT_TAGS.VISUAL).root;
+        visibleTargets.push(targetMesh); //add player
+
         // 4️⃣ Raycast from enemy to target
         // Setup ray from enemy to target
         const origin = enemyEyes;
         const direction = targetPos.clone().sub(origin).normalize();
     
-        raycaster.set(origin, direction);
+        this.game.raycaster.set(origin, direction);
     
-        const intersects = raycaster.intersectObjects(visibleTargets, true); // recursive
+        const intersects = this.game.raycaster.intersectObjects(visibleTargets, true); // recursive
     
         if (intersects.length === 0) return false;
-    
+
+        // const start = origin.clone();
+        // const end = origin.clone().add(direction.clone().multiplyScalar(100)); // Extend ray visually
+        // ai.debugLine.geometry.setFromPoints([start, end]);
+        // this.game.scene.add(ai.debugLine);
+
+
         // 5️⃣ Check if first hit is the target or its descendant    
         // Check if the first hit is target or a descendant of target
         let hitObj = intersects[0].object;
-        console.log("ENEMY" + ec.name + "sees " + hitObj.name);
+        // console.log("!!!ENEMY" + entity.name + "sees " + hitObj.name);
         while (hitObj) {
-            if (hitObj === target) {
+            if (hitObj === targetMesh) {
     
                 // Ray start & end
                 const start = origin.clone();
                 const end = origin.clone().add(direction.clone().multiplyScalar(100)); // Extend ray visually
     
                 // Update line geometry
-                Shared.debugLine.geometry.setFromPoints([start, end]);
+                ai.debugLine.geometry.setFromPoints([start, end]);
     
                 // Toggle visibility
-                Shared.debugLine.visible = true;
+                this.game.scene.add(ai.debugLine);//TEMP, TOIMPROVE
+                // ai.debugLine.visible = true;
     
-                return true;
+                return {
+                    playerSeen : true,
+                    lastSeenPlayerPosition : targetPos,
+                }
             }
             // Stop if we've reached a Group or the Scene
             if (hitObj.type === 'Group' || hitObj.type === 'Scene') break;
             hitObj = hitObj.parent;
         }
     
-        return false;
+        return {
+            playerSeen : false,
+            lastSeenPlayerPosition : null,
+        }
     }
     
 

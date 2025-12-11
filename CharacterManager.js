@@ -327,7 +327,7 @@ export default class CharacterManager {
 
 
         // Add to scene
-        this.game.scene.add(root);
+        this.game.scene.add(root);//TODO: add to rig or enemygroup
 
         //move root to yawObject position
         root.position.copy(rootPos);

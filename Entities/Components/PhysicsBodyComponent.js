@@ -1,4 +1,5 @@
 
+import * as THREE from 'three';
 import { ENTITY_COMPONENT_TAGS } from '../Entity.js';
 
 export default class PhysicsBodyComponent {
@@ -22,10 +23,16 @@ export default class PhysicsBodyComponent {
     }
 
     //helper function to return body translation in vector3 format
-    getBodyTranslation(vec) {
+    getBodyTranslation(vec = new THREE.Vector3(0,0,0)) {
         const t = this.body.translation();
         vec.set(t.x, t.y, t.z);
         return vec;
     }
-    
+
+    getBodyQuaternion(quat = new THREE.Quaternion()) {
+        const q = this.body.rotation();
+        quat.set(q.x, q.y, q.z, q.w);
+        return quat;
+    }
+
 }

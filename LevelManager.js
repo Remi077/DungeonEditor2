@@ -209,4 +209,26 @@ export default class LevelManager {
         });
     }
 
+    getRaycastTargets(
+        IncStatic = true, //all static items
+        IncActionnable = true, //interactable items
+        IncRig = false, //characters, enemies
+    ){
+        const raycastTargets = [];
+        if (IncActionnable)
+            this.actionnablesGroup.traverse((child) => {
+                if (child.isMesh) raycastTargets.push(child);
+            });
+        if (IncStatic)
+            this.staticGroup.traverse((child) => {
+                if (child.isMesh) raycastTargets.push(child);
+            });
+        if (IncRig)
+            this.rigGroup.traverse((child) => {
+                if (child.isMesh || child.isSkinnedMesh) raycastTargets.push(child);
+            });
+        const visibleTargets = raycastTargets.filter(obj => obj.visible);
+        return visibleTargets;
+    }
+
 }

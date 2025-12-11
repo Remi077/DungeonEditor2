@@ -1,5 +1,7 @@
+import * as THREE from 'three';
 import { ENEMY_STATES } from '../../AIManager.js';
 import { ENTITY_COMPONENT_TAGS } from '../Entity.js';
+import * as Shared from '../../Shared.js';
 export const calculatePathPeriod = 1.5;
 
 
@@ -16,5 +18,7 @@ export default class AIComponent {
         this.enemyState = ENEMY_STATES.IDLE;
         this.timeSinceChangedState = 0;
         this.patrolPath = [];
+        this.debugSpheres = [];
+        this.debugLine = new THREE.Line(Shared.debugLineGeometry, Shared.debugLineMaterial);
     }
 }

@@ -722,7 +722,6 @@ export default class GameState {
 
     raycastActionnables() {
         let selectObject = null;
-        const raycastTargets = [];
         const raycaster = this.game.raycaster;
         const screenCenter = this.game.screenCenter;
         const camera = this.game.camera;
@@ -730,19 +729,9 @@ export default class GameState {
 
         //TODO: only call this function when clicked
         //TODO: optimize with octree or BVH tree
-        levelManager.actionnablesGroup.traverse((child) => {
-            if (child.isMesh) raycastTargets.push(child);
-        });
-        levelManager.staticGroup.traverse((child) => {
-            if (child.isMesh) raycastTargets.push(child);
-        });
-        // levelManager.enemyGroup.traverse((child) => {
-        //     if (child.isMesh) raycastTargets.push(child);
-        // });
-        // const raycastTargets = raycastChunkArray;
+        const visibleTargets = levelManager.getRaycastTargets(true, true); //static and actionnables
         raycaster.setFromCamera(screenCenter, camera);
         let doesIntersect = false;
-        const visibleTargets = raycastTargets.filter(obj => obj.visible);
         const hits = raycaster.intersectObjects(visibleTargets, true);//true means recursive raycast, it parses children too
 
         let closestHit = null;
