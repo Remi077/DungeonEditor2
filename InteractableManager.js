@@ -19,6 +19,8 @@ export default class InteractableManager {
             this.animatorManager.play(
                 doorEntity, 
                 null, // pick first action
+                false,
+                false,
                 true, // play backwards
                 () => {this.game.activeEntities.delete(doorEntity);} //called at end of animation
             ); 
@@ -28,6 +30,8 @@ export default class InteractableManager {
             this.animatorManager.play(
                 doorEntity, 
                 null, // pick first action
+                false,
+                false,
                 false, // play forwards
                 () => {this.game.activeEntities.delete(doorEntity);} //called at end of animation
             ); 
@@ -50,6 +54,8 @@ export default class InteractableManager {
             this.animatorManager.play(
                 switchTargetEntity, 
                 null, 
+                false,
+                false,
                 true,
                 () => {this.game.activeEntities.delete(switchTargetEntity);} //called at end of animation
             ); // play backwards
@@ -59,6 +65,8 @@ export default class InteractableManager {
             this.animatorManager.play(
                 switchTargetEntity,
                 null,
+                false,
+                false,
                 false,
                 () => {this.game.activeEntities.delete(switchTargetEntity);} //called at end of animation
                 ); // play forwards

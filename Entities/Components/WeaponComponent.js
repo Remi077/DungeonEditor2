@@ -5,9 +5,9 @@ export default class WeaponComponent {
         this.type = ENTITY_COMPONENT_TAGS.WEAPON;
         this.weapon = null;
         this.weaponBody = null;
-        this.weaponBodyDesc = null;
+        // this.weaponBodyDesc = null;
         this.weaponCollider = null;
-        this.weaponColliderDesc = null;
+        // this.weaponColliderDesc = null;
         this.weaponOffsetRootToBody = null;
         this.attackLoopId = null;
         this.isAttacking = false;

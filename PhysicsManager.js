@@ -33,6 +33,10 @@ export default class PhysicsManager {
         }
 
         this.accumulator = 0;
+
+        //used in logic below
+        this.worldPos = new THREE.Vector3();
+        this.worldQuat = new THREE.Quaternion();
     }
 
     async init(scene) {
@@ -87,7 +91,7 @@ export default class PhysicsManager {
         return this.createCollider(colliderDesc);
     }
 
-    createKinematicColliderFromMesh(mesh) {
+    createKinematicColliderFromMesh(mesh, colgroup = Shared.COL_MASKS.SCENERY) {
         const { halfExtents, center } = this.computeBoundingBox(mesh);
         
         const bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
@@ -102,8 +106,9 @@ export default class PhysicsManager {
             halfExtents.z
         )
 
-        if (mesh.name.startsWith("Trigger_")) colliderDesc.setCollisionGroups(Shared.COL_MASKS.WATER);
-        else colliderDesc.setCollisionGroups(Shared.COL_MASKS.SCENERY);
+        colliderDesc.setCollisionGroups(colgroup);
+        // if (mesh.name.startsWith("Trigger_")) colliderDesc.setCollisionGroups(Shared.COL_MASKS.WATER);
+        // else colliderDesc.setCollisionGroups(Shared.COL_MASKS.SCENERY);
 
         const collider = this.createCollider(colliderDesc, body);
 
@@ -361,10 +366,13 @@ export default class PhysicsManager {
 
     //sync body to mesh
     scheduleSyncBody(body, target, off = new THREE.Vector3(0,0,0)) {
-        const newoff = off.clone().applyQuaternion(target.quaternion);
-        const newPos = target.position.clone().add(newoff);
+        const q = target.getWorldQuaternion(this.worldQuat);
+        const newoff = off.clone().applyQuaternion(q);
+        const newPos = target.getWorldPosition(this.worldPos);
+        newPos.add(newoff);
+        // const newPos = target.position.clone().add(newoff);
         body.setNextKinematicTranslation(newPos);
-        body.setNextKinematicRotation(target.quaternion);
+        body.setNextKinematicRotation(q);
     }
 
     syncMeshToRigidBody(mesh, rigidBody, offset = new THREE.Vector3(0,0,0)) {

@@ -89,7 +89,9 @@ export default class LevelManager {
 
         Array.from(this.colliderGroup.children).forEach(child => {
             if (child.name.startsWith("Collider_Kine")) {
-                this.physics.createKinematicColliderFromMesh(child);
+                const colGroup = (child.name.startsWith("Trigger_")) ?
+                Shared.COL_MASKS.WATER : Shared.COL_MASKS.SCENERY
+                this.physics.createKinematicColliderFromMesh(child, colGroup);
             } else {
                 this.physics.createStaticColliderFromMesh(child);
             }

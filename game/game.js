@@ -478,6 +478,7 @@ export default class GameState {
             this.syncMesh(entity); //apply corrected movement to mesh
             animatorManager.update(dt, entity); //update animated bone/mesh position
             this.scheduleSyncBody(entity); //sync the kinematic rigidbodies to their mesh/bones (schedule)
+            this.weaponSyncBody(entity); //sync the weapon body to its respective mesh (schedule)
 
             //update animations
             this.updateAnimation(entity);
@@ -677,6 +678,18 @@ export default class GameState {
         const result = this.game.systems.physicsManager.scheduleSyncBody(body, target, off);
     }
 
+    weaponSyncBody(entity) {
+        const weaponComponent = entity.get(ENTITY_COMPONENT_TAGS.WEAPON);
+        if (!weaponComponent) return;
+        const physicsBodyComponent = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
+        const visualComponent = entity.get(ENTITY_COMPONENT_TAGS.VISUAL);
+        const body = weaponComponent?.weaponBody;
+        const off = weaponComponent?.weaponOffsetRootToBody;
+        const target = weaponComponent?.weapon;
+        if (!body || !target) return;
+        const result = this.game.systems.physicsManager.scheduleSyncBody(body, target, off);
+    }
+
     // syncMeshToRigidBody(entity) {
     //     const physicsBodyComponent = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
     //     const visualComponent = entity.get(ENTITY_COMPONENT_TAGS.VISUAL);
@@ -708,12 +721,18 @@ export default class GameState {
             const aiComponent = entity.get(ENTITY_COMPONENT_TAGS.AI);
             switch (aiComponent.enemyState) {
                 case ENEMY_STATES.IDLE:    animatorManager.play(entity, "Idle"); break;
-                case ENEMY_STATES.PATROL:  animatorManager.play(entity, "Walk"); break;
-                case ENEMY_STATES.CHASE:   animatorManager.play(entity, "Walk"); break;
-                case ENEMY_STATES.SEARCH:  animatorManager.play(entity, "Walk"); break;
-                case ENEMY_STATES.ATTACK:  animatorManager.play(entity, "Attack"); break;
-                case ENEMY_STATES.HURT:    animatorManager.play(entity, "Hurt"); break;
-                case ENEMY_STATES.DEATH:   animatorManager.play(entity, "Death"); break;
+                case ENEMY_STATES.PATROL :
+                case ENEMY_STATES.CHASE : 
+                case ENEMY_STATES.SEARCH:
+                    // animatorManager.stop(entity, "Attack"); 
+                    animatorManager.play(entity, "Walk"); 
+                    break;
+                case ENEMY_STATES.ATTACK:  
+                    // animatorManager.stop(entity, "Walk"); 
+                    animatorManager.play(entity, "Attack", false, true); 
+                    break;
+                case ENEMY_STATES.HURT:    animatorManager.play(entity, "Hurt", false, true); break;
+                case ENEMY_STATES.DEATH:   animatorManager.play(entity, "Death", false, false); break;
             }
         }
     }

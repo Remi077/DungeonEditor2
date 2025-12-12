@@ -26,6 +26,7 @@ class CharacterPrefab {
         this.animationClips = new Map();  // parsed once
 
         //Collider + Physics
+        this.weaponColliderMesh = null;
         this.weaponBodyDesc = null;
         this.weaponColliderDesc = null;
         this.weaponOffsetRootToBody = new THREE.Vector3();
@@ -96,6 +97,7 @@ export default class CharacterManager {
                 prefab.weaponBoneName = prefab.weapon?.parent?.name;
                 prefab.weaponMeshName = prefab.weapon?.name;
             }
+            if (child.name.startsWith("Collider_Kine")) prefab.weaponColliderMesh = child;
         });
     }
 
@@ -296,6 +298,10 @@ export default class CharacterManager {
             if (clip.name.startsWith("Attack")) {
                 // console.log("Clip duration:", action._clip.duration);
                 action.setLoop(THREE.LoopOnce, 0);
+
+                //TOIMPROVE: if player we want the last frame of attack to be constant (sword in front of screen)
+                //otherwise do not clamp
+                // action.clampWhenFinished = (options?.isPlayer);   // <- KEEPS last frame visible
                 action.clampWhenFinished = true;   // <- KEEPS last frame visible
                 // action.enabled = true;
             }
@@ -304,13 +310,25 @@ export default class CharacterManager {
         animatorComponent.weaponBone = clonedSkeleton.getBoneByName(prefab.weaponBoneName);
         animatorComponent.headBone = clonedSkeleton.getBoneByName("Head");
 
+        //weapon
+        const weaponComponent = new WeaponComponent();
+        weaponComponent.weapon = root.getObjectByName(prefab.weaponName);
+        const {body: weaponBody, collider: weaponCollider} = physicsManager.createKinematicColliderFromMesh(
+            prefab.weaponColliderMesh,
+            prefab.weaponColliderDesc.collisionGroups
+        );
+        weaponComponent.weaponBody = weaponBody;
+        weaponComponent.weaponCollider = weaponCollider;
+        weaponComponent.weaponOffsetRootToBody = prefab.weaponOffsetRootToBody;
+
+
         //add components
         entity.addComponent(visualComponent);
         entity.addComponent(transformComponent);
         entity.addComponent(animatorComponent);
         entity.addComponent(physicsBodyComponent);
         entity.addComponent(new GameplayComponent());
-        //entity.addComponent(new WeaponComponent());
+        entity.addComponent(weaponComponent);
         //entity.addComponent(new AIComponent()); // optional, for NPCs
 
         //add extra options

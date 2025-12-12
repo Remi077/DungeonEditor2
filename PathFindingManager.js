@@ -132,7 +132,7 @@ export default class PathFindingManager {
                 }
             } else {
                 console.log("NO MORE PATH");
-                this.steerEntity(entity, targetPos);
+                this.steerEntity(entity, targetPos, true);
             }
 
         }

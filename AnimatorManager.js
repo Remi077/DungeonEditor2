@@ -28,7 +28,12 @@ export default class AnimatorManager {
         // }
     }
 
-    play(entity, clipName = null, backward = false, callback = null) {
+    play(entity, 
+        clipName = null, 
+        overlapSingle = false, //stop previous action before starting new single animation
+        stopSingle = false, //dont keep last frame of single animation at the end
+        backward = false,
+        callback = null) {
         const anim = entity.get(ENTITY_COMPONENT_TAGS.ANIMATOR);
         if (!anim) return;
 
@@ -40,7 +45,6 @@ export default class AnimatorManager {
         }
 
         if (backward) {
-
             const clip = action.getClip();
             action.time = clip.duration;
             action.paused = false;
@@ -53,16 +57,22 @@ export default class AnimatorManager {
         // SPECIAL CASE: Attack or any non-looping animation
         if (action.loop === THREE.LoopOnce) {
             
+            //no new single action? abort
             if (anim.singlecurrentAction === action) return;
-            if (!backward)
-                action.reset();
-            action.play();
-            anim.singlecurrentAction = action;
+            anim.singlecurrentAction = action; //set single action
+            // Stop previous non-single action and clear it
+            if (anim.currentAction && !overlapSingle) {
+                anim.currentAction.fadeOut(0.15);
+                anim.currentAction = null;
+            }
+            if (!backward) action.reset();//reset action only if play forward
+            action.play(); //play action
 
             // Optional: event when finished
             action.getMixer().addEventListener("finished", (e) => { 
                 if (e.action === action) {
-                    anim.singlecurrentAction = null;
+                    if (stopSingle) action.stop(); //stop single action
+                    anim.singlecurrentAction = null; //clear single action
                     // optionally return to idle etc.
                     callback?.();
                 }

@@ -454,7 +454,7 @@ export default class EditorState {
             pathFindingManager.loadNavMesh('./assets/glb/navmesh.glb');
             const characterManager = this.game.systems.characterManager;
             characterManager.loadCharacter('./assets/glb/player.glb', 'player');
-            characterManager.loadCharacter('./assets/glb/zombie.glb', 'zombie');
+            characterManager.loadCharacter('./assets/glb/zombietest.glb', 'zombie');
         }    
         if (ActionsOnce.resetLevel) this.onReset();
         // if (ActionsOnce.startGame) this.onStart();
