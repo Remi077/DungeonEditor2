@@ -9,7 +9,6 @@ export default class WeaponComponent {
         this.weaponCollider = null;
         // this.weaponColliderDesc = null;
         this.weaponOffsetRootToBody = null;
-        this.attackLoopId = null;
         this.isAttacking = false;
         this.timeSinceStartAttack = null;
         this.attackDamageStart = 0;

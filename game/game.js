@@ -372,7 +372,23 @@ export default class GameState {
 
         const animatorManager = this.game.systems.animatorManager;
         if (e.button === 0) { //left click
-            animatorManager.play(this.player, Shared.ANIM_ATTACK_NAME);
+
+            const playerWpn = this.player.get(ENTITY_COMPONENT_TAGS.WEAPON);
+            if (playerWpn.isAttacking) return;
+            playerWpn.isAttacking = true;
+            playerWpn.timeSinceStartAttack = 0;
+
+            animatorManager.play(
+                this.player, 
+                Shared.ANIM_ATTACK_NAME,
+                false,
+                false,
+                false,
+                (() => {
+                    console.log("END PLAYER ATTACK");
+                    playerWpn.isAttacking = false;
+                })
+            );
 
             //raycast
             this.raycastActionnables(); //raycast against actionnable objects
@@ -479,6 +495,7 @@ export default class GameState {
             animatorManager.update(dt, entity); //update animated bone/mesh position
             this.scheduleSyncBody(entity); //sync the kinematic rigidbodies to their mesh/bones (schedule)
             this.weaponSyncBody(entity); //sync the weapon body to its respective mesh (schedule)
+            this.weaponAttack(entity); //if weapon is attacking, test weapon collision
 
             //update animations
             this.updateAnimation(entity);
@@ -688,6 +705,20 @@ export default class GameState {
         const target = weaponComponent?.weapon;
         if (!body || !target) return;
         const result = this.game.systems.physicsManager.scheduleSyncBody(body, target, off);
+    }
+
+    weaponAttack(entity) {
+        const weaponComponent = entity.get(ENTITY_COMPONENT_TAGS.WEAPON);
+        if (!weaponComponent) return;
+        if (!weaponComponent.isAttacking) return;
+        weaponComponent.timeSinceStartAttack += dt;
+        if (
+            weaponComponent.timeSinceStartAttack >= weaponComponent.attackDamageStart &&
+            (weaponComponent.attackDamageEnd ?
+                (weaponComponent.timeSinceStartAttack < weaponComponent.attackDamageEnd) : true)
+        ) { 
+            this.game.systems.physicsManager.intersectionsWithShape(entity);
+        }
     }
 
     // syncMeshToRigidBody(entity) {

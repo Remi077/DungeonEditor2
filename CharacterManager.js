@@ -30,6 +30,8 @@ class CharacterPrefab {
         this.weaponBodyDesc = null;
         this.weaponColliderDesc = null;
         this.weaponOffsetRootToBody = new THREE.Vector3();
+        this.attackDamageStart = 0;
+        this.attackDamageEnd = 0;
 
         //Physics template
         this.capsuleRadius = Shared.playerRadius; //temp should be calculated from mesh BB or dedicated mesh
@@ -184,6 +186,13 @@ export default class CharacterManager {
             prefab.weaponBodyDesc = weaponBodyDesc;
             prefab.weaponColliderDesc = weaponColliderDesc;
             prefab.weaponOffsetRootToBody.copy(offsetRootToBody);
+            if(isPlayerPrefab){
+                prefab.attackDamageStart = 0.2;
+                prefab.attackDamageEnd = null; //end of animation
+            } else {
+                prefab.attackDamageStart = 0.5;
+                prefab.attackDamageEnd = 0.5+0.3;
+            }
 
             // --- 8. Store collider info for character capsule ---
             prefab.capsuleRadius = isPlayerPrefab ? Shared.playerRadius : Shared.playerRadius*0.5 ; //temp should be calculated from mesh BB or dedicated mesh
@@ -320,6 +329,8 @@ export default class CharacterManager {
         weaponComponent.weaponBody = weaponBody;
         weaponComponent.weaponCollider = weaponCollider;
         weaponComponent.weaponOffsetRootToBody = prefab.weaponOffsetRootToBody;
+        weaponComponent.attackDamageStart = prefab.attackDamageStart;
+        weaponComponent.attackDamageEnd = prefab.attackDamageEnd;
 
 
         //add components
