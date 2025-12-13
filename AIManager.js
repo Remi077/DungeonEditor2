@@ -58,13 +58,14 @@ export default class AIManager {
                 // playClip(ec, "Idle", true);
                 //if detects player go to chase
                 if (aiComponent.playerSeen) {
-                    aiComponent.enemyState = ENEMY_STATES.CHASE;
+                    // aiComponent.enemyState = ENEMY_STATES.CHASE;
                 }
                 //else after a certain time, patrol
                 else if (aiComponent.timeSinceChangedState > 5) {
                     aiComponent.timeSinceChangedState = 0;
                     if (aiComponent.patrolPath.length > 0)
-                        aiComponent.enemyState = ENEMY_STATES.PATROL;
+                        ;
+                        // aiComponent.enemyState = ENEMY_STATES.PATROL;
                 }
                 break;
             case ENEMY_STATES.PATROL:

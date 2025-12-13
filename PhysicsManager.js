@@ -112,7 +112,7 @@ export default class PhysicsManager {
 
         const collider = this.createCollider(colliderDesc, body);
 
-        return { body, collider };
+        return { body, collider, colliderDesc };
     }
 
     computeBoundingBox(mesh) {
@@ -395,34 +395,19 @@ export default class PhysicsManager {
         return isInside;
     }
 
-    intersectionsWithShape(entity) {
-
-        const weaponComponent = entity.get(ENTITY_COMPONENT_TAGS.WEAPON);
-        const weaponCollider = weaponComponent.weaponCollider;
-        const weaponBody = weaponComponent.weaponBody;
-        const weaponColliderDesc = weaponComponent.colliderDesc;
-        const pos = weaponBody.translation();
-        const rot = weaponBody.rotation();
+    intersectionsWithShape(body, shape, options) {
 
         this.world.intersectionsWithShape(
-            pos, //shapePos: pos,
-            rot, //shapeRot: rot,
-            weaponColliderDesc.shape, //shape: weaponColliderDesc.shape,
+            body.translation(), //shapePos: pos,
+            body.rotation(), //shapeRot: rot,
+            shape, //shape: weaponColliderDesc.shape,
             (otherCollider) => {
-                const hitCharacter = otherCollider.userData?.characterState
-                console.log("enemy hit something", otherCollider.userData?.name)
-                // const hitCharacter = Shared.characterStateNameMap.get(otherCollider.name);
-                if (hitCharacter) {
-                    console.log("HIT", hitCharacter.name);
-                    hitCollider(hitCharacter, characterState);
-                }
-            }
-            , //callback: null, // callback: (collider: Collider) => boolean,
+                options?.callback?.(otherCollider)
+            }, //callback: null, // callback: (collider: Collider) => boolean,
             null, //filterFlags?: QueryFilterFlags,
-            null, //filterGroups?: InteractionGroups,
-            // Shared.COL_MASKS.PLAYERWPN, //filterGroups?: InteractionGroups,
-            weaponCollider, //filterExcludeCollider?: Collider,
-            characterState.body,
+            options?.filterGroups, //filterGroups?: InteractionGroups,
+            options?.excludeCollider, //filterExcludeCollider?: Collider,
+            options?.excludeBody,
             // weaponBody, //filterExcludeRigidBody?: RigidBody,
             null //filterPredicate?: (collider: Collider) => boolean,
         )

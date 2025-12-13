@@ -495,7 +495,7 @@ export default class GameState {
             animatorManager.update(dt, entity); //update animated bone/mesh position
             this.scheduleSyncBody(entity); //sync the kinematic rigidbodies to their mesh/bones (schedule)
             this.weaponSyncBody(entity); //sync the weapon body to its respective mesh (schedule)
-            this.weaponAttack(entity); //if weapon is attacking, test weapon collision
+            this.weaponAttack(entity, dt); //if weapon is attacking, test weapon collision
 
             //update animations
             this.updateAnimation(entity);
@@ -707,7 +707,7 @@ export default class GameState {
         const result = this.game.systems.physicsManager.scheduleSyncBody(body, target, off);
     }
 
-    weaponAttack(entity) {
+    weaponAttack(entity, dt) {
         const weaponComponent = entity.get(ENTITY_COMPONENT_TAGS.WEAPON);
         if (!weaponComponent) return;
         if (!weaponComponent.isAttacking) return;
@@ -717,7 +717,21 @@ export default class GameState {
             (weaponComponent.attackDamageEnd ?
                 (weaponComponent.timeSinceStartAttack < weaponComponent.attackDamageEnd) : true)
         ) { 
-            this.game.systems.physicsManager.intersectionsWithShape(entity);
+            const characterBody = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS).body;
+            this.game.systems.physicsManager.intersectionsWithShape(
+                weaponComponent.weaponBody,
+                weaponComponent.weaponColliderDesc.shape,
+                {
+                    excludeCollider: weaponComponent.weaponCollider,
+                    excludeBody: characterBody,
+                    callback: ((otherCollider) => {
+                        console.log("attackgame")
+                        const colentity = otherCollider?.userData?.entity;
+                        if (colentity)
+                            console.log(entity.name, "hit something", colentity.name)
+                    })
+                }
+            )
         }
     }
 

@@ -7,7 +7,7 @@ export default class WeaponComponent {
         this.weaponBody = null;
         // this.weaponBodyDesc = null;
         this.weaponCollider = null;
-        // this.weaponColliderDesc = null;
+        this.weaponColliderDesc = null;
         this.weaponOffsetRootToBody = null;
         this.isAttacking = false;
         this.timeSinceStartAttack = null;

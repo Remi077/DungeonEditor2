@@ -29,6 +29,7 @@ class CharacterPrefab {
         this.weaponColliderMesh = null;
         this.weaponBodyDesc = null;
         this.weaponColliderDesc = null;
+        this.weaponCollisionGroups = null;
         this.weaponOffsetRootToBody = new THREE.Vector3();
         this.attackDamageStart = 0;
         this.attackDamageEnd = 0;
@@ -172,19 +173,18 @@ export default class CharacterManager {
                 rotation: childRot,
             };
 
-            const weaponColliderDesc = {
-                halfExtents: halfExtents,
-            };
+            // const weaponColliderDesc = {
+            //     halfExtents: halfExtents,
+            // };
 
             // --- 6. Collision groups ---
+            let weaponCollisionGroups = Shared.COL_MASKS.ENEMYWPN;
             if(isPlayerPrefab)
                 weaponColliderDesc.collisionGroups = Shared.COL_MASKS.PLAYERWPN;
-            else
-                weaponColliderDesc.collisionGroups = Shared.COL_MASKS.ENEMYWPN;
 
             // --- 7. Store inside prefab ---
             prefab.weaponBodyDesc = weaponBodyDesc;
-            prefab.weaponColliderDesc = weaponColliderDesc;
+            prefab.weaponCollisionGroups = weaponCollisionGroups;
             prefab.weaponOffsetRootToBody.copy(offsetRootToBody);
             if(isPlayerPrefab){
                 prefab.attackDamageStart = 0.2;
@@ -272,6 +272,8 @@ export default class CharacterManager {
              (prefab.capsuleHeight * 0.5) - prefab.capsuleRadius,
              prefab.collisionGroup
         , playerBody);
+        if (!playerCollider.userData) playerCollider.userData = {};
+        playerCollider.userData.entity = entity;//annotate the collider with entity for fast lookup on weapon collision
         const physicsBodyComponent = new PhysicsBodyComponent(playerBody, playerCollider);
 
         physicsBodyComponent.capsuleRadius = prefab.capsuleRadius ;
@@ -322,12 +324,13 @@ export default class CharacterManager {
         //weapon
         const weaponComponent = new WeaponComponent();
         weaponComponent.weapon = root.getObjectByName(prefab.weaponName);
-        const {body: weaponBody, collider: weaponCollider} = physicsManager.createKinematicColliderFromMesh(
+        const {body: weaponBody, collider: weaponCollider, colliderDesc: weaponColliderDesc} = physicsManager.createKinematicColliderFromMesh(
             prefab.weaponColliderMesh,
-            prefab.weaponColliderDesc.collisionGroups
+            prefab.weaponCollisionGroups
         );
         weaponComponent.weaponBody = weaponBody;
         weaponComponent.weaponCollider = weaponCollider;
+        weaponComponent.weaponColliderDesc = weaponColliderDesc;
         weaponComponent.weaponOffsetRootToBody = prefab.weaponOffsetRootToBody;
         weaponComponent.attackDamageStart = prefab.attackDamageStart;
         weaponComponent.attackDamageEnd = prefab.attackDamageEnd;
