@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { GAMESTATES } from '../GameStateManager.js';
 import * as Shared from '../Shared.js';
 
 
@@ -56,7 +57,7 @@ export default class GameOverState {
         // (Optional future buttons)
         // const restart = document.createElement('button');
         // restart.textContent = 'Restart';
-        // restart.onclick = () => this.game.stateManager.setState('game');
+        // restart.onclick = () => this.game.stateManager.setState(GAMESTATES.EDITOR);
         // this.overlay.appendChild(restart);
 
         document.body.appendChild(this.overlay);

@@ -102,7 +102,7 @@ export default class PathFindingManager {
                 pathbuffer.length = 0
                 if (path) pathbuffer.push(...path);
 
-                console.log(entity.name, "CALCULATE PATH", performance.now());
+                // console.log(entity.name, "CALCULATE PATH", performance.now());
                 pathFindingComponent.lastKnownPlayerPosition.copy(targetPos);
                 if (1) {
                     const debugSpheres = pathFindingComponent.debugSpheres;
@@ -131,7 +131,7 @@ export default class PathFindingManager {
                     newRotation.setFromEuler(this.newEuler);
                 }
             } else {
-                console.log("NO MORE PATH");
+                // console.log("NO MORE PATH");
                 this.steerEntity(entity, targetPos, true);
             }
 

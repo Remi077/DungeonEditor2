@@ -1,5 +1,12 @@
 // @ts-nocheck
 
+export const GAMESTATES = {
+    MENU : "menu",
+    GAME : "game",
+    EDITOR : "editor",
+    GAMEOVER : "gameover",
+}
+
 export default class GameStateManager {
     constructor() {
         this.states = {};

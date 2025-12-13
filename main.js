@@ -11,7 +11,8 @@
 // import * as Inventory from './game/inventory.js';
 
 import * as THREE from 'three';
-import GameStateManager from './GameStateManager.js';
+import GameStateManager, { GAMESTATES } from './GameStateManager.js';
+// import GameStateManager from './GameStateManager.js';
 import MenuState from './menu/Menu.js';
 import GameState from './game/Game.js';
 import EditorState from './editor/Editor.js';
@@ -218,13 +219,13 @@ game.scene.background = new THREE.Color(0x000000);
 game.systems.physicsManager.init(game.scene);
 
 // --- Register states ---
-stateManager.add("menu", new MenuState(game));
-stateManager.add("game", new GameState(game));
-stateManager.add("editor", new EditorState(game));
-stateManager.add("gameover", new GameOverState(game));
+stateManager.add(GAMESTATES.MENU, new MenuState(game));
+stateManager.add(GAMESTATES.GAME, new GameState(game));
+stateManager.add(GAMESTATES.EDITOR, new EditorState(game));
+stateManager.add(GAMESTATES.GAMEOVER, new GameOverState(game));
 
 // --- Set initial state ---
-stateManager.setState("menu");
+stateManager.setState(GAMESTATES.MENU);
 
 // --- Start main loop ---
 let lastTime = 0;

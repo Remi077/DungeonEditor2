@@ -9,6 +9,7 @@ import Pathfinding from "three-pathfinding";
 import Stats from "stats.js";
 import AnimatorManager from '../AnimatorManager.js';
 import { ENEMY_STATES } from '../AIManager.js';
+import { GAMESTATES } from '../GameStateManager.js';
 
 
 export default class GameState {
@@ -385,7 +386,7 @@ export default class GameState {
                 false,
                 false,
                 (() => {
-                    console.log("END PLAYER ATTACK");
+                    // console.log("END PLAYER ATTACK");
                     playerWpn.isAttacking = false;
                 })
             );
@@ -499,6 +500,8 @@ export default class GameState {
 
             //update animations
             this.updateAnimation(entity);
+            //update material
+            this.updateMaterial(entity);
         }
 
         // animatorManager.update(dt, entities);
@@ -530,7 +533,7 @@ export default class GameState {
 
         const ActionsOnce = this.ActionsOnce;
         if (ActionsOnce.startEditor)
-            this.game.stateManager.setState('editor');
+            this.game.stateManager.setState(GAMESTATES.EDITOR);
         // if (ActionsOnce.jump) jump();
         if (ActionsOnce.interact) interact();
         if (ActionsOnce.hideCol) {this.game.systems.physicsManager.toggle();};
@@ -725,14 +728,78 @@ export default class GameState {
                     excludeCollider: weaponComponent.weaponCollider,
                     excludeBody: characterBody,
                     callback: ((otherCollider) => {
-                        console.log("attackgame")
+                        // console.log("attackgame")
                         const colentity = otherCollider?.userData?.entity;
-                        if (colentity)
+                        if (colentity){
                             console.log(entity.name, "hit something", colentity.name)
+                            this.hurt(colentity, entity);
+                        }
                     })
                 }
             )
         }
+    }
+
+    hurt(target, source) {
+        const ai = target.get(ENTITY_COMPONENT_TAGS.AI);
+        const vs = target.get(ENTITY_COMPONENT_TAGS.VISUAL);
+        const gp = target.get(ENTITY_COMPONENT_TAGS.GAMEPLAY);
+        if (gp.invincibility || gp.health <= 0)
+            return;
+
+        // gp.health -= 10;
+        gp.health -= 50;
+        const isPlayer = target.type === ENTITY_TYPES.PLAYER;
+
+        const wpn =target.get(ENTITY_COMPONENT_TAGS.WEAPON);
+        if (wpn){
+            // console.log("CANCEL ATTACK");
+            wpn.isAttacking = false; //cancel the attack on hurt
+        }
+        // if (isPlayer) {
+        //     GameHUD.updateHealthBar(hitCharacter.health, hitCharacter.maxHealth);
+        // } else {
+        //     GameHUD.updateFloatingHealthBar(hitCharacter);
+        //     hitCharacter.enemyState = Shared.ENEMY_STATES.CHASE;//hitting an enemy will cause it to chase player
+        // }
+
+        // const hitRepulsionForce = hitCharacter.root.position.clone().sub(hitter.root.position);
+        // hitRepulsionForce.y = 0;
+        // hitRepulsionForce.normalize().multiplyScalar(maxHitRepulsionForce);
+        // hitCharacter.hitRepulsionForce.copy(hitRepulsionForce);
+
+        if (gp.health <= 0) {
+            console.log("character dead");
+            // stopClip(hitCharacter);
+            if (isPlayer) {
+                this.game.stateManager.setState(GAMESTATES.GAMEOVER);
+            } else {
+                this.game.systems.aiManager.die(target);
+                const ps = target.get(ENTITY_COMPONENT_TAGS.PHYSICS);
+                // this.game.systems.physicsManager.removeCollider(ps.collider);
+                // this.game.systems.physicsManager.removeColliderBody(ps.collider, ps.body);
+                // this.game.systems.physicsManager.removeCollider(wpn.weaponCollider);
+                // stopAllActions(hitCharacter);
+                // playClipOnce(hitCharacter, "Die", true, die);
+            }
+        } else {
+            // console.log("character hurt");
+            if (isPlayer) {
+                ;
+            } else {
+                this.game.systems.aiManager.hurt(target);       
+            }
+                 
+        }
+
+    }
+
+    disableEntity(entity) {
+        const ps = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
+        const wpn = entity.get(ENTITY_COMPONENT_TAGS.WEAPON);
+        this.game.systems.physicsManager.scheduleRemoval(ps.body, ps.collider);
+        this.game.systems.physicsManager.scheduleRemoval(wpn.weaponBody, wpn.weaponCollider);
+        this.game.activeEntities.delete(entity);
     }
 
     // syncMeshToRigidBody(entity) {
@@ -774,10 +841,43 @@ export default class GameState {
                     break;
                 case ENEMY_STATES.ATTACK:  
                     // animatorManager.stop(entity, "Walk"); 
-                    animatorManager.play(entity, "Attack", false, true); 
+                    animatorManager.play(entity, "Attack", false, false); 
                     break;
-                case ENEMY_STATES.HURT:    animatorManager.play(entity, "Hurt", false, true); break;
-                case ENEMY_STATES.DEATH:   animatorManager.play(entity, "Death", false, false); break;
+                case ENEMY_STATES.HURT:    
+                    animatorManager.play(entity, "Hurt", false, true, false, 
+                        (() => {
+                            aiComponent.animationFinished = true;
+                        }), 
+                        false);
+                    break;
+                case ENEMY_STATES.DEATH:   
+                    // animatorManager.stop(entity, "Walk");
+                    // animatorManager.stop(entity, "Hurt");
+                    animatorManager.stop(entity, "Attack");
+                    animatorManager.play(entity, "Die", false, false, false, 
+                        (() => {
+                            // aiComponent.animationFinished = true;
+                            this.disableEntity(entity);
+                        })
+                    , false);
+                 break;
+            }
+        }
+    }
+
+    updateMaterial(entity) {
+        const isPlayer = entity.type === ENTITY_TYPES.PLAYER;
+        const aiComponent = entity.get(ENTITY_COMPONENT_TAGS.AI);
+        if (isPlayer) {
+            ;
+        } else {
+            const aiComponent = entity.get(ENTITY_COMPONENT_TAGS.AI);
+            const visualComponent = entity.get(ENTITY_COMPONENT_TAGS.VISUAL);
+            if (!aiComponent || !visualComponent) return;
+            if (aiComponent.enemyState === ENEMY_STATES.HURT){
+                visualComponent.skinnedMesh.material = visualComponent.hurtMaterial;
+            } else if (visualComponent.skinnedMesh.material !== visualComponent.normalMaterial) {
+                visualComponent.skinnedMesh.material = visualComponent.normalMaterial;
             }
         }
     }
@@ -2206,8 +2306,8 @@ function hitCollider(hitCharacter, hitter) {
 
     hitCharacter.invincibility = true;
     console.log("hitCharacter ", hitCharacter.name)
-    // hitCharacter.health -= 10;
-    hitCharacter.health -= 50;
+    hitCharacter.health -= 10;
+    // hitCharacter.health -= 50;
     if (hitCharacter.isPlayer) {
         GameHUD.updateHealthBar(hitCharacter.health, hitCharacter.maxHealth);
     } else {

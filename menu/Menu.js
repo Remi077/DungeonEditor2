@@ -1,6 +1,8 @@
 
 // import * as Shared from '../shared.js';
 
+import { GAMESTATES } from "../GameStateManager.js";
+
 // /*-----------------------------------------------------*/
 // //  BUTTONS
 // /*-----------------------------------------------------*/
@@ -106,10 +108,10 @@ export default class MenuState {
         this.menuOverlay.appendChild(title);
 
         // --- Create buttons ---
-        this.startButton = this.createButton('Start Game', () => this.game.stateManager.setState('game'));
+        this.startButton = this.createButton('Start Game', () => this.game.stateManager.setState(GAMESTATES.GAME));
         this.loadButton = this.createButton('Load', () => console.log("Load clicked"));
-        this.editorButton = this.createButton('Editor', () => this.game.stateManager.setState('editor'));
-        // this.editorButton = this.createButton('Editor', () => this.game.stateManager.setState('gameover'));
+        this.editorButton = this.createButton('Editor', () => this.game.stateManager.setState(GAMESTATES.EDITOR));
+        // this.editorButton = this.createButton('Editor', () => this.game.stateManager.setState(GAMESTATES.GAMEOVER));
 
         this.menuOverlay.appendChild(this.startButton);
         this.menuOverlay.appendChild(this.loadButton);

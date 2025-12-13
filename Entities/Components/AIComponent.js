@@ -17,6 +17,7 @@ export default class AIComponent {
         this.timeSinceLastSeen = 0;
         this.enemyState = ENEMY_STATES.IDLE;
         this.timeSinceChangedState = 0;
+        this.animationFinished = false;
         this.patrolPath = [];
         this.debugSpheres = [];
         this.debugLine = new THREE.Line(Shared.debugLineGeometry, Shared.debugLineMaterial);

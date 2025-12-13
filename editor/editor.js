@@ -14,6 +14,7 @@ import * as GameHUD from '../game/gameHUD.js';
 import * as loadSave from './loadSave.js';
 import Stats from "stats.js";
 import PathFindingManager from '../PathFindingManager.js';
+import { GAMESTATES } from '../GameStateManager.js';
 
 
 export default class EditorState {
@@ -366,7 +367,7 @@ export default class EditorState {
     onSave() { console.log('Save pressed'); loadSave.loadLevel();}
     onReset() { console.log('Reset pressed'); loadSave.resetLevel();}
     onStart() { 
-        this.game.stateManager.setState('game'); }
+        this.game.stateManager.setState(GAMESTATES.GAME); }
 
     updateStats(){
         const now = performance.now();

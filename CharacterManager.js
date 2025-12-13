@@ -22,6 +22,10 @@ class CharacterPrefab {
         this.weaponBoneName = "";
         this.weaponMeshName = "";
 
+        //materials
+        this.normalMaterial = null;
+        this.hurtMaterial = null;
+
         //Animations
         this.animationClips = new Map();  // parsed once
 
@@ -94,7 +98,12 @@ export default class CharacterManager {
     processHierarchy(scene, prefab, isPlayerPrefab) {
         scene.traverse(child => {
             if (child.name.startsWith("Armature")) prefab.root = child;
-            if (child.isSkinnedMesh) {child.frustumCulled = !isPlayerPrefab;};
+            if (child.isSkinnedMesh) {
+                child.frustumCulled = !isPlayerPrefab;
+                prefab.normalMaterial = child.material;
+                prefab.hurtMaterial = child.material.clone();
+                prefab.hurtMaterial.color?.set(0xff0000);
+            };
             if (child.name.startsWith("weapon")) {
                 child.frustumCulled = !isPlayerPrefab;
                 prefab.weaponBoneName = prefab.weapon?.parent?.name;
@@ -249,6 +258,8 @@ export default class CharacterManager {
         const root = SkeletonUtils.clone(prefab.root); // Clone skinned mesh + skeleton
         const visualComponent = new VisualComponent(root)
         visualComponent.setFrustumCulled(!(options?.isPlayer));
+        visualComponent.normalMaterial = prefab.normalMaterial;
+        visualComponent.hurtMaterial = prefab.hurtMaterial;
 
         // 2. Traverse cloned root to find skeleton
         let clonedSkeleton = null;
@@ -306,7 +317,10 @@ export default class CharacterManager {
             // console.log("Bones:");
             // root.traverse(o => { if (o.isBone) console.log(o.name); });
             // detect attack clips by name or metadata
-            if (clip.name.startsWith("Attack")) {
+            if (clip.name.startsWith("Attack") || 
+                clip.name.startsWith("Die") ||
+                clip.name.startsWith("Hurt")
+            ) {
                 // console.log("Clip duration:", action._clip.duration);
                 action.setLoop(THREE.LoopOnce, 0);
 

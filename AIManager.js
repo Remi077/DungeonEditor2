@@ -40,7 +40,7 @@ export default class AIManager {
             aiComponent.playerSeen = playerSeen;
             if (aiComponent.playerSeen) {
                 aiComponent.lastSeenPlayerPosition = lastSeenPlayerPosition;
-                console.log("PLAYER DETECTED at", aiComponent.lastSeenPlayerPosition);
+                // console.log("PLAYER DETECTED at", aiComponent.lastSeenPlayerPosition);
                 aiComponent.timeSinceLastSeen = 0;
             }
         } else {
@@ -51,6 +51,7 @@ export default class AIManager {
         // enemy state machine
 
         const enemyAttackDistance = 1.2; //TODO: move in constants or in prefab
+        const invincibleDuration = 1;//TODO: same
         switch (aiComponent.enemyState) {
             case ENEMY_STATES.IDLE:
                 //stay still
@@ -117,8 +118,15 @@ export default class AIManager {
                 break;
             case ENEMY_STATES.HURT:
                 moveVector.set(0,0,0);
-                aiComponent.enemyState = ENEMY_STATES.CHASE;
-                aiComponent.enemyState = ENEMY_STATES.DEATH;
+                gpComponent.invincibility = true;
+                // if (aiComponent.timeSinceChangedState > invincibleDuration) {
+                if (aiComponent.animationFinished) {
+                    aiComponent.animationFinished = false;
+                    aiComponent.timeSinceChangedState = 0;
+                    aiComponent.enemyState = ENEMY_STATES.CHASE;
+                    gpComponent.invincibility = false;
+                }
+                break;
             case ENEMY_STATES.SEARCH:
                 //go to last place where player was seen
                 // playClip(ec, "Walk", true);
@@ -136,6 +144,11 @@ export default class AIManager {
                 }
                 break;
             case ENEMY_STATES.DEATH:
+                gpComponent.invincibility = true;
+                moveVector.set(0,0,0);
+                // if (aiComponent.animationFinished){
+                //     aiComponent.animationFinished = false;
+                // }
                 //do nothing anymore (despawn?)
                 break;
         }
@@ -232,7 +245,17 @@ export default class AIManager {
             lastSeenPlayerPosition : null,
         }
     }
-    
 
+    hurt(entity) {
+        const ai = entity.get(ENTITY_COMPONENT_TAGS.AI);
+        ai.enemyState = ENEMY_STATES.HURT;
+        ai.timeSinceChangedState = 0;
+    }
+
+    die(entity) {
+        const ai = entity.get(ENTITY_COMPONENT_TAGS.AI);
+        ai.enemyState = ENEMY_STATES.DEATH;
+        ai.timeSinceChangedState = 0;
+    }
 
 }

@@ -37,6 +37,8 @@ export default class PhysicsManager {
         //used in logic below
         this.worldPos = new THREE.Vector3();
         this.worldQuat = new THREE.Quaternion();
+        this.bodyToRemove = [];
+        this.colliderToRemove = [];
     }
 
     async init(scene) {
@@ -60,9 +62,25 @@ export default class PhysicsManager {
 
         while (this.accumulator >= this.fixedTimeStep) {
             this.world.timestep = this.fixedTimeStep;
+            // try {
+            //     this.world.step(this.events);
+            // } catch (e) {
+            //     console.error("JS-level error:", e);
+            // }
             this.world.step(this.events);
             this.accumulator -= this.fixedTimeStep;
         }
+
+        //handle safe deferred removal of bodies and colliders after step
+        for (const collider of this.colliderToRemove){
+            this.removeCollider(collider);
+        }
+        for (const body of this.bodyToRemove){
+            this.removeRigidBody(body);
+        }
+
+        this.colliderToRemove.length = 0;
+        this.bodyToRemove.length = 0;
 
         if (this.debugLines.visible)
             this.updateDebug();
@@ -136,7 +154,11 @@ export default class PhysicsManager {
     }
 
     removeRigidBody(rb) {
-        this.world.removeRigidBody(rb);
+        try {
+            this.world.removeRigidBody(rb);
+        } catch (e) {
+            console.error("JS-level error:", e);
+        }
         this.bodies.delete(rb.handle);
     }
 
@@ -145,6 +167,29 @@ export default class PhysicsManager {
         this.colliders.set(col.handle, col);
         return col;
     }
+
+    removeCollider(collider) {
+        // this.world.removeCollider(collider, true);
+        try {
+            this.world.removeCollider(collider, true);
+            // this.world.removeCollider(true, collider);
+        } catch (e) {
+            console.error("JS-level error:", e);
+        }
+        // this.world.removeCollider(true, collider);
+        this.colliders.delete(collider.handle);
+    }
+
+    // removeColliderBody(col,rb){
+    //     this.removeCollider(col);
+    //     this.removeRigidBody(rb);
+    // }
+
+    scheduleRemoval(body, collider){
+        this.bodyToRemove.push(body);
+        this.colliderToRemove.push(collider);
+    }
+
 
     createKinematicRigidBody(translation,rotationEuler,name) {
 
@@ -374,6 +419,7 @@ export default class PhysicsManager {
         body.setNextKinematicTranslation(newPos);
         body.setNextKinematicRotation(q);
     }
+
 
     syncMeshToRigidBody(mesh, rigidBody, offset = new THREE.Vector3(0,0,0)) {
         const t = rigidBody.translation();

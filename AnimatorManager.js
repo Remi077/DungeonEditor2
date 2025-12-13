@@ -28,12 +28,15 @@ export default class AnimatorManager {
         // }
     }
 
-    play(entity, 
+    play(
+        entity, 
         clipName = null, 
         overlapSingle = false, //stop previous action before starting new single animation
         stopSingle = false, //dont keep last frame of single animation at the end
         backward = false,
-        callback = null) {
+        callback = null,
+        repeatSingle = true
+    ) {
         const anim = entity.get(ENTITY_COMPONENT_TAGS.ANIMATOR);
         if (!anim) return;
 
@@ -72,7 +75,7 @@ export default class AnimatorManager {
             action.getMixer().addEventListener("finished", (e) => { 
                 if (e.action === action) {
                     if (stopSingle) action.stop(); //stop single action
-                    anim.singlecurrentAction = null; //clear single action
+                    if (repeatSingle) anim.singlecurrentAction = null; //clear single action
                     // optionally return to idle etc.
                     callback?.();
                 }
@@ -90,7 +93,7 @@ export default class AnimatorManager {
             if (!backward)
                 action.reset();
             action.fadeIn(0.15).play();
-            console.log("Playing animation:", clipName);
+            // console.log("Playing animation:", clipName);
             // action.reset().play();
             // action.play();
             anim.currentAction = action;

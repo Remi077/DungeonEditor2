@@ -11,6 +11,8 @@ export default class VisualComponent {
             }
         });
         this.skinnedMesh = found;
+        this.normalMaterial = null;
+        this.hurtMaterial = null;
     }
 
     setFrustumCulled(culled) {
