@@ -199,7 +199,7 @@ export default class LevelManager {
             } else {
                 if (child.parent?.name.startsWith("Action_Switch")) {
                     const parentEntity = child.parent.userData.entity;
-                    parentEntity.get(ENTITY_COMPONENT_TAGS.INTERACTABLE)?.dependentEntities?.push(entity);
+                    parentEntity.interactable?.dependentEntities?.push(entity);
                 }
             }
 

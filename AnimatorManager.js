@@ -19,7 +19,7 @@ export default class AnimatorManager {
 
     update(dt, entity) {
         // for (const entity of entities) {
-            const anim = entity.get(ENTITY_COMPONENT_TAGS.ANIMATOR);
+            const anim = entity.animator;
             if (!anim || !anim.mixer) return;
             
             // console.log("Before update:", anim.mixer.time);
@@ -37,7 +37,7 @@ export default class AnimatorManager {
         callback = null,
         repeatSingle = true
     ) {
-        const anim = entity.get(ENTITY_COMPONENT_TAGS.ANIMATOR);
+        const anim = entity.animator;
         if (!anim) return;
 
         const action = clipName ? anim.animationActions.get(clipName) : 
@@ -105,7 +105,7 @@ export default class AnimatorManager {
 
 
     stop(entity, clipName) {
-        const anim = entity.get(ENTITY_COMPONENT_TAGS.ANIMATOR);
+        const anim = entity.animator;
         const action = anim.animationActions.get(clipName);
         if (!anim) return;
         if (!action) {

@@ -48,9 +48,9 @@ export default class PathFindingManager {
 
     moveEntityToWithin(entity, targetPos, withinDistance, dt) {
 
-        const pathFindingComponent = entity.get(ENTITY_COMPONENT_TAGS.PATHFINDING);
-        const transformComponent = entity.get(ENTITY_COMPONENT_TAGS.TRANSFORM);
-        const physicsBodyComponent = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
+        const pathFindingComponent = entity.pathfinding;
+        const transformComponent = entity.transform;
+        const physicsBodyComponent = entity.physics;
 
         if (!pathFindingComponent || !transformComponent || !physicsBodyComponent) return;
 
@@ -143,9 +143,9 @@ export default class PathFindingManager {
     }
 
     steerEntity(entity, targetPos, updatePos = false) {
-        const pathFindingComponent = entity.get(ENTITY_COMPONENT_TAGS.PATHFINDING);
-        const transformComponent = entity.get(ENTITY_COMPONENT_TAGS.TRANSFORM);
-        const physicsBodyComponent = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
+        const pathFindingComponent = entity.pathfinding;
+        const transformComponent = entity.transform;
+        const physicsBodyComponent = entity.physics;
 
         if (!pathFindingComponent || !transformComponent || !physicsBodyComponent) return;
 

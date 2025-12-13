@@ -374,7 +374,7 @@ export default class GameState {
         const animatorManager = this.game.systems.animatorManager;
         if (e.button === 0) { //left click
 
-            const playerWpn = this.player.get(ENTITY_COMPONENT_TAGS.WEAPON);
+            const playerWpn = this.player.weapon;
             if (playerWpn.isAttacking) return;
             playerWpn.isAttacking = true;
             playerWpn.timeSinceStartAttack = 0;
@@ -504,32 +504,14 @@ export default class GameState {
             this.updateMaterial(entity);
         }
 
-        // animatorManager.update(dt, entities);
-
         // step physics world
         this.game.systems.physicsManager.step(dt);
 
-        // sync the mesh position/rotation with physics bodies
-        // for (let i = 0; i < entities.length; i++) {
-        //     const entity = entities[i];
-        //     this.syncMeshToRigidBody(entity);
-        // }
-
         // keep camera holder at same position as body
         const yawObject = this.game.yawObject;
-        const root = this.player.get(ENTITY_COMPONENT_TAGS.VISUAL).root;
+        const root = this.player.visual.root;
         yawObject.position.copy(root.position);
         yawObject.position.y += Shared.cameraHeight; //keep same height for now
-
-
-        // update animations
-        // if (
-        //     Actions.moveCamLeft ||
-        //     Actions.moveCamRight ||
-        //     Actions.moveCamFront ||
-        //     Actions.moveCamBack
-        // ) playClip(Shared.playerState,Shared.ANIM_WALK_NAME_L);
-        // else stopClip(Shared.playerState);
 
         const ActionsOnce = this.ActionsOnce;
         if (ActionsOnce.startEditor)
@@ -572,10 +554,10 @@ export default class GameState {
     }
 
     calculateDesiredMovement(dt, entity) {
-        const PlayerControllerComponent = entity.get(ENTITY_COMPONENT_TAGS.PLAYERCONTROLLER);
-        const transformComponent = entity.get(ENTITY_COMPONENT_TAGS.TRANSFORM);
-        const visualComponent = entity.get(ENTITY_COMPONENT_TAGS.VISUAL);
-        const physicsBodyComponent = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
+        const PlayerControllerComponent = entity.playerController;
+        const transformComponent = entity.transform;
+        const visualComponent = entity.visual;
+        const physicsBodyComponent = entity.physics;
         const body = physicsBodyComponent?.body;
         const moveVector = transformComponent?.moveVector;
         const isPlayer = entity.type === ENTITY_TYPES.PLAYER;
@@ -622,7 +604,7 @@ export default class GameState {
         } else if (isCharacter) {
 
             // const pathFindingManager = this.game.systems.pathFindingManager;
-            // this.player.get(ENTITY_COMPONENT_TAGS.PHYSICS).getBodyTranslation(this.targetPos); //lookup cost is negligible O(1)
+            // this.player.physics.getBodyTranslation(this.targetPos); //lookup cost is negligible O(1)
             // pathFindingManager.moveEntityToWithin(
             //     entity,
             //     this.targetPos,
@@ -657,8 +639,8 @@ export default class GameState {
     }
 
     calculateCorrectMovement(entity) {
-        const physicsBodyComponent = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
-        const transformComponent = entity.get(ENTITY_COMPONENT_TAGS.TRANSFORM);
+        const physicsBodyComponent = entity.physics;
+        const transformComponent = entity.transform;
         if (!transformComponent || !physicsBodyComponent) return;
         // check for collision and correct movement
         const result = this.game.systems.physicsManager.calculateCorrectMovement(
@@ -674,10 +656,10 @@ export default class GameState {
     }
 
     syncMesh(entity) {
-        const physicsBodyComponent = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
-        const transformComponent = entity.get(ENTITY_COMPONENT_TAGS.TRANSFORM);
+        const physicsBodyComponent = entity.physics;
+        const transformComponent = entity.transform;
         if (!transformComponent || !physicsBodyComponent) return;
-        const visualComponent = entity.get(ENTITY_COMPONENT_TAGS.VISUAL);
+        const visualComponent = entity.visual;
         const root = visualComponent.root;
         //update rotation
         if (entity.type === ENTITY_TYPES.CHARACTER)
@@ -689,8 +671,8 @@ export default class GameState {
     }
 
     scheduleSyncBody(entity) {
-        const physicsBodyComponent = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
-        const visualComponent = entity.get(ENTITY_COMPONENT_TAGS.VISUAL);
+        const physicsBodyComponent = entity.physics;
+        const visualComponent = entity.visual;
         const body = physicsBodyComponent?.body;
         const off = physicsBodyComponent?.offsetRootToBody;
         const target = visualComponent?.root;
@@ -699,10 +681,10 @@ export default class GameState {
     }
 
     weaponSyncBody(entity) {
-        const weaponComponent = entity.get(ENTITY_COMPONENT_TAGS.WEAPON);
+        const weaponComponent = entity.weapon;
         if (!weaponComponent) return;
-        const physicsBodyComponent = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
-        const visualComponent = entity.get(ENTITY_COMPONENT_TAGS.VISUAL);
+        const physicsBodyComponent = entity.physics;
+        const visualComponent = entity.visual;
         const body = weaponComponent?.weaponBody;
         const off = weaponComponent?.weaponOffsetRootToBody;
         const target = weaponComponent?.weapon;
@@ -711,7 +693,7 @@ export default class GameState {
     }
 
     weaponAttack(entity, dt) {
-        const weaponComponent = entity.get(ENTITY_COMPONENT_TAGS.WEAPON);
+        const weaponComponent = entity.weapon;
         if (!weaponComponent) return;
         if (!weaponComponent.isAttacking) return;
         weaponComponent.timeSinceStartAttack += dt;
@@ -720,7 +702,7 @@ export default class GameState {
             (weaponComponent.attackDamageEnd ?
                 (weaponComponent.timeSinceStartAttack < weaponComponent.attackDamageEnd) : true)
         ) { 
-            const characterBody = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS).body;
+            const characterBody = entity.physics.body;
             this.game.systems.physicsManager.intersectionsWithShape(
                 weaponComponent.weaponBody,
                 weaponComponent.weaponColliderDesc.shape,
@@ -741,9 +723,9 @@ export default class GameState {
     }
 
     hurt(target, source) {
-        const ai = target.get(ENTITY_COMPONENT_TAGS.AI);
-        const vs = target.get(ENTITY_COMPONENT_TAGS.VISUAL);
-        const gp = target.get(ENTITY_COMPONENT_TAGS.GAMEPLAY);
+        const ai = target.ai;
+        const vs = target.visual;
+        const gp = target.gameplay;
         if (gp.invincibility || gp.health <= 0)
             return;
 
@@ -751,7 +733,7 @@ export default class GameState {
         gp.health -= 50;
         const isPlayer = target.type === ENTITY_TYPES.PLAYER;
 
-        const wpn =target.get(ENTITY_COMPONENT_TAGS.WEAPON);
+        const wpn =target.weapon;
         if (wpn){
             // console.log("CANCEL ATTACK");
             wpn.isAttacking = false; //cancel the attack on hurt
@@ -775,7 +757,7 @@ export default class GameState {
                 this.game.stateManager.setState(GAMESTATES.GAMEOVER);
             } else {
                 this.game.systems.aiManager.die(target);
-                const ps = target.get(ENTITY_COMPONENT_TAGS.PHYSICS);
+                const ps = target.physic;
                 // this.game.systems.physicsManager.removeCollider(ps.collider);
                 // this.game.systems.physicsManager.removeColliderBody(ps.collider, ps.body);
                 // this.game.systems.physicsManager.removeCollider(wpn.weaponCollider);
@@ -795,16 +777,16 @@ export default class GameState {
     }
 
     disableEntity(entity) {
-        const ps = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
-        const wpn = entity.get(ENTITY_COMPONENT_TAGS.WEAPON);
+        const ps = entity.physic;
+        const wpn = entity.weapon;
         this.game.systems.physicsManager.scheduleRemoval(ps.body, ps.collider);
         this.game.systems.physicsManager.scheduleRemoval(wpn.weaponBody, wpn.weaponCollider);
         this.game.activeEntities.delete(entity);
     }
 
     // syncMeshToRigidBody(entity) {
-    //     const physicsBodyComponent = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
-    //     const visualComponent = entity.get(ENTITY_COMPONENT_TAGS.VISUAL);
+    //     const physicsBodyComponent = entity.physic;
+    //     const visualComponent = entity.visual;
     //     this.game.systems.physicsManager.syncMeshToRigidBody(
     //         visualComponent.root,
     //         physicsBodyComponent.body,
@@ -830,7 +812,7 @@ export default class GameState {
                 animatorManager.stop(entity, Shared.ANIM_WALK_NAME_L);
             }
         } else if (isCharacter) {
-            const aiComponent = entity.get(ENTITY_COMPONENT_TAGS.AI);
+            const aiComponent = entity.ai;
             switch (aiComponent.enemyState) {
                 case ENEMY_STATES.IDLE:    animatorManager.play(entity, "Idle"); break;
                 case ENEMY_STATES.PATROL :
@@ -867,12 +849,12 @@ export default class GameState {
 
     updateMaterial(entity) {
         const isPlayer = entity.type === ENTITY_TYPES.PLAYER;
-        const aiComponent = entity.get(ENTITY_COMPONENT_TAGS.AI);
+        const aiComponent = entity.ai;
         if (isPlayer) {
             ;
         } else {
-            const aiComponent = entity.get(ENTITY_COMPONENT_TAGS.AI);
-            const visualComponent = entity.get(ENTITY_COMPONENT_TAGS.VISUAL);
+            const aiComponent = entity.ai;
+            const visualComponent = entity.visual;
             if (!aiComponent || !visualComponent) return;
             if (aiComponent.enemyState === ENEMY_STATES.HURT){
                 visualComponent.skinnedMesh.material = visualComponent.hurtMaterial;
@@ -920,7 +902,7 @@ export default class GameState {
 
             if (selectEntity?.type === ENTITY_TYPES.ACTIONNABLE) {
                 console.log("hit actionnable");
-                const interactableComponent = selectEntity.get(ENTITY_COMPONENT_TAGS.INTERACTABLE);
+                const interactableComponent = selectEntity.interactable;
                 interactableComponent?.interact(this.player);
             }
 

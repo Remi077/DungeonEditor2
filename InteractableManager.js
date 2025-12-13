@@ -10,8 +10,8 @@ export default class InteractableManager {
     }
 
     doorInteract(doorEntity) {
-        const animator = doorEntity.get(ENTITY_COMPONENT_TAGS.ANIMATOR);
-        const interact = doorEntity.get(ENTITY_COMPONENT_TAGS.INTERACTABLE);
+        const animator = doorEntity.animator;
+        const interact = doorEntity.interactable;
         if (!animator || !interact) return;
 
         if (interact.open) {
@@ -42,12 +42,12 @@ export default class InteractableManager {
 
 
     switchInteract(switchEntity) {
-        const interact = switchEntity.get(ENTITY_COMPONENT_TAGS.INTERACTABLE);
-        const root = switchEntity.get(ENTITY_COMPONENT_TAGS.VISUAL)?.root;
+        const interact = switchEntity.interactable;
+        const root = switchEntity.visual?.root;
         const switchTarget = root.children[0];
         const switchTargetEntity = switchTarget?.userData?.entity;
         if (!interact || !switchTargetEntity) return;
-        const animator = switchTargetEntity.get(ENTITY_COMPONENT_TAGS.ANIMATOR);
+        const animator = switchTargetEntity.animator;
         if (!interact || !animator) return;
         if (interact.open) {
             // Turn off the switch
@@ -76,8 +76,8 @@ export default class InteractableManager {
     }
 
     itemInteract(itemEntity, playerEntity) {
-        const inventory = playerEntity.get(ENTITY_COMPONENT_TAGS.GAMEPLAY)?.inventory;
-        const itemMesh = itemEntity.get(ENTITY_COMPONENT_TAGS.VISUAL)?.root;
+        const inventory = playerEntity.gameplay?.inventory;
+        const itemMesh = itemEntity.visual?.root;
         if (!inventory || !itemMesh) return;
         itemMesh.visible = false;
         const itemName = itemEntity.name.replace(/^Action_Item_/, '').replace(/\d+$/, '');

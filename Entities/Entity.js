@@ -30,4 +30,16 @@ export default class Entity {
         component.entity = this;
     }
     get(type) { return this.components[type]; }
+
+    //helper functions
+    get ai() { return this.get(ENTITY_COMPONENT_TAGS.AI); }
+    get animator() { return this.get(ENTITY_COMPONENT_TAGS.ANIMATOR); }
+    get gameplay() { return this.get(ENTITY_COMPONENT_TAGS.GAMEPLAY); }
+    get interactable() { return this.get(ENTITY_COMPONENT_TAGS.INTERACTABLE); }
+    get pathfinding() { return this.get(ENTITY_COMPONENT_TAGS.PATHFINDING); }
+    get physics() { return this.get(ENTITY_COMPONENT_TAGS.PHYSICS); }
+    get playerController() { return this.get(ENTITY_COMPONENT_TAGS.PLAYERCONTROLLER); }
+    get transform() { return this.get(ENTITY_COMPONENT_TAGS.TRANSFORM); }
+    get visual() { return this.get(ENTITY_COMPONENT_TAGS.VISUAL); }
+    get weapon() { return this.get(ENTITY_COMPONENT_TAGS.WEAPON); }
 }

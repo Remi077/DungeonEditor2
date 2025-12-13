@@ -21,9 +21,9 @@ export default class AIManager {
 
     calculateDesiredMovement(dt, entity) {
 
-        const aiComponent = entity.get(ENTITY_COMPONENT_TAGS.AI);
-        const gpComponent = entity.get(ENTITY_COMPONENT_TAGS.GAMEPLAY);
-        const transformComponent = entity.get(ENTITY_COMPONENT_TAGS.TRANSFORM);
+        const aiComponent = entity.ai;
+        const gpComponent = entity.gameplay;
+        const transformComponent = entity.transform;
         const player = this.game.playerEntity;
         if (!aiComponent || !gpComponent || !transformComponent || !player) return;
 
@@ -165,9 +165,9 @@ export default class AIManager {
     canEnemySeeTarget(entity, targetEntity, sightDistance = 10, fovDegrees = 90) {
 
         //get target middle body and entity eye positions
-        const targetpc = targetEntity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
+        const targetpc = targetEntity.physics;
         const targetPos = targetpc.getBodyTranslation();
-        const pc = entity.get(ENTITY_COMPONENT_TAGS.PHYSICS);
+        const pc = entity.physics;
         const enemyEyes = pc.getBodyTranslation();
         enemyEyes.y += ((pc.capsuleTotalHeight/2) * 0.9);
     
@@ -181,7 +181,7 @@ export default class AIManager {
         const enemyForward = new THREE.Vector3(0, 0, 1).applyQuaternion(enemyRotation);
         const toTarget = targetPos.clone().sub(enemyEyes).normalize();
         const angle = enemyForward.angleTo(toTarget); // radians
-        const ai = entity.get(ENTITY_COMPONENT_TAGS.AI);
+        const ai = entity.ai;
         if (
             (ai.enemyState === ENEMY_STATES.IDLE) ||
             (ai.enemyState === ENEMY_STATES.PATROL)
@@ -192,7 +192,7 @@ export default class AIManager {
         
         // 3️⃣ Collect raycastable objects
         const visibleTargets = this.game.systems.levelManager.getRaycastTargets(true, true, true);//static, actionnables and characters
-        const targetMesh = targetEntity.get(ENTITY_COMPONENT_TAGS.VISUAL).root;
+        const targetMesh = targetEntity.visual.root;
         visibleTargets.push(targetMesh); //add player
 
         // 4️⃣ Raycast from enemy to target
@@ -247,13 +247,13 @@ export default class AIManager {
     }
 
     hurt(entity) {
-        const ai = entity.get(ENTITY_COMPONENT_TAGS.AI);
+        const ai = entity.ai;
         ai.enemyState = ENEMY_STATES.HURT;
         ai.timeSinceChangedState = 0;
     }
 
     die(entity) {
-        const ai = entity.get(ENTITY_COMPONENT_TAGS.AI);
+        const ai = entity.ai;
         ai.enemyState = ENEMY_STATES.DEATH;
         ai.timeSinceChangedState = 0;
     }
