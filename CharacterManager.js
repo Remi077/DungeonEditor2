@@ -56,6 +56,19 @@ export default class CharacterManager {
 
         this.charaPrefabMap = new Map(); // multiple character types
 
+        //floating health bar
+        this.floatingHPWidth = 0.5;
+        this.floatingHPHeight = 0.05;
+        this.floatingHPGeom = new THREE.PlaneGeometry(this.floatingHPWidth, this.floatingHPHeight);
+        this.floatingHPBackgroundColor = 0x550000;
+        this.floatingHPBgMat = new THREE.MeshBasicMaterial({ color: this.floatingHPBackgroundColor });
+        this.floatingHPBgMesh = new THREE.Mesh(this.floatingHPGeom, this.floatingHPBgMat);        
+        this.floatingHPBgMesh.name= "hp_bg";
+        this.floatingHPForegroundColor = 0x00ff00;
+        this.floatingHPFgMat = new THREE.MeshBasicMaterial({ color: this.floatingHPForegroundColor });
+        this.floatingHPFgMesh = new THREE.Mesh(this.floatingHPGeom, this.floatingHPFgMat);        
+        this.floatingHPFgMesh.name= "hp_fg";
+
         // this.entities = [];
     }
 
@@ -349,13 +362,14 @@ export default class CharacterManager {
         weaponComponent.attackDamageStart = prefab.attackDamageStart;
         weaponComponent.attackDamageEnd = prefab.attackDamageEnd;
 
+        const gpComponent = new GameplayComponent();
 
         //add components
         entity.addComponent(visualComponent);
         entity.addComponent(transformComponent);
         entity.addComponent(animatorComponent);
         entity.addComponent(physicsBodyComponent);
-        entity.addComponent(new GameplayComponent());
+        entity.addComponent(gpComponent);
         entity.addComponent(weaponComponent);
         //entity.addComponent(new AIComponent()); // optional, for NPCs
 
@@ -369,6 +383,13 @@ export default class CharacterManager {
                 aiComponent.patrolPath.push(...patrolPath);
             entity.addComponent(aiComponent);
             entity.addComponent(new PathFindingComponent());
+
+            //add health bar
+            const hp = this.createHealthBar();
+            hp.position.y = physicsBodyComponent.capsuleTotalHeight + 0.3;
+            root.add(hp);
+            gpComponent.healthBar = hp;
+
         }
 
 
@@ -387,4 +408,28 @@ export default class CharacterManager {
 
         return entity;
     }
+
+    createHealthBar() {
+        const group = new THREE.Group();
+        group.name="healthbar";
+
+        // Background
+        const bg = this.floatingHPBgMesh.clone();
+        group.add(bg);
+
+        // Foreground (actual health)
+        const fg = this.floatingHPFgMesh.clone();
+        fg.position.z = 0.001; // avoid z-fighting
+        group.add(fg);
+
+        // Store for later updates
+        group.healthForeground = fg;
+        group.fullWidth = this.floatingHPWidth;
+
+        //start invisible
+        group.visible = false;
+
+        return group;
+    }
+
 }

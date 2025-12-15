@@ -50,7 +50,7 @@ export default class AIManager {
 
         // enemy state machine
 
-        const enemyAttackDistance = 1.2; //TODO: move in constants or in prefab
+        const enemyAttackDistance = 1.1; //TODO: move in constants or in prefab
         const invincibleDuration = 1;//TODO: same
         switch (aiComponent.enemyState) {
             case ENEMY_STATES.IDLE:
@@ -59,14 +59,14 @@ export default class AIManager {
                 // playClip(ec, "Idle", true);
                 //if detects player go to chase
                 if (aiComponent.playerSeen) {
-                    // aiComponent.enemyState = ENEMY_STATES.CHASE;
+                    aiComponent.enemyState = ENEMY_STATES.CHASE;
                 }
                 //else after a certain time, patrol
                 else if (aiComponent.timeSinceChangedState > 5) {
                     aiComponent.timeSinceChangedState = 0;
                     if (aiComponent.patrolPath.length > 0)
-                        ;
-                        // aiComponent.enemyState = ENEMY_STATES.PATROL;
+                        aiComponent.enemyState = ENEMY_STATES.PATROL;
+                        // ;
                 }
                 break;
             case ENEMY_STATES.PATROL:
@@ -113,14 +113,26 @@ export default class AIManager {
                 //moveVector.set(0,0,0);
                 targetPos = this.game.yawObject.position.clone();
                 inReach = pf.moveEntityToWithin(entity, targetPos, enemyAttackDistance, dt);
-                if (!inReach)
+                const wpn = entity.weapon;
+                if (!wpn.isAttacking || aiComponent.animationFinished) {
+                    console.log("ATTACK")
+                    wpn.isAttacking = true;
+                    wpn.timeSinceStartAttack = 0;
+                    aiComponent.animationFinished = false;
+                }
+                if (!inReach){
+                    console.log("OUTOFREACH")
+                    wpn.isAttacking = false;
+                    aiComponent.animationFinished = false;
                     aiComponent.enemyState = ENEMY_STATES.CHASE;
+                }
                 break;
             case ENEMY_STATES.HURT:
                 moveVector.set(0,0,0);
                 gpComponent.invincibility = true;
                 // if (aiComponent.timeSinceChangedState > invincibleDuration) {
-                if (aiComponent.animationFinished) {
+                // if (aiComponent.animationFinished) {
+                if (gpComponent.timeSinceLastHit > 1) {
                     aiComponent.animationFinished = false;
                     aiComponent.timeSinceChangedState = 0;
                     aiComponent.enemyState = ENEMY_STATES.CHASE;

@@ -32,7 +32,7 @@ export default class AnimatorManager {
         entity, 
         clipName = null, 
         overlapSingle = false, //stop previous action before starting new single animation
-        stopSingle = false, //dont keep last frame of single animation at the end
+        stopSingle = false, //if true dont keep last frame of single animation at the end
         backward = false,
         callback = null,
         repeatSingle = true
@@ -66,6 +66,7 @@ export default class AnimatorManager {
             // Stop previous non-single action and clear it
             if (anim.currentAction && !overlapSingle) {
                 anim.currentAction.fadeOut(0.15);
+                // anim.currentAction.stop();
                 anim.currentAction = null;
             }
             if (!backward) action.reset();//reset action only if play forward

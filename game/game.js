@@ -292,9 +292,11 @@ export default class GameState {
                 playerPos
                 //add rotation
             );
+            //player health bar
+            this.player.gameplay.healthBar = this.healthBar;
 
             const spawnPoints = this.game?.systems?.levelManager?.enemySpawnGroup;
-            let num = 1;
+            let num = 2;
             for (const spawnPoint of spawnPoints.children){
                 num --;
                 if (num < 0) return;
@@ -338,6 +340,7 @@ export default class GameState {
 
 
     }
+
 
     keydown(e) {
         const action = this.KeyToActionMap[e.code];
@@ -502,6 +505,8 @@ export default class GameState {
             this.updateAnimation(entity);
             //update material
             this.updateMaterial(entity);
+            //update GUI elements
+            this.updateGUI(entity);
         }
 
         // step physics world
@@ -601,6 +606,7 @@ export default class GameState {
             // transformComponent.newRotation.copy(slerpQuat);
             transformComponent.newRotation.copy(targetQuat);
 
+
         } else if (isCharacter) {
 
             // const pathFindingManager = this.game.systems.pathFindingManager;
@@ -617,6 +623,19 @@ export default class GameState {
         }
 
         if (isCharacter || isPlayer) {
+
+            // update invincibility status
+            //TODO: not the best place for this, maybe move all player logic
+            //into player controller component (equivalent of ai manager for enemy)
+            //invincibility for enemy is driven by animation
+            const gp = entity.gameplay;
+            gp.timeSinceLastHit += dt;
+            if (isPlayer) {
+                if (gp.invincibility && gp.timeSinceLastHit > 1)
+                    gp.invincibility = false;
+            } 
+
+            //update vertical speed
             if (
                 (!physicsBodyComponent.isInWater && physicsBodyComponent.isTouchingGround)
                 || (physicsBodyComponent.isAtSurface)
@@ -729,8 +748,8 @@ export default class GameState {
         if (gp.invincibility || gp.health <= 0)
             return;
 
-        // gp.health -= 10;
-        gp.health -= 50;
+        gp.health -= 10;
+        // gp.health -= 50;
         const isPlayer = target.type === ENTITY_TYPES.PLAYER;
 
         const wpn =target.weapon;
@@ -757,7 +776,7 @@ export default class GameState {
                 this.game.stateManager.setState(GAMESTATES.GAMEOVER);
             } else {
                 this.game.systems.aiManager.die(target);
-                const ps = target.physic;
+                // const ps = target.physic;
                 // this.game.systems.physicsManager.removeCollider(ps.collider);
                 // this.game.systems.physicsManager.removeColliderBody(ps.collider, ps.body);
                 // this.game.systems.physicsManager.removeCollider(wpn.weaponCollider);
@@ -767,9 +786,11 @@ export default class GameState {
         } else {
             // console.log("character hurt");
             if (isPlayer) {
-                ;
+                gp.invincibility = true;
+                gp.timeSinceLastHit = 0;
             } else {
                 this.game.systems.aiManager.hurt(target);       
+                gp.timeSinceLastHit = 0;
             }
                  
         }
@@ -777,7 +798,7 @@ export default class GameState {
     }
 
     disableEntity(entity) {
-        const ps = entity.physic;
+        const ps = entity.physics;
         const wpn = entity.weapon;
         this.game.systems.physicsManager.scheduleRemoval(ps.body, ps.collider);
         this.game.systems.physicsManager.scheduleRemoval(wpn.weaponBody, wpn.weaponCollider);
@@ -813,6 +834,8 @@ export default class GameState {
             }
         } else if (isCharacter) {
             const aiComponent = entity.ai;
+            let stop=false;
+            // console.log(aiComponent.enemyState);
             switch (aiComponent.enemyState) {
                 case ENEMY_STATES.IDLE:    animatorManager.play(entity, "Idle"); break;
                 case ENEMY_STATES.PATROL :
@@ -820,10 +843,19 @@ export default class GameState {
                 case ENEMY_STATES.SEARCH:
                     // animatorManager.stop(entity, "Attack"); 
                     animatorManager.play(entity, "Walk"); 
+                        // stop = false;
                     break;
                 case ENEMY_STATES.ATTACK:  
+                    // if (!stop){
+                    //     stop = true;
+                    //     animatorManager.stop(entity, "Walk"); 
+                    // }
                     // animatorManager.stop(entity, "Walk"); 
-                    animatorManager.play(entity, "Attack", false, false); 
+                    animatorManager.play(entity, "Attack", false, false, false,
+                        (() => {
+                            aiComponent.animationFinished = true;
+                        }), 
+                    ); 
                     break;
                 case ENEMY_STATES.HURT:    
                     animatorManager.play(entity, "Hurt", false, true, false, 
@@ -851,7 +883,12 @@ export default class GameState {
         const isPlayer = entity.type === ENTITY_TYPES.PLAYER;
         const aiComponent = entity.ai;
         if (isPlayer) {
-            ;
+            const gp = entity.gameplay;
+            const visualComponent = entity.visual;
+            if (gp.invincibility)
+                visualComponent.skinnedMesh.material = visualComponent.hurtMaterial;
+            else
+                visualComponent.skinnedMesh.material = visualComponent.normalMaterial;
         } else {
             const aiComponent = entity.ai;
             const visualComponent = entity.visual;
@@ -862,6 +899,33 @@ export default class GameState {
                 visualComponent.skinnedMesh.material = visualComponent.normalMaterial;
             }
         }
+    }
+
+    updateGUI(entity) {
+        const isPlayer = entity.type === ENTITY_TYPES.PLAYER;
+        const gp = entity.gameplay;
+        if (!gp) return;
+        const healthBar = gp?.healthBar ;
+        if (gp.invincibility){
+            const hpPercent = (gp.health / gp.maxHealth) ;
+            if (isPlayer) {
+                this.healthBar.style.width = (hpPercent * 100)+ "%";
+            } else {
+                if (gp.health <= 0){
+                    gp.healthBar.visible = false;
+                } else {
+                    gp.healthBar.visible = true;
+                    const fg = gp.healthBar.healthForeground
+                    fg.scale.x = hpPercent;
+                    fg.position.x = -(gp.healthBar.fullWidth * (1 - hpPercent)) / 2; 
+                }               
+            }
+        }
+        if (!isPlayer) {
+            if (gp.timeSinceLastHit > 3)
+                gp.healthBar.visible = false; //hide enemy health bar after 3s
+        }
+
     }
 
     checkIsInWater(point) {
