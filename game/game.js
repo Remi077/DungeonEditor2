@@ -651,6 +651,15 @@ export default class GameState {
                 transformComponent.verticalSpeed = Math.max(-Shared.maxFallSpeed, transformComponent.verticalSpeed - (Shared.gravity * dt));
             }
             moveVector.y += transformComponent.verticalSpeed;
+
+            //add repulsion forces from hit
+            const repulsionDuration = 0.2;//1s //TODO: move to constants
+            if (gp.timeSinceLastHit > repulsionDuration){
+                gp.hitRepulsionForce.set(0,0,0);
+            }
+            moveVector.add(gp.hitRepulsionForce);
+
+            //decorrelate from framerate
             moveVector.multiplyScalar(dt);
         }
 
@@ -742,6 +751,7 @@ export default class GameState {
     }
 
     hurt(target, source) {
+        const maxHitRepulsionForce = 5;//1s //TODO: move in constants
         const ai = target.ai;
         const vs = target.visual;
         const gp = target.gameplay;
@@ -764,10 +774,11 @@ export default class GameState {
         //     hitCharacter.enemyState = Shared.ENEMY_STATES.CHASE;//hitting an enemy will cause it to chase player
         // }
 
-        // const hitRepulsionForce = hitCharacter.root.position.clone().sub(hitter.root.position);
-        // hitRepulsionForce.y = 0;
-        // hitRepulsionForce.normalize().multiplyScalar(maxHitRepulsionForce);
-        // hitCharacter.hitRepulsionForce.copy(hitRepulsionForce);
+        const vssource = source.visual;
+        const hitRepulsionForce = vs.root.position.clone().sub(vssource.root.position);
+        hitRepulsionForce.y = 0;
+        hitRepulsionForce.normalize().multiplyScalar(maxHitRepulsionForce);
+        gp.hitRepulsionForce.copy(hitRepulsionForce);
 
         if (gp.health <= 0) {
             console.log("character dead");
@@ -2352,8 +2363,6 @@ function attackLoop(characterState) {
 
 //make the enemy invincible for a few frames after being hit
 const invincibleDuration = 1;//1s
-const repulsionDuration = 0.3;//1s
-const maxHitRepulsionForce = 5;//1s
 const healthBarDuration = 3;//time showing health bar after hit
 function hitCollider(hitCharacter, hitter) {
 

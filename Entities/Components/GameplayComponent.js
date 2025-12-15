@@ -8,7 +8,7 @@ export default class GameplayComponent {
         this.maxHealth = 100;
         this.invincibility = false;
         this.timeSinceLastHit = 0;
-        this.hitRepulsionForce = new THREE.Vector3();
+        this.hitRepulsionForce = new THREE.Vector3(0,0,0);
         this.healthBar = null;
         this.timeSinceHealthBarShowedUp = 0;
         this.inventory = {};
