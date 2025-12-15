@@ -346,7 +346,7 @@ export default class CharacterManager {
             animatorComponent.animationActions.set(name, action);
         });
         animatorComponent.weaponBone = clonedSkeleton.getBoneByName(prefab.weaponBoneName);
-        animatorComponent.headBone = clonedSkeleton.getBoneByName("Head");
+        animatorComponent.headBone = clonedSkeleton.getBoneByName("mixamorigHead"); //TODO: put in constant
 
         //weapon
         const weaponComponent = new WeaponComponent();

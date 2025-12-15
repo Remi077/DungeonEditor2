@@ -6,6 +6,8 @@ import { ENTITY_COMPONENT_TAGS } from './Entities/Entity.js';
 export default class AnimatorManager {
     constructor() {
         // this.entities = new Set();  // or let ECS register automatically
+        this.targetPos = new THREE.Vector3();
+        this.targetQuat = new THREE.Quaternion()        
     }
 
     // registerEntity(entity) {
@@ -118,4 +120,43 @@ export default class AnimatorManager {
             anim.currentAction = null;
         }
     }
+
+
+    makeRigLookAt(entity, target) {
+        const ac = entity.animator;
+        const headBone = ac?.headBone;
+        if (headBone) {
+
+            // Get player position in bone parent space
+            if (target.type === "Object3D")
+                target.getWorldPosition(this.targetPos);
+            else
+                this.targetPos.copy(target);
+
+            const parent = headBone.parent;
+            const targetLocal = this.targetPos.clone();
+            parent.worldToLocal(targetLocal);
+
+            // Direction the head should look
+            const dir = targetLocal.sub(headBone.position).normalize();
+
+            // Create quaternion that turns +Z to face direction
+            this.targetQuat.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
+
+            // Smooth head motion
+            // headBone.quaternion.slerp(this.targetQuat, 0.8);
+            headBone.quaternion.slerp(this.targetQuat, 0.3);
+            // headBone.quaternion.copy(targetQuat);
+
+            // If you don’t want Exorcist-like twists:
+            let c = 0.7;
+            headBone.rotation.x = THREE.MathUtils.clamp(headBone.rotation.x, -c, c);
+            headBone.rotation.z = THREE.MathUtils.clamp(headBone.rotation.z, -c, c);
+
+        }
+
+    }
+
+
+
 }

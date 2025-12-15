@@ -296,7 +296,7 @@ export default class GameState {
             this.player.gameplay.healthBar = this.healthBar;
 
             const spawnPoints = this.game?.systems?.levelManager?.enemySpawnGroup;
-            let num = 2;
+            let num = 1;
             for (const spawnPoint of spawnPoints.children){
                 num --;
                 if (num < 0) return;
@@ -875,6 +875,18 @@ export default class GameState {
                         })
                     , false);
                  break;
+            }
+
+            switch (aiComponent.enemyState) {
+                case ENEMY_STATES.PATROL:
+                    animatorManager.makeRigLookAt(entity, aiComponent.patrolPath[0]);
+                    break;
+                case ENEMY_STATES.CHASE:
+                    animatorManager.makeRigLookAt(entity, this.game.yawObject);
+                    break;
+                case ENEMY_STATES.SEARCH:
+                    animatorManager.makeRigLookAt(entity, aiComponent.lastSeenPlayerPosition);
+                    break;
             }
         }
     }
