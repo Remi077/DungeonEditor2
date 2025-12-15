@@ -26,6 +26,7 @@ import AnimatorManager from './AnimatorManager.js';
 import InteractableManager from './InteractableManager.js';
 import PathFindingManager from './PathFindingManager.js';
 import AIManager from './AIManager.js';
+import UIManager from './UIManager.js';
 // import * as Stats from '../GameStats.js';
 
 /*-----------------------------------------------------*/
@@ -203,6 +204,8 @@ game.systems.animatorManager = new AnimatorManager(game);
 game.systems.interactableManager = new InteractableManager(game);
 game.systems.pathFindingManager = new PathFindingManager(game);
 game.systems.aiManager = new AIManager(game);
+game.systems.uiManager = new UIManager(game);
+await game.systems.uiManager.loadItems(); // ensure atlas is loaded before using it
 
 //tweaks
 //tweak global renderer

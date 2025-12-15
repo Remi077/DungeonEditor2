@@ -485,6 +485,7 @@ export default class GameState {
         const entities = this.game.entities;
         const activeEntities = this.game.activeEntities;
         const animatorManager = this.game.systems.animatorManager;
+        const uiManager = this.game.systems.uiManager;
         // for (let i = 0; i < activeEntities.length; i++) {
         //     const entity = activeEntities[i];
         // console.log("entities", entities.size, "activeEntities", activeEntities.size);
@@ -506,7 +507,7 @@ export default class GameState {
             //update material
             this.updateMaterial(entity);
             //update GUI elements
-            this.updateGUI(entity);
+            uiManager.updateGUI(entity);
         }
 
         // step physics world
@@ -924,32 +925,6 @@ export default class GameState {
         }
     }
 
-    updateGUI(entity) {
-        const isPlayer = entity.type === ENTITY_TYPES.PLAYER;
-        const gp = entity.gameplay;
-        if (!gp) return;
-        const healthBar = gp?.healthBar ;
-        if (gp.invincibility){
-            const hpPercent = (gp.health / gp.maxHealth) ;
-            if (isPlayer) {
-                this.healthBar.style.width = (hpPercent * 100)+ "%";
-            } else {
-                if (gp.health <= 0){
-                    gp.healthBar.visible = false;
-                } else {
-                    gp.healthBar.visible = true;
-                    const fg = gp.healthBar.healthForeground
-                    fg.scale.x = hpPercent;
-                    fg.position.x = -(gp.healthBar.fullWidth * (1 - hpPercent)) / 2; 
-                }               
-            }
-        }
-        if (!isPlayer) {
-            if (gp.timeSinceLastHit > 3)
-                gp.healthBar.visible = false; //hide enemy health bar after 3s
-        }
-
-    }
 
     checkIsInWater(point) {
         const physicsManager = this.game.systems.physicsManager;

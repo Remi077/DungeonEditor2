@@ -11,6 +11,7 @@ import AnimatorComponent from './Entities/Components/AnimatorComponent.js';
 import PlayerControllerComponent from './Entities/Components/PlayerControllerComponent.js';
 import GameplayComponent from './Entities/Components/GameplayComponent.js';
 import WeaponComponent from './Entities/Components/WeaponComponent.js';
+import InventoryComponent from './Entities/Components/InventoryComponent.js';
 import AIComponent from './Entities/Components/AIComponent.js'; // optional, for NPCs
 import PathFindingComponent from './Entities/Components/PathFindingComponent.js'; // optional, for NPCs
 
@@ -376,6 +377,7 @@ export default class CharacterManager {
         //add extra options
         if (options?.isPlayer) {
             entity.addComponent(new PlayerControllerComponent(this.game.input));
+            entity.addComponent(new InventoryComponent());
         } else {
             const aiComponent = new AIComponent();
             const patrolPath = options?.patrolPath;

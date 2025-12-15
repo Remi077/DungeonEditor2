@@ -76,12 +76,13 @@ export default class InteractableManager {
     }
 
     itemInteract(itemEntity, playerEntity) {
-        const inventory = playerEntity.gameplay?.inventory;
+        const inventory = playerEntity.inventory?.inventory;
         const itemMesh = itemEntity.visual?.root;
         if (!inventory || !itemMesh) return;
         itemMesh.visible = false;
         const itemName = itemEntity.name.replace(/^Action_Item_/, '').replace(/\d+$/, '');
         inventory[itemName] = (inventory[itemName] ?? 0) + 1;
+        playerEntity.inventory.needsUpdate = true;
         console.log(inventory)
     }    
 

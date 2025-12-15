@@ -11,8 +11,5 @@ export default class GameplayComponent {
         this.hitRepulsionForce = new THREE.Vector3(0,0,0);
         this.healthBar = null;
         this.timeSinceHealthBarShowedUp = 0;
-        this.inventory = {};
-        this.hotbar = [null, null, null, null, null, null, null];
-        this.inventorySlots = Array(4*8).fill(null);
     }
 }

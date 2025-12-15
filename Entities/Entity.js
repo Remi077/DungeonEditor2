@@ -17,6 +17,7 @@ export const ENTITY_COMPONENT_TAGS = {
     TRANSFORM: 'Transform',
     VISUAL: 'Visual',
     WEAPON: 'Weapon',
+    INVENTORY: 'Inventory',
 }
 
 export default class Entity {
@@ -42,4 +43,5 @@ export default class Entity {
     get transform() { return this.get(ENTITY_COMPONENT_TAGS.TRANSFORM); }
     get visual() { return this.get(ENTITY_COMPONENT_TAGS.VISUAL); }
     get weapon() { return this.get(ENTITY_COMPONENT_TAGS.WEAPON); }
+    get inventory() { return this.get(ENTITY_COMPONENT_TAGS.INVENTORY); }
 }
