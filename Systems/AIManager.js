@@ -1,7 +1,6 @@
 // @ts-nocheck
 import * as THREE from 'three';
-import * as Shared from '../Shared.js';
-import { ENTITY_COMPONENT_TAGS } from '../Entities/Entity.js';
+import * as Debug from '../Debug.js';
 
 export const ENEMY_STATES = {
     IDLE: 1,
@@ -56,7 +55,6 @@ export default class AIManager {
             case ENEMY_STATES.IDLE:
                 //stay still
                 moveVector.set(0, 0, 0);
-                // playClip(ec, "Idle", true);
                 //if detects player go to chase
                 if (aiComponent.playerSeen) {
                     aiComponent.enemyState = ENEMY_STATES.CHASE;
@@ -71,7 +69,6 @@ export default class AIManager {
                 break;
             case ENEMY_STATES.PATROL:
                 //go along patrol path
-                // playClip(ec, "Walk", true);
                 targetPos = aiComponent.patrolPath[0].clone();
                 inReach = pf.moveEntityToWithin(entity, targetPos, 1, dt);
                 if (inReach)
@@ -88,7 +85,6 @@ export default class AIManager {
                 break;
             case ENEMY_STATES.CHASE:
                 //chase player and attack if within reach
-                // playClip(ec, "Walk", true);
                 targetPos = this.game.yawObject.position.clone();
                 inReach = pf.moveEntityToWithin(entity, targetPos, enemyAttackDistance, dt);
                 if (inReach && !gpComponent.invincibility) //enemy cannot attack if it just got hurt (invincible)
@@ -100,11 +96,11 @@ export default class AIManager {
                     if (aiComponent.timeSinceLastSeen > 1) {
                         console.log("SEARCH");
                         aiComponent.enemyState = ENEMY_STATES.SEARCH;
-                        if (1) Shared.drawDebugSpheres(
+                        if (1) Debug.drawDebugSpheres(
                             [aiComponent.lastSeenPlayerPosition],
                             aiComponent.debugSpheres,
                             this.game.scene,
-                            Shared.debugSphereMaterialBlue
+                            Debug.debugSphereMaterialBlue
                         );
                     }
                 }
@@ -141,7 +137,6 @@ export default class AIManager {
                 break;
             case ENEMY_STATES.SEARCH:
                 //go to last place where player was seen
-                // playClip(ec, "Walk", true);
                 //TODO: project lastSeenPlayerPosition on navmesh to be sure enemy cannot get stuck
                 targetPos = aiComponent.lastSeenPlayerPosition.clone();
                 inReach = pf.moveEntityToWithin(entity, targetPos, 1, dt);

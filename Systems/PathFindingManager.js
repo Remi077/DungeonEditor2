@@ -2,8 +2,8 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'GLTFLoader';
 import { Pathfinding } from "three-pathfinding";
-import { ENTITY_COMPONENT_TAGS } from '../Entities/Entity.js';
-import * as Shared from '../Shared.js';
+import * as Debug from '../Debug.js';
+import PathFindingComponent from '../Entities/Components/PathFindingComponent.js';
 
 export default class PathFindingManager {
     constructor(game) {
@@ -74,7 +74,7 @@ export default class PathFindingManager {
         } else if (!withinReach) {
 
             // Compute path
-            if (pathFindingComponent.timeSinceLastCalculatedPath < Shared.calculatePathPeriod) {
+            if (pathFindingComponent.timeSinceLastCalculatedPath < pathFindingComponent.recalcPeriod) {
                 pathFindingComponent.timeSinceLastCalculatedPath += dt;
             } else if (pathFindingComponent.lastKnownPlayerPosition !== null &&
                 pathFindingComponent.lastKnownPlayerPosition.equals(targetPos)){
@@ -106,7 +106,7 @@ export default class PathFindingManager {
                 pathFindingComponent.lastKnownPlayerPosition.copy(targetPos);
                 if (1) {
                     const debugSpheres = pathFindingComponent.debugSpheres;
-                    Shared.drawDebugSpheres(path, debugSpheres, this.game.scene); //TEMP TOFIX
+                    Debug.drawDebugSpheres(path, debugSpheres, this.game.scene); //TEMP TOFIX
                 }
             }
 

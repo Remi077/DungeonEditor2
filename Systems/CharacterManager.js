@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'GLTFLoader';
-import * as Shared from '../Shared.js';
+import * as Debug from '../Debug.js';
+import * as Constants from '../Constants.js';
 import * as SkeletonUtils from 'SkeletonUtils';
 
 import Entity, { ENTITY_TYPES } from '../Entities/Entity.js'; // optional, for NPCs
@@ -17,6 +18,11 @@ import PathFindingComponent from '../Entities/Components/PathFindingComponent.js
 
 
 class CharacterPrefab {
+
+    static DEFAULT_CHARACTER_HEIGHT = 1.8; // total character height in meters
+    static DEFAULT_CHARACTER_RADIUS = 0.4; // radius of the character capsule collider
+    static DEFAULT_CHARACTER_EYE_HEIGHT = 1.5; // desired camera (eye) height above the floor
+
     constructor() {
         this.name = "";
         this.root = null;        // template armature hierarchy
@@ -40,9 +46,10 @@ class CharacterPrefab {
         this.attackDamageEnd = 0;
 
         //Physics template
-        this.capsuleRadius = Shared.playerRadius; //temp should be calculated from mesh BB or dedicated mesh
-        this.capsuleHeight = Shared.playerHeight; // temp see above
+        this.capsuleRadius = this.constructor.DEFAULT_CHARACTER_RADIUS; //temp should be calculated from mesh BB or dedicated mesh
+        this.capsuleHeight = this.constructor.DEFAULT_CHARACTER_HEIGHT; // temp see above
         this.offsetRootToBody = new THREE.Vector3(0, this.capsuleHeight * 0.5, 0);
+        this.cameraHeight = this.constructor.DEFAULT_CHARACTER_EYE_HEIGHT;
         this.collisionGroup = null;
 
         this.isLoaded = false;
@@ -130,18 +137,18 @@ export default class CharacterManager {
     processAnimations(animations, prefab) {
         animations.forEach(clip => {
             prefab.animationClips.set(clip.name, clip);
-            if (clip.name === Shared.ANIM_WALK_NAME) {
-                const walkLowerClip = this.makePartialClip(clip, Shared.lowerBodyBones);
-                prefab.animationClips.set(Shared.ANIM_WALK_NAME_L, walkLowerClip);
+            if (clip.name === Constants.ANIM.WALK) {
+                const walkLowerClip = this.makePartialClip(clip, Constants.LOWERBODYBONES, Constants.ANIM.WALK_L);
+                prefab.animationClips.set(Constants.ANIM.WALK_L, walkLowerClip);
             }
         });
     }
 
-    makePartialClip(clip, boneNames) {
+    makePartialClip(clip, boneNames, name) {
         const filteredTracks = clip.tracks.filter(track => {
             return boneNames.some(name => track.name.startsWith(name));
         });
-        return new THREE.AnimationClip(clip.name + '_partial', clip.duration, filteredTracks);
+        return new THREE.AnimationClip(name, clip.duration, filteredTracks);
     }
 
     computeColliderFromMesh(scene, prefab, isPlayerPrefab) {
@@ -201,9 +208,9 @@ export default class CharacterManager {
             // };
 
             // --- 6. Collision groups ---
-            let weaponCollisionGroups = Shared.COL_MASKS.ENEMYWPN;
+            let weaponCollisionGroups = Constants.COL_MASKS.ENEMYWPN;
             if(isPlayerPrefab)
-                weaponColliderDesc.collisionGroups = Shared.COL_MASKS.PLAYERWPN;
+                weaponColliderDesc.collisionGroups = Constants.COL_MASKS.PLAYERWPN;
 
             // --- 7. Store inside prefab ---
             prefab.weaponBodyDesc = weaponBodyDesc;
@@ -218,9 +225,10 @@ export default class CharacterManager {
             }
 
             // --- 8. Store collider info for character capsule ---
-            prefab.capsuleRadius = isPlayerPrefab ? Shared.playerRadius : Shared.playerRadius*0.5 ; //temp should be calculated from mesh BB or dedicated mesh
-            prefab.capsuleHeight = Shared.playerHeight; // temp see above
-            prefab.collisionGroup = isPlayerPrefab ? Shared.COL_MASKS.PLAYER : Shared.COL_MASKS.ENEMY;
+            if (!isPlayerPrefab)
+                prefab.capsuleRadius*=0.5; //temp should be calculated from mesh BB or dedicated mesh
+            // prefab.capsuleHeight = ; // temp see above
+            prefab.collisionGroup = isPlayerPrefab ? Constants.COL_MASKS.PLAYER : Constants.COL_MASKS.ENEMY;
 
             // optionally:
             prefab.weaponName = relatedName;
@@ -235,7 +243,8 @@ export default class CharacterManager {
 
         const player = this.instantiateCharacter(prefab, {
             isPlayer: true,
-            position: spawnPosition
+            position: spawnPosition,
+            posRelativeToCam: true
         });
 
         return player;
@@ -264,6 +273,8 @@ export default class CharacterManager {
         // const camPos = this.game.yawObject.position;
         // const camPos = ;
         const rootPos = options?.position.clone();
+        if (options?.posRelativeToCam) //optionally position root wrt camera
+            rootPos.y -= prefab.cameraHeight; 
         const bodyPos = rootPos.clone();
         bodyPos.add(prefab.offsetRootToBody);
         const rootRot = options?.rotation?.clone() || new THREE.Euler();
@@ -319,6 +330,7 @@ export default class CharacterManager {
         } else {
             transformComponent.moveSpeed *= 0.15; //TEMP: to move in constants
         }
+        transformComponent.cameraHeight = prefab.cameraHeight;
 
         //AnimatorComponent
         const animatorComponent = new AnimatorComponent(clonedSkeleton,mixer);
@@ -331,9 +343,9 @@ export default class CharacterManager {
             // console.log("Bones:");
             // root.traverse(o => { if (o.isBone) console.log(o.name); });
             // detect attack clips by name or metadata
-            if (clip.name.startsWith("Attack") || 
-                clip.name.startsWith("Die") ||
-                clip.name.startsWith("Hurt")
+            if (clip.name.startsWith(Constants.ANIM.ATTACK) || 
+                clip.name.startsWith(Constants.ANIM.DIE) ||
+                clip.name.startsWith(Constants.ANIM.HURT)
             ) {
                 // console.log("Clip duration:", action._clip.duration);
                 action.setLoop(THREE.LoopOnce, 0);

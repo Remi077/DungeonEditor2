@@ -1,6 +1,6 @@
 // @ts-nocheck
 import * as THREE from 'three';
-import Entity, { ENTITY_TYPES, ENTITY_COMPONENT_TAGS } from '../Entities/Entity.js'; // optional, for NPCs
+import Entity, { ENTITY_TYPES } from '../Entities/Entity.js'; // optional, for NPCs
 import { GLTFLoader } from 'GLTFLoader';
 import VisualComponent from '../Entities/Components/VisualComponent.js';
 import TransformComponent from '../Entities/Components/TransformComponent.js';
@@ -8,7 +8,7 @@ import PhysicsBodyComponent from '../Entities/Components/PhysicsBodyComponent.js
 import AnimatorComponent from '../Entities/Components/AnimatorComponent.js';
 import InteractableComponent from '../Entities/Components/InteractableComponent.js';
 import GameStateManager from './GameStateManager.js';
-import * as Shared from '../Shared.js';
+import * as Constants from '../Constants.js';
 
 export default class LevelManager {
     constructor(game) {
@@ -90,15 +90,15 @@ export default class LevelManager {
         Array.from(this.colliderGroup.children).forEach(child => {
             if (child.name.startsWith("Collider_Kine")) {
                 const colGroup = (child.name.startsWith("Trigger_")) ?
-                Shared.COL_MASKS.WATER : Shared.COL_MASKS.SCENERY
+                Constants.COL_MASKS.WATER : Constants.COL_MASKS.SCENERY
                 this.physics.createKinematicColliderFromMesh(child, colGroup);
             } else {
-                this.physics.createStaticColliderFromMesh(child);
+                this.physics.createStaticColliderFromMesh(child, Constants.COL_MASKS.SCENERY);
             }
         });
 
         Array.from(this.triggerGroup.children).forEach(child => {
-           this.physics.createStaticColliderFromMesh(child, Shared.COL_MASKS.WATER)
+           this.physics.createStaticColliderFromMesh(child, Constants.COL_MASKS.WATER)
         //    .setSensor(true); 
         });
 

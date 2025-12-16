@@ -1,7 +1,8 @@
 // @ts-nocheck
 import * as THREE from 'three';
 import * as RAPIER from 'rapier';
-import * as Shared from '../Shared.js';
+import * as Constants from '../Constants.js';
+import * as Debug from '../Debug.js';
 
 export default class PhysicsManager {
     constructor() {
@@ -43,7 +44,7 @@ export default class PhysicsManager {
 
     async init(scene) {
         await RAPIER.init();
-        this.world = new RAPIER.World({x: 0, y: -Shared.gravity, z: 0});
+        this.world = new RAPIER.World({x: 0, y: -Constants.GRAVITY, z: 0});
         this.events = new RAPIER.EventQueue(true);
 
         //rapier debug
@@ -96,7 +97,7 @@ export default class PhysicsManager {
     //         this.updateDebug();
     // }
 
-    createStaticColliderFromMesh(mesh, collisionGroups = Shared.COL_MASKS.SCENERY) {
+    createStaticColliderFromMesh(mesh, collisionGroups) {
         const { halfExtents, center } = this.computeBoundingBox(mesh);
         const colliderDesc = RAPIER.ColliderDesc.cuboid(
             halfExtents.x,
@@ -109,7 +110,7 @@ export default class PhysicsManager {
         return this.createCollider(colliderDesc);
     }
 
-    createKinematicColliderFromMesh(mesh, colgroup = Shared.COL_MASKS.SCENERY) {
+    createKinematicColliderFromMesh(mesh, colgroup) {
         const { halfExtents, center } = this.computeBoundingBox(mesh);
         
         const bodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
@@ -125,8 +126,6 @@ export default class PhysicsManager {
         )
 
         colliderDesc.setCollisionGroups(colgroup);
-        // if (mesh.name.startsWith("Trigger_")) colliderDesc.setCollisionGroups(Shared.COL_MASKS.WATER);
-        // else colliderDesc.setCollisionGroups(Shared.COL_MASKS.SCENERY);
 
         const collider = this.createCollider(colliderDesc, body);
 
@@ -226,8 +225,11 @@ export default class PhysicsManager {
         return col;
     }
 
+    //after a collision we snap the capsule bottom/up to the ground/ceiling and we nudge outward by skin distance to avoid penetration
+    static SKIN = 0.02;
+
     createKCC(){
-        const kcc = this.world.createCharacterController(Shared.skin); //0.1 is skin distance
+        const kcc = this.world.createCharacterController(PhysicsManager.SKIN); //0.1 is skin distance
         // Don’t allow climbing slopes larger than 45 degrees.
         kcc.setMaxSlopeClimbAngle(45 * Math.PI / 180);
         // Automatically slide down on slopes smaller than 30 degrees.

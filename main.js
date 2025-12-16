@@ -8,6 +8,7 @@ import GameState from './GameStates/Game.js';
 import EditorState from './GameStates/Editor.js';
 import GameOverState from './GameStates/GameOver.js';
 
+import * as Constants from '../Constants.js';
 import GameStateManager, { GAMESTATES } from './Systems/GameStateManager.js';
 import InputManager from './Systems/InputManager.js';
 import PhysicsManager from './Systems/PhysicsManager.js';

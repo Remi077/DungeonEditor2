@@ -5,7 +5,6 @@ import { GLTFLoader } from 'GLTFLoader';
 import * as SkeletonUtils from 'SkeletonUtils';
 import Stats from "stats.js";
 
-import * as Shared from '../shared.js';
 import PathFindingManager from '../Systems/PathFindingManager.js';
 import { GAMESTATES } from '../Systems/GameStateManager.js';
 
@@ -55,7 +54,12 @@ export default class EditorState {
         this.drawCalls = 0;
         this.lastFrameTime = 0;
 
+        //initial camera position
+        this.initialCameraPos = new THREE.Vector3(2,1.5+0.1,2); //TODO: link with default cameraheight in prefab?
+
     }
+
+    static CAMSPEED = 5;
 
     onEnter() {
         // ---------------------------
@@ -215,7 +219,7 @@ export default class EditorState {
             scene.add(yawObject);
 
             pitchObject.rotation.set(0, 0, 0);
-            yawObject.position.set(Shared.cameraOffsetX, Shared.cameraOffsetY, Shared.cameraOffsetZ);
+            yawObject.position.copy(this.initialCameraPos);
             yawObject.rotation.set(0, 0, 0);
         }
 
@@ -434,7 +438,7 @@ export default class EditorState {
         moveVector.normalize();
         this._tmpEuler.set(0, this.game.yawObject.rotation.y, 0);
         moveVector.applyEuler(this._tmpEuler);
-        const moveCam = Shared.moveSpeed * dt;
+        const moveCam = EditorState.CAMSPEED * dt;
         this.game.yawObject.position.add(moveVector.multiplyScalar(moveCam));
 
         if (ActionsOnce.hideCol) {this.game.systems.physicsManager.toggle();}

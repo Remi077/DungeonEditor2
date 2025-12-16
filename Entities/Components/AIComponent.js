@@ -1,14 +1,12 @@
 import * as THREE from 'three';
 import { ENEMY_STATES } from '../../Systems/AIManager.js';
 import { ENTITY_COMPONENT_TAGS } from '../Entity.js';
-import * as Shared from '../../Shared.js';
-export const calculatePathPeriod = 1.5;
+import * as Debug from '../../Debug.js';
 
 
 export default class AIComponent {
     constructor() {
         this.type = ENTITY_COMPONENT_TAGS.AI;
-        this.timeSinceLastCalculatedPath = Math.random() * calculatePathPeriod;
         this.pathBuffer = null;
         this.lastKnownPlayerPosition = null;
         this.lastSeenPlayerPosition = null;
@@ -20,6 +18,6 @@ export default class AIComponent {
         this.animationFinished = false;
         this.patrolPath = [];
         this.debugSpheres = [];
-        this.debugLine = new THREE.Line(Shared.debugLineGeometry, Shared.debugLineMaterial);
+        this.debugLine = new THREE.Line(Debug.debugLineGeometry, Debug.debugLineMaterial);
     }
 }
