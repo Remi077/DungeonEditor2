@@ -144,8 +144,8 @@ export default class AnimatorManager {
             this.targetQuat.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
 
             // Smooth head motion
-            // headBone.quaternion.slerp(this.targetQuat, 0.8);
-            headBone.quaternion.slerp(this.targetQuat, 0.3);
+            headBone.quaternion.slerp(this.targetQuat, 0.8);
+            // headBone.quaternion.slerp(this.targetQuat, 0.3);
             // headBone.quaternion.copy(targetQuat);
 
             // If you don’t want Exorcist-like twists:
