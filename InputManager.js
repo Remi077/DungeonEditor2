@@ -17,10 +17,14 @@ export default class InputManager {
             mousemove: [],
             wheel: [],
             resize: [],
+            pointerlockchange: [],
         }
 
         // Prevent context menu globally
         document.addEventListener("contextmenu", (e) => e.preventDefault());
+
+        // lock change
+        document.addEventListener("pointerlockchange", (e) => this._pointerlockchange(e));
 
         // Bind DOM events once
         window.addEventListener('keydown', e => this._handleKeyDown(e));
@@ -152,6 +156,10 @@ export default class InputManager {
         }
 
         return code;
+    }
+
+    _pointerlockchange(e) {
+        this.listeners.pointerlockchange.forEach(cb => cb(e));
     }
 
 }

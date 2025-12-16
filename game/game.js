@@ -46,6 +46,10 @@ export default class GameState {
             "Digit7": "Item7",
         };
 
+        //substate: inventory open
+        this.isInventoryOpen = false;
+        this.isPointerLocked = true;
+
         //stats
         this.fpsPanel = new Stats();//extra fps panel
         this.fpsPanel.showPanel(0);//fps
@@ -216,7 +220,7 @@ export default class GameState {
             const icon = document.createElement('div');
             icon.className = 'icon';
 
-            slot.appendChild(icon);
+            // slot.appendChild(icon);
             grid.appendChild(slot);
         }
 
@@ -257,6 +261,7 @@ export default class GameState {
         input.on('mouseup', (e) => { this.mouseup(e) });
         input.on('mousemove', (e) => { this.mousemove(e) });
         input.on('resize', (e) => { this.resize(e) });
+        input.on('pointerlockchange', (e) => { this.pointerlockchange(e) });
 
         //game scene
         this.ambientLight = new THREE.AmbientLight(
@@ -368,6 +373,8 @@ export default class GameState {
 
     mousedown(e) {
 
+        if (this.isInventoryOpen) return;
+
         const canvas = this.game.canvas;
         if (document.pointerLockElement !== canvas) {
             canvas.requestPointerLock();
@@ -419,7 +426,9 @@ export default class GameState {
 
     mousemove(e) {
 
-        if (document.pointerLockElement !== this.game.canvas) return;
+        if (this.isInventoryOpen) return;
+        if (!this.isPointerLocked) return;  // check the flag instead of pointerLockElement
+        // if (document.pointerLockElement !== this.game.canvas) return;
 
         // if (
         //     !(this.game.input.isMouseDown(2)) //||
@@ -449,6 +458,17 @@ export default class GameState {
         this.game.camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
         this.game.camera.updateProjectionMatrix();
     }
+
+    pointerlockchange(e) {
+        console.log("GAME pointerlockchange")
+        const isLocked = document.pointerLockElement === this.game.canvas;
+        this.isPointerLocked = isLocked;
+        if (isLocked) {
+            this.crosshair.style.display = "block";
+        } else {
+            this.crosshair.style.display = "none";
+        }
+    }    
 
     onExit() {
         if (this.crosshair) this.crosshair.remove();
@@ -523,17 +543,17 @@ export default class GameState {
         if (ActionsOnce.startEditor)
             this.game.stateManager.setState(GAMESTATES.EDITOR);
         // if (ActionsOnce.jump) jump();
-        if (ActionsOnce.interact) interact();
+        if (ActionsOnce.interact) this.interact();
         if (ActionsOnce.hideCol) {this.game.systems.physicsManager.toggle();};
-        // if (ActionsOnce.toggleInventory) Shared.toggleInventory();
+        if (ActionsOnce.toggleInventory) this.toggleInventory();
 
-        // if (ActionsOnce.Item1) Shared.highlightSelectedSlot(1);
-        // if (ActionsOnce.Item2) Shared.highlightSelectedSlot(2);
-        // if (ActionsOnce.Item3) Shared.highlightSelectedSlot(3);
-        // if (ActionsOnce.Item4) Shared.highlightSelectedSlot(4);
-        // if (ActionsOnce.Item5) Shared.highlightSelectedSlot(5);
-        // if (ActionsOnce.Item6) Shared.highlightSelectedSlot(6);
-        // if (ActionsOnce.Item7) Shared.highlightSelectedSlot(7);
+        if (ActionsOnce.Item1) uiManager.highlightSelectedSlot(1);
+        if (ActionsOnce.Item2) uiManager.highlightSelectedSlot(2);
+        if (ActionsOnce.Item3) uiManager.highlightSelectedSlot(3);
+        if (ActionsOnce.Item4) uiManager.highlightSelectedSlot(4);
+        if (ActionsOnce.Item5) uiManager.highlightSelectedSlot(5);
+        if (ActionsOnce.Item6) uiManager.highlightSelectedSlot(6);
+        if (ActionsOnce.Item7) uiManager.highlightSelectedSlot(7);
 
 
         //clear the onpress/onrelease actions now that they have been sampled
@@ -546,6 +566,17 @@ export default class GameState {
         console.log("interact");
         //perform raycast from camera center
         //if object hit is interactable, call its interact function component
+    }
+
+    toggleInventory(){
+        this.isInventoryOpen = !this.isInventoryOpen;
+        this.inventoryContainer.style.display = this.isInventoryOpen ? "block" : "none";
+
+        if (this.isInventoryOpen) {
+            document.exitPointerLock?.();
+        } else {
+            this.game.canvas.requestPointerLock?.(); // request lock on canvas
+        }
     }
 
     render(dt) {
