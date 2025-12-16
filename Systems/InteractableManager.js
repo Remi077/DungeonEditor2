@@ -1,6 +1,6 @@
 // @ts-nocheck
 import * as THREE from 'three';
-import { ENTITY_COMPONENT_TAGS } from './Entities/Entity.js';
+import { ENTITY_COMPONENT_TAGS } from '../Entities/Entity.js';
 
 
 export default class InteractableManager {

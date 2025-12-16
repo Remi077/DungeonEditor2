@@ -3,17 +3,17 @@ import { GLTFLoader } from 'GLTFLoader';
 import * as Shared from '../Shared.js';
 import * as SkeletonUtils from 'SkeletonUtils';
 
-import Entity, { ENTITY_TYPES } from './Entities/Entity.js'; // optional, for NPCs
-import TransformComponent from './Entities/Components/TransformComponent.js';
-import VisualComponent from './Entities/Components/VisualComponent.js';
-import PhysicsBodyComponent from './Entities/Components/PhysicsBodyComponent.js';
-import AnimatorComponent from './Entities/Components/AnimatorComponent.js';
-import PlayerControllerComponent from './Entities/Components/PlayerControllerComponent.js';
-import GameplayComponent from './Entities/Components/GameplayComponent.js';
-import WeaponComponent from './Entities/Components/WeaponComponent.js';
-import InventoryComponent from './Entities/Components/InventoryComponent.js';
-import AIComponent from './Entities/Components/AIComponent.js'; // optional, for NPCs
-import PathFindingComponent from './Entities/Components/PathFindingComponent.js'; // optional, for NPCs
+import Entity, { ENTITY_TYPES } from '../Entities/Entity.js'; // optional, for NPCs
+import TransformComponent from '../Entities/Components/TransformComponent.js';
+import VisualComponent from '../Entities/Components/VisualComponent.js';
+import PhysicsBodyComponent from '../Entities/Components/PhysicsBodyComponent.js';
+import AnimatorComponent from '../Entities/Components/AnimatorComponent.js';
+import PlayerControllerComponent from '../Entities/Components/PlayerControllerComponent.js';
+import GameplayComponent from '../Entities/Components/GameplayComponent.js';
+import WeaponComponent from '../Entities/Components/WeaponComponent.js';
+import InventoryComponent from '../Entities/Components/InventoryComponent.js';
+import AIComponent from '../Entities/Components/AIComponent.js'; // optional, for NPCs
+import PathFindingComponent from '../Entities/Components/PathFindingComponent.js'; // optional, for NPCs
 
 
 class CharacterPrefab {

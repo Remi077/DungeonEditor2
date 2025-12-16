@@ -1,7 +1,6 @@
 // @ts-nocheck
 import * as THREE from 'three';
-import * as Shared from '../Shared.js';
-import { ENTITY_TYPES, ENTITY_COMPONENT_TAGS } from './Entities/Entity.js';
+import { ENTITY_TYPES, ENTITY_COMPONENT_TAGS } from '../Entities/Entity.js';
 
 export default class UIManager {
     constructor(game) {
@@ -121,5 +120,28 @@ export default class UIManager {
         }
     }
 
+
+    // export function buildInventoryGrid(rows = 4, cols = 8) {
+    //     const grid = document.getElementById("inventory-grid");
+    //     grid.innerHTML = "";   // Clear existing
+
+    //     const total = rows * cols;
+
+    //     for (let i = 0; i < total; i++) {
+    //         const slot = document.createElement("div");
+    //         slot.className = "inv-slot";
+    //         slot.dataset.index = i;
+
+    //         const icon = document.createElement("div");
+    //         icon.className = "icon";
+    //         slot.appendChild(icon);
+
+    //         const count = document.createElement("div");
+    //         count.className = "count";
+    //         slot.appendChild(count);
+
+    //         grid.appendChild(slot);
+    //     }
+    // }
 
 }

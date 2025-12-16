@@ -1,7 +1,7 @@
 // @ts-nocheck
 import * as THREE from 'three';
 import * as Shared from '../Shared.js';
-import { ENTITY_COMPONENT_TAGS } from './Entities/Entity.js';
+import { ENTITY_COMPONENT_TAGS } from '../Entities/Entity.js';
 
 export const ENEMY_STATES = {
     IDLE: 1,

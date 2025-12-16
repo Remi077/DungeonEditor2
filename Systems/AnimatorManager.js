@@ -1,7 +1,6 @@
 // @ts-nocheck
 import * as THREE from 'three';
-import * as Shared from '../Shared.js';
-import { ENTITY_COMPONENT_TAGS } from './Entities/Entity.js';
+import { ENTITY_COMPONENT_TAGS } from '../Entities/Entity.js';
 
 export default class AnimatorManager {
     constructor() {
@@ -10,24 +9,11 @@ export default class AnimatorManager {
         this.targetQuat = new THREE.Quaternion()        
     }
 
-    // registerEntity(entity) {
-    //     if (entity.get('Animator'))
-    //         this.entities.add(entity);
-    // }
-
-    // unregisterEntity(entity) {
-    //     this.entities.delete(entity);
-    // }
-
     update(dt, entity) {
-        // for (const entity of entities) {
             const anim = entity.animator;
             if (!anim || !anim.mixer) return;
             
-            // console.log("Before update:", anim.mixer.time);
             anim.mixer.update(dt);
-            // console.log("After update:", anim.mixer.time);
-        // }
     }
 
     play(
@@ -96,9 +82,6 @@ export default class AnimatorManager {
             if (!backward)
                 action.reset();
             action.fadeIn(0.15).play();
-            // console.log("Playing animation:", clipName);
-            // action.reset().play();
-            // action.play();
             anim.currentAction = action;
 
         }

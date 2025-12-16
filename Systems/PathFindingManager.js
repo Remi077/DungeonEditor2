@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'GLTFLoader';
 import { Pathfinding } from "three-pathfinding";
-import { ENTITY_COMPONENT_TAGS } from './Entities/Entity.js';
+import { ENTITY_COMPONENT_TAGS } from '../Entities/Entity.js';
 import * as Shared from '../Shared.js';
 
 export default class PathFindingManager {

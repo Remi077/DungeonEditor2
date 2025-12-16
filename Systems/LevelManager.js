@@ -1,12 +1,12 @@
 // @ts-nocheck
 import * as THREE from 'three';
-import Entity, { ENTITY_TYPES, ENTITY_COMPONENT_TAGS } from './Entities/Entity.js'; // optional, for NPCs
+import Entity, { ENTITY_TYPES, ENTITY_COMPONENT_TAGS } from '../Entities/Entity.js'; // optional, for NPCs
 import { GLTFLoader } from 'GLTFLoader';
-import VisualComponent from './Entities/Components/VisualComponent.js';
-import TransformComponent from './Entities/Components/TransformComponent.js';
-import PhysicsBodyComponent from './Entities/Components/PhysicsBodyComponent.js';
-import AnimatorComponent from './Entities/Components/AnimatorComponent.js';
-import InteractableComponent from './Entities/Components/InteractableComponent.js';
+import VisualComponent from '../Entities/Components/VisualComponent.js';
+import TransformComponent from '../Entities/Components/TransformComponent.js';
+import PhysicsBodyComponent from '../Entities/Components/PhysicsBodyComponent.js';
+import AnimatorComponent from '../Entities/Components/AnimatorComponent.js';
+import InteractableComponent from '../Entities/Components/InteractableComponent.js';
 import GameStateManager from './GameStateManager.js';
 import * as Shared from '../Shared.js';
 

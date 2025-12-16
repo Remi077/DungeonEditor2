@@ -2,32 +2,22 @@
 /*-----------------------------------------------------*/
 // IMPORTS //
 /*-----------------------------------------------------*/
-// import * as Shared from './shared.js';
-// import * as Editor from './editor/Editor.js';
-// import * as EditorUI from './editor/EditorUI.js';
-// import * as MenuUI from './menu/Menu.js';
-// import * as Game from './game/Game.js';
-// import * as GameOver from './game/GameOver.js';
-// import * as Inventory from './game/inventory.js';
-
 import * as THREE from 'three';
-import GameStateManager, { GAMESTATES } from './GameStateManager.js';
-// import GameStateManager from './GameStateManager.js';
-import MenuState from './menu/Menu.js';
-import GameState from './game/Game.js';
-import EditorState from './editor/Editor.js';
-import GameOverState from './game/GameOver.js';
+import MenuState from './GameStates/Menu.js';
+import GameState from './GameStates/Game.js';
+import EditorState from './GameStates/Editor.js';
+import GameOverState from './GameStates/GameOver.js';
 
-import InputManager from './InputManager.js';
-import PhysicsManager from './PhysicsManager.js';
-import LevelManager from './LevelManager.js';
-import CharacterManager from './CharacterManager.js';
-import AnimatorManager from './AnimatorManager.js';
-import InteractableManager from './InteractableManager.js';
-import PathFindingManager from './PathFindingManager.js';
-import AIManager from './AIManager.js';
-import UIManager from './UIManager.js';
-// import * as Stats from '../GameStats.js';
+import GameStateManager, { GAMESTATES } from './Systems/GameStateManager.js';
+import InputManager from './Systems/InputManager.js';
+import PhysicsManager from './Systems/PhysicsManager.js';
+import LevelManager from './Systems/LevelManager.js';
+import CharacterManager from './Systems/CharacterManager.js';
+import AnimatorManager from './Systems/AnimatorManager.js';
+import InteractableManager from './Systems/InteractableManager.js';
+import PathFindingManager from './Systems/PathFindingManager.js';
+import AIManager from './Systems/AIManager.js';
+import UIManager from './Systems/UIManager.js';
 
 /*-----------------------------------------------------*/
 // REVISION NUMBER
@@ -54,91 +44,6 @@ if (isMobile()) {
 }
 
 
-//DEPENDENCIES DIAGRAM
-
-/*
-
-main
- ├── editor ───────┐
- │    ├── stats ───┼──> shared
- │    ├── shared   │
- │    └── gameHUD──┘
- ├── game ─────────┐
- │    ├── stats ───┼──> shared
- │    ├── shared   │
- │    └── gameHUD──┘
- ├── editorUI
- │    ├──> editor
- │    ├──> stats ─────> shared
- │    ├──> shared
- │    └──> gameHUD
- ├── menuUI ──────────> shared
- └── gameOver ────────> shared
-*/
-
-//main->editor
-//main->game
-//main->shared
-//main->editorUI
-//main->menuUI
-
-//editorUI->editor
-//editorUI->shared
-//editorUI->gameHUD
-
-//editor->stats
-//editor->shared
-//editor->gameHUD
-
-//menuUI->shared
-
-//gameOver->shared
-
-//game->stats
-//game->shared
-//game->gameHUD
-
-//gameHUD->shared
-
-//stats->shared
-
-
-/*-----------------------------------------------------*/
-// SETUP AND START GAME
-/*-----------------------------------------------------*/
-
-// async function setupAndStart() {
-//     try {
-
-//         //init Rapier
-//         await Shared.initRapier();
-
-//         //setup editor scene
-//         Editor.setupEditor();
-//         EditorUI.setupEditorUI();
-
-//         //wire the callbacks here to avoid circular dependencies
-//         Shared.setStartEditorLoop(Editor.startEditorLoop);
-//         Shared.setStopEditorLoop(Editor.stopEditorLoop);
-//         Shared.setStartGameLoop(Game.startGameLoop);
-//         Shared.setStopGameLoop(Game.stopGameLoop);
-//         Shared.setEditorActions(Editor.Actions);
-//         Shared.setGameActions(Game.Actions);
-//         Shared.setEditorActionsMap(Editor.ActionToKeyMap);
-//         Shared.setGameActionsMap(Game.ActionToKeyMap);
-        
-//         // Start editor loop
-//         Shared.setMode(Shared.MODEEDITOR);
-//         // Shared.setMode(Shared.MODEMENU);
-
-//     } catch (error) {
-//         console.error("Error: ", error);
-//     }
-// }
-
-// //start here
-// setupAndStart();
-  
 //recommended structure
 // Game/
 //  ├── Systems/

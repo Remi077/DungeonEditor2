@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ENEMY_STATES } from '../../AIManager.js';
+import { ENEMY_STATES } from '../../Systems/AIManager.js';
 import { ENTITY_COMPONENT_TAGS } from '../Entity.js';
 import * as Shared from '../../Shared.js';
 export const calculatePathPeriod = 1.5;

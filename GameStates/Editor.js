@@ -1,20 +1,13 @@
 // @ts-nocheck
 import * as THREE from 'three';
+import * as RAPIER from 'rapier';
 import { GLTFLoader } from 'GLTFLoader';
 import * as SkeletonUtils from 'SkeletonUtils';
-
-import * as RAPIER from 'rapier';
-
-// import * as Shared from '../shared.js';
-// import * as Stats from '../Stats.js';
-// import * as GameHUD from '../game/gameHUD.js';
-// import * as loadSave from './loadSave.js';
-import * as Shared from '../shared.js';
-import * as GameHUD from '../game/gameHUD.js';
-import * as loadSave from './loadSave.js';
 import Stats from "stats.js";
-import PathFindingManager from '../PathFindingManager.js';
-import { GAMESTATES } from '../GameStateManager.js';
+
+import * as Shared from '../shared.js';
+import PathFindingManager from '../Systems/PathFindingManager.js';
+import { GAMESTATES } from '../Systems/GameStateManager.js';
 
 
 export default class EditorState {
@@ -444,7 +437,6 @@ export default class EditorState {
         const moveCam = Shared.moveSpeed * dt;
         this.game.yawObject.position.add(moveVector.multiplyScalar(moveCam));
 
-        // if (ActionsOnce.pause) Shared.doPause();
         if (ActionsOnce.hideCol) {this.game.systems.physicsManager.toggle();}
         if (ActionsOnce.saveLevel) this.onSave();
         if (ActionsOnce.loadLevel) this.onLoad();
@@ -506,7 +498,7 @@ export default class EditorState {
         //console.log("draw calls mini viewport", renderer.info.render.calls);
         this.drawCalls += renderer.info.render.calls;
 
-        // 3. Reset to full Shared.canvas
+        // 3. Reset to full canvas
         renderer.setScissorTest(false);
 
         // Simulate heavy computation
