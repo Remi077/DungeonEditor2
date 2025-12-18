@@ -15,6 +15,7 @@ export default class TransformComponent {
         this.tweakPos = null;
         this.tweakRot = null;
         this.cameraHeight = 0;
+        this.jump = false;
         /*-----------------------------*/
         // jump variables
         //

@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import * as RAPIER from 'rapier';
 
-// Physic constants
+// Collision constants
 
 export const GRAVITY = 9.81;
 export const MAXFALLSPEED = 50; // meters per second, adjust as needed

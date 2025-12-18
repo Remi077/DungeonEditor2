@@ -4,12 +4,12 @@ import * as Debug from '../Debug.js';
 import * as Constants from '../Constants.js';
 import * as SkeletonUtils from 'SkeletonUtils';
 
-import Entity, { ENTITY_TYPES } from '../Entities/Entity.js'; // optional, for NPCs
+import Entity from '../Entities/Entity.js'; // optional, for NPCs
 import TransformComponent from '../Entities/Components/TransformComponent.js';
 import VisualComponent from '../Entities/Components/VisualComponent.js';
-import PhysicsBodyComponent from '../Entities/Components/PhysicsBodyComponent.js';
+import CollisionsBodyComponent from '../Entities/Components/CollisionsBodyComponent.js';
 import AnimatorComponent from '../Entities/Components/AnimatorComponent.js';
-import PlayerControllerComponent from '../Entities/Components/PlayerControllerComponent.js';
+import PlayerControlComponent from '../Entities/Components/PlayerControlComponent.js';
 import GameplayComponent from '../Entities/Components/GameplayComponent.js';
 import WeaponComponent from '../Entities/Components/WeaponComponent.js';
 import InventoryComponent from '../Entities/Components/InventoryComponent.js';
@@ -36,7 +36,7 @@ class CharacterPrefab {
         //Animations
         this.animationClips = new Map();  // parsed once
 
-        //Collider + Physics
+        //Collider + Collisions
         this.weaponColliderMesh = null;
         this.weaponBodyDesc = null;
         this.weaponColliderDesc = null;
@@ -45,7 +45,7 @@ class CharacterPrefab {
         this.attackDamageStart = 0;
         this.attackDamageEnd = 0;
 
-        //Physics template
+        //Collisions template
         this.capsuleRadius = this.constructor.DEFAULT_CHARACTER_RADIUS; //temp should be calculated from mesh BB or dedicated mesh
         this.capsuleHeight = this.constructor.DEFAULT_CHARACTER_HEIGHT; // temp see above
         this.offsetRootToBody = new THREE.Vector3(0, this.capsuleHeight * 0.5, 0);
@@ -88,7 +88,7 @@ export default class CharacterManager {
         this.prefab = new CharacterPrefab();
         this.prefab.name = characterType;
 
-        const isPlayerPrefab = characterType === ENTITY_TYPES.PLAYER;
+        const isPlayerPrefab = characterType === 'player';//TOFIX
 
         // 1. Parse armature / weapon / skeleton
         this.processHierarchy(gltf.scene, this.prefab, isPlayerPrefab);
@@ -236,26 +236,28 @@ export default class CharacterManager {
     }
 
 
-    spawnPlayer(characterType, spawnPosition) {
+    spawnPlayer(characterType, spawnPosition, world) {
 
         const prefab = this.charaPrefabMap.get(characterType);
         if (!prefab) throw new Error(`player prefab '${characterType}' not loaded`);
 
-        const player = this.instantiateCharacter(prefab, {
+        const player = this.instantiateCharacter(prefab, world, {
             isPlayer: true,
             position: spawnPosition,
             posRelativeToCam: true
         });
 
+        world.setPlayer(player);
+
         return player;
     }
 
-    spawnCharacter(characterType, spawnPosition, spawnRotation, patrolPath = []) {
+    spawnCharacter(characterType, spawnPosition, spawnRotation, world, patrolPath = []) {
 
         const prefab = this.charaPrefabMap.get(characterType);
         if (!prefab) throw new Error(`character prefab '${characterType}' not loaded`);
 
-        return this.instantiateCharacter(prefab, {
+        return this.instantiateCharacter(prefab, world, {
             isPlayer: false,
             position: spawnPosition,
             rotation: spawnRotation,
@@ -263,12 +265,8 @@ export default class CharacterManager {
         });
     }
 
-    instantiateCharacter(prefab, options) {
-        const entity = new Entity(prefab.name, 
-            options?.isPlayer ?
-            ENTITY_TYPES.PLAYER :
-            ENTITY_TYPES.CHARACTER
-        );
+    instantiateCharacter(prefab, world, options) {
+        const entity = new Entity(prefab.name);
 
         // const camPos = this.game.yawObject.position;
         // const camPos = ;
@@ -282,7 +280,15 @@ export default class CharacterManager {
         // 1. VisualComponent with cloned armature / skinned mesh
         const root = SkeletonUtils.clone(prefab.root); // Clone skinned mesh + skeleton
         const visualComponent = new VisualComponent(root)
-        visualComponent.setFrustumCulled(!(options?.isPlayer));
+        // visualComponent.setFrustumCulled(!(options?.isPlayer));
+        if (visualComponent.root) {
+            visualComponent.root.traverse(obj => {
+                if (obj.isMesh) {
+                    obj.frustumCulled = !(options?.isPlayer);
+                }
+            });
+        }
+
         visualComponent.normalMaterial = prefab.normalMaterial;
         visualComponent.hurtMaterial = prefab.hurtMaterial;
 
@@ -294,30 +300,30 @@ export default class CharacterManager {
             }
         });
 
-        // 3. Create PhysicsBodyComponent with capsule collider
-        const physicsManager = this.game.systems.physicsManager;
+        // 3. Create CollisionsBodyComponent with capsule collider
+        const collisionManager = this.game.systems.collisionManager;
 
-        const playerBody = physicsManager.createKinematicRigidBody(
+        const playerBody = collisionManager.createKinematicRigidBody(
             bodyPos || new THREE.Vector3(0, 0, 0), 
             //add rotation
             rootRot,
             options?.isPlayer ? "Player" : "NPC"
         );
-        const playerCollider = physicsManager.createCapsuleCollider(
+        const playerCollider = collisionManager.createCapsuleCollider(
              prefab.capsuleRadius,
              (prefab.capsuleHeight * 0.5) - prefab.capsuleRadius,
              prefab.collisionGroup
         , playerBody);
         if (!playerCollider.userData) playerCollider.userData = {};
         playerCollider.userData.entity = entity;//annotate the collider with entity for fast lookup on weapon collision
-        const physicsBodyComponent = new PhysicsBodyComponent(playerBody, playerCollider);
+        const collisionBodyComponent = new CollisionsBodyComponent(playerBody, playerCollider);
 
-        physicsBodyComponent.capsuleRadius = prefab.capsuleRadius ;
-        physicsBodyComponent.capsuleTotalHeight = prefab.capsuleHeight;
-        physicsBodyComponent.capsuleCylinderHalfHeight = (prefab.capsuleHeight * 0.5) - prefab.capsuleRadius;
-        physicsBodyComponent.kcc = physicsManager.createKCC();
-        physicsBodyComponent.collisionGroup = prefab.collisionGroup;
-        physicsBodyComponent.offsetRootToBody = prefab.offsetRootToBody;
+        collisionBodyComponent.capsuleRadius = prefab.capsuleRadius ;
+        collisionBodyComponent.capsuleTotalHeight = prefab.capsuleHeight;
+        collisionBodyComponent.capsuleCylinderHalfHeight = (prefab.capsuleHeight * 0.5) - prefab.capsuleRadius;
+        collisionBodyComponent.kcc = collisionManager.createKCC();
+        collisionBodyComponent.collisionGroup = prefab.collisionGroup;
+        collisionBodyComponent.offsetRootToBody = prefab.offsetRootToBody;
 
         // Prepare animations
         const mixer = new THREE.AnimationMixer(root);
@@ -343,19 +349,19 @@ export default class CharacterManager {
             // console.log("Bones:");
             // root.traverse(o => { if (o.isBone) console.log(o.name); });
             // detect attack clips by name or metadata
-            if (clip.name.startsWith(Constants.ANIM.ATTACK) || 
-                clip.name.startsWith(Constants.ANIM.DIE) ||
-                clip.name.startsWith(Constants.ANIM.HURT)
-            ) {
-                // console.log("Clip duration:", action._clip.duration);
-                action.setLoop(THREE.LoopOnce, 0);
+            // if (clip.name.startsWith(Constants.ANIM.ATTACK) || 
+            //     clip.name.startsWith(Constants.ANIM.DIE) ||
+            //     clip.name.startsWith(Constants.ANIM.HURT)
+            // ) {
+            //     // console.log("Clip duration:", action._clip.duration);
+            //     action.setLoop(THREE.LoopOnce, 0);
 
-                //TOIMPROVE: if player we want the last frame of attack to be constant (sword in front of screen)
-                //otherwise do not clamp
-                // action.clampWhenFinished = (options?.isPlayer);   // <- KEEPS last frame visible
-                action.clampWhenFinished = true;   // <- KEEPS last frame visible
-                // action.enabled = true;
-            }
+            //     //TOIMPROVE: if player we want the last frame of attack to be constant (sword in front of screen)
+            //     //otherwise do not clamp
+            //     // action.clampWhenFinished = (options?.isPlayer);   // <- KEEPS last frame visible
+            //     action.clampWhenFinished = true;   // <- KEEPS last frame visible
+            //     // action.enabled = true;
+            // }
             animatorComponent.animationActions.set(name, action);
         });
         animatorComponent.weaponBone = clonedSkeleton.getBoneByName(prefab.weaponBoneName);
@@ -364,7 +370,7 @@ export default class CharacterManager {
         //weapon
         const weaponComponent = new WeaponComponent();
         weaponComponent.weapon = root.getObjectByName(prefab.weaponName);
-        const {body: weaponBody, collider: weaponCollider, colliderDesc: weaponColliderDesc} = physicsManager.createKinematicColliderFromMesh(
+        const {body: weaponBody, collider: weaponCollider, colliderDesc: weaponColliderDesc} = collisionManager.createKinematicColliderFromMesh(
             prefab.weaponColliderMesh,
             prefab.weaponCollisionGroups
         );
@@ -378,29 +384,28 @@ export default class CharacterManager {
         const gpComponent = new GameplayComponent();
 
         //add components
-        entity.addComponent(visualComponent);
-        entity.addComponent(transformComponent);
-        entity.addComponent(animatorComponent);
-        entity.addComponent(physicsBodyComponent);
-        entity.addComponent(gpComponent);
-        entity.addComponent(weaponComponent);
-        //entity.addComponent(new AIComponent()); // optional, for NPCs
+        world.addComponent(entity, visualComponent);
+        world.addComponent(entity, transformComponent);
+        world.addComponent(entity, animatorComponent);
+        world.addComponent(entity, collisionBodyComponent);
+        world.addComponent(entity, gpComponent);
+        world.addComponent(entity, weaponComponent);
 
         //add extra options
         if (options?.isPlayer) {
-            entity.addComponent(new PlayerControllerComponent(this.game.input));
-            entity.addComponent(new InventoryComponent());
+            world.addComponent(entity, new PlayerControlComponent(this.game.input));
+            world.addComponent(entity, new InventoryComponent());
         } else {
             const aiComponent = new AIComponent();
             const patrolPath = options?.patrolPath;
             if (patrolPath)
                 aiComponent.patrolPath.push(...patrolPath);
-            entity.addComponent(aiComponent);
-            entity.addComponent(new PathFindingComponent());
+            world.addComponent(entity, aiComponent);
+            world.addComponent(entity, new PathFindingComponent());
 
             //add health bar
             const hp = this.createHealthBar();
-            hp.position.y = physicsBodyComponent.capsuleTotalHeight + 0.3;
+            hp.position.y = collisionBodyComponent.capsuleTotalHeight + 0.3;
             root.add(hp);
             gpComponent.healthBar = hp;
 
@@ -415,8 +420,8 @@ export default class CharacterManager {
         root.rotation.copy(rootRot);
 
         // this.entities.push(entity);
-        this.game.entities.add(entity);
-        this.game.activeEntities.add(entity);
+        // this.game.entities.add(entity);
+        // this.game.activeEntities.add(entity);
         if (options?.isPlayer)
             this.game.playerEntity = entity;
 

@@ -4,7 +4,7 @@ import * as RAPIER from 'rapier';
 import * as Constants from '../Constants.js';
 import * as Debug from '../Debug.js';
 
-export default class PhysicsManager {
+export default class CollisionManager {
     constructor() {
         this.world = null;
         this.fixedTimeStep = 1/60; //physics run at constant rate
@@ -229,7 +229,7 @@ export default class PhysicsManager {
     static SKIN = 0.02;
 
     createKCC(){
-        const kcc = this.world.createCharacterController(PhysicsManager.SKIN); //0.1 is skin distance
+        const kcc = this.world.createCharacterController(collisionManager.SKIN); //0.1 is skin distance
         // Don’t allow climbing slopes larger than 45 degrees.
         kcc.setMaxSlopeClimbAngle(45 * Math.PI / 180);
         // Automatically slide down on slopes smaller than 30 degrees.
@@ -334,6 +334,43 @@ export default class PhysicsManager {
         }
     }
 
+    update(dt, world){
+       for (const e of world.query(TRANSFORM, COLLISION)) {
+            const col = e.collision;
+            const tr = e.transform;
+            // check for collision and correct movement
+            const result = this.calculateCorrectMovement(
+                col.kcc,
+                col.body,
+                col.collider,
+                tr.moveVector,
+                tr.newRotation,
+                col.collisionGroup
+            );
+            col.isTouchingGround = result.isTouchingGround;
+            tr.newPosition = result.newPosition;
+
+
+            //check if player in water/at surface
+            if (e.playerCtrl){
+                const belowChin = this.game.yawObject.position.clone();
+                belowChin.y -= 0.3;
+                const col = e.collision;
+                col.isInWater = this.checkIsInWater(belowChin);
+                if (e.collision.isInWater) {
+                    const isHeadInWater = this.checkIsInWater(this.game.yawObject.position);
+                    if (!e.collision.isAtSurface && !isHeadInWater) console.log("ATSURFACE")
+                    e.collision.isAtSurface = !isHeadInWater;
+                } else {
+                    e.collision.isAtSurface = false;
+                }
+            }
+
+            this.syncMesh(e);
+            this.scheduleSyncBody(e);
+        }
+    }
+
     calculateCorrectMovement(kcc, body, collider, desiredMovement, desiredRotation, collisionGroups=null) {
         kcc.computeColliderMovement(
             collider,
@@ -394,6 +431,22 @@ export default class PhysicsManager {
         };
     }
 
+
+    syncMesh(e) {
+        const col = e.collision;
+        const tr = e.transform;
+        const root = e.visual?.root;
+        if (!root) return;
+        //update rotation
+        if (!e.playerCtrl) //not player
+            root.quaternion.slerp(tr.newRotation, 0.1);
+        else
+            root.quaternion.copy(tr.newRotation);
+        root.position.copy(tr.newPosition);
+        root.position.sub(col?.offsetRootToBody);
+    }
+
+
     applyWallSlide(move, normals) {
         // Work in direction space (no dt)
         const dir = move.clone().normalize();
@@ -412,7 +465,15 @@ export default class PhysicsManager {
     }
 
     //sync body to mesh
-    scheduleSyncBody(body, target, off = new THREE.Vector3(0,0,0)) {
+    scheduleSyncBody(e) {
+        const target = e.visual?.root;
+        if (!target) return;
+        const body = e.collision?.body;
+        const off = e.collision?.offsetRootToBody;
+        this.scheduleSyncBodyToTarget(body, off, target);
+    }
+
+    scheduleSyncBodyToTarget(body, target, off) {
         const q = target.getWorldQuaternion(this.worldQuat);
         const newoff = off.clone().applyQuaternion(q);
         const newPos = target.getWorldPosition(this.worldPos);
@@ -491,5 +552,62 @@ export default class PhysicsManager {
         this.debugGeo.dispose();
         this.debugMat.dispose();
     }
+
+
+
+    updateWpn(dt, world) {
+       for (const e of world.query(WEAPON, COLLISION)) {
+            this.weaponSyncBody(e);
+            this.weaponAttack(e, dt);
+       }
+    }
+
+
+    weaponSyncBody(e) {
+        const wpn = e.weapon;
+        if (!wpn) return;
+        const body = wpn?.weaponBody;
+        const off = wpn?.weaponOffsetRootToBody;
+        const target = wpn?.weapon;
+        if (!body || !target) return;
+        const result = this.scheduleSyncBodyToTarget(body, target, off);
+    }
+
+
+    weaponAttack(e, dt) {
+        const wpn = e.weapon;
+        const col = e.collision;
+        if (!wpn.isAttacking) return;
+        wpn.timeSinceStartAttack += dt;
+        if (
+            wpn.timeSinceStartAttack >= wpn.attackDamageStart &&
+            (wpn.attackDamageEnd ?
+                (wpn.timeSinceStartAttack < wpn.attackDamageEnd) : true)
+        ) { 
+            const characterBody = col.body;
+            this.intersectionsWithShape(
+                wpn.weaponBody,
+                wpn.weaponColliderDesc.shape,
+                {
+                    excludeCollider: wpn.weaponCollider,
+                    excludeBody: characterBody,
+                    callback: ((otherCollider) => {
+                        const colentity = otherCollider?.userData?.entity;
+                        if (colentity){
+                            console.log(e.name, "hit something", colentity.name)
+                            this.hurt(colentity, e);
+                        }
+                    })
+                }
+            )
+        }
+    }
+
+    checkIsInWater(point) {
+        return this.intersectionsWithPoint(point, Constants.COL_MASKS.WATER);
+    }
+
+
+
 
 }

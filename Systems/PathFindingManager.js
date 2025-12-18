@@ -50,15 +50,15 @@ export default class PathFindingManager {
 
         const pathFindingComponent = entity.pathfinding;
         const transformComponent = entity.transform;
-        const physicsBodyComponent = entity.physics;
+        const collisionBodyComponent = entity.collision;
 
-        if (!pathFindingComponent || !transformComponent || !physicsBodyComponent) return;
+        if (!pathFindingComponent || !transformComponent || !collisionBodyComponent) return;
 
         const moveVector = transformComponent.moveVector;
         const newRotation = transformComponent.newRotation;
         const pathbuffer = pathFindingComponent.pathbuffer;
-        const currentPos = physicsBodyComponent.getBodyTranslation(this.currentPos);
-        const offsetRootToBody = physicsBodyComponent.offsetRootToBody;
+        const currentPos = collisionBodyComponent.getBodyTranslation(this.currentPos);
+        const offsetRootToBody = collisionBodyComponent.offsetRootToBody;
 
         const withinReach = currentPos.distanceTo(targetPos) < withinDistance;
         moveVector.set(0,0,0);
@@ -145,14 +145,14 @@ export default class PathFindingManager {
     steerEntity(entity, targetPos, updatePos = false) {
         const pathFindingComponent = entity.pathfinding;
         const transformComponent = entity.transform;
-        const physicsBodyComponent = entity.physics;
+        const collisionBodyComponent = entity.collision;
 
-        if (!pathFindingComponent || !transformComponent || !physicsBodyComponent) return;
+        if (!pathFindingComponent || !transformComponent || !collisionBodyComponent) return;
 
         const moveVector  = transformComponent.moveVector;
         const newRotation = transformComponent.newRotation;
         const pathbuffer  = pathFindingComponent.pathbuffer;
-        const currentPos  = physicsBodyComponent.body.translation();
+        const currentPos  = collisionBodyComponent.body.translation();
 
         const toTarget = targetPos.clone().sub(currentPos);
         toTarget.y = 0; // <-- remove pitch

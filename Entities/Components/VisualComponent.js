@@ -15,13 +15,4 @@ export default class VisualComponent {
         this.hurtMaterial = null;
     }
 
-    setFrustumCulled(culled) {
-        if (this.root) {
-            this.root.traverse(obj => {
-                if (obj.isMesh) {
-                    obj.frustumCulled = culled;
-                }
-            });
-        }
-    }
 }

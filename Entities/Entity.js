@@ -1,10 +1,5 @@
 // @ts-nocheck
 
-export const ENTITY_TYPES = {
-    PLAYER : 'Player',
-    CHARACTER : 'Character',
-    ACTIONNABLE : 'Actionnable',
-}
 
 export const ENTITY_COMPONENT_TAGS = {
     AI: 'AI',
@@ -12,8 +7,8 @@ export const ENTITY_COMPONENT_TAGS = {
     GAMEPLAY: 'Gameplay',
     INTERACTABLE: 'Interactable',
     PATHFINDING: 'PathFinding',
-    PHYSICS: 'Physics',
-    PLAYERCONTROLLER: 'PlayerController',
+    COLLISION: 'Collision',
+    PLAYERCONTROL: 'PlayerControl',
     TRANSFORM: 'Transform',
     VISUAL: 'Visual',
     WEAPON: 'Weapon',
@@ -21,9 +16,8 @@ export const ENTITY_COMPONENT_TAGS = {
 }
 
 export default class Entity {
-    constructor(name, type) {
+    constructor(name) {
         this.name = name;
-        this.type = type;
         this.components = {};
     }
     addComponent(component) {
@@ -38,8 +32,8 @@ export default class Entity {
     get gameplay() { return this.get(ENTITY_COMPONENT_TAGS.GAMEPLAY); }
     get interactable() { return this.get(ENTITY_COMPONENT_TAGS.INTERACTABLE); }
     get pathfinding() { return this.get(ENTITY_COMPONENT_TAGS.PATHFINDING); }
-    get physics() { return this.get(ENTITY_COMPONENT_TAGS.PHYSICS); }
-    get playerController() { return this.get(ENTITY_COMPONENT_TAGS.PLAYERCONTROLLER); }
+    get collision() { return this.get(ENTITY_COMPONENT_TAGS.COLLISION); }
+    get playerCtrl() { return this.get(ENTITY_COMPONENT_TAGS.PLAYERCONTROL); }
     get transform() { return this.get(ENTITY_COMPONENT_TAGS.TRANSFORM); }
     get visual() { return this.get(ENTITY_COMPONENT_TAGS.VISUAL); }
     get weapon() { return this.get(ENTITY_COMPONENT_TAGS.WEAPON); }

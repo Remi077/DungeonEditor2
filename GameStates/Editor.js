@@ -377,7 +377,7 @@ export default class EditorState {
         }
         this.drawCallsSpan.textContent = this.drawCalls;
 
-        const world = this.game.systems.physicsManager;
+        const world = this.game.systems.collisionManager;
         if (world){
             this.colliderCountSpan.textContent = world.getNumColliders();
             this.rigidBodiesCountSpan.textContent = world.getNumBodies();
@@ -441,7 +441,7 @@ export default class EditorState {
         const moveCam = EditorState.CAMSPEED * dt;
         this.game.yawObject.position.add(moveVector.multiplyScalar(moveCam));
 
-        if (ActionsOnce.hideCol) {this.game.systems.physicsManager.toggle();}
+        if (ActionsOnce.hideCol) {this.game.systems.collisionManager.toggle();}
         if (ActionsOnce.saveLevel) this.onSave();
         if (ActionsOnce.loadLevel) this.onLoad();
         if (ActionsOnce.loadTest){
@@ -461,9 +461,9 @@ export default class EditorState {
         this.axesHelper.quaternion.copy(this.worldQuat).invert();
 
         //step physics world
-        const world = this.game.systems.physicsManager;
-        if (world){
-            world.step(dt);
+        const rapierworld = this.game.systems.collisionManager;
+        if (rapierworld){
+            rapierworld.step(dt);
         }
 
 

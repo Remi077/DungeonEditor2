@@ -5,7 +5,7 @@ import Pathfinding from "three-pathfinding";
 import Stats from "stats.js";
 
 import * as Constants from '../Constants.js';
-import { ENTITY_TYPES } from '../Entities/Entity.js';
+import World from '../Entities/World.js';
 import AnimatorManager from '../Systems/AnimatorManager.js';
 import { ENEMY_STATES } from '../Systems/AIManager.js';
 import { GAMESTATES } from '../Systems/GameStateManager.js';
@@ -14,6 +14,8 @@ import { GAMESTATES } from '../Systems/GameStateManager.js';
 export default class GameState {
     constructor(game) {
         this.game = game;
+
+        this.world = null; //contains the entities
 
         this.crosshair = null;
         this.healthContainer = null;
@@ -45,9 +47,16 @@ export default class GameState {
             "Digit7": "Item7",
         };
 
+        //0: left, 1: middle, 2:right
+        this.MouseToActionMap = {
+            0: "attack",
+        }
+
         //substate: inventory open
-        this.isInventoryOpen = false;
-        this.isPointerLocked = true;
+        this.uiState = {
+            isInventoryOpen : false;
+            isPointerLocked : true;
+        }
 
         //stats
         this.fpsPanel = new Stats();//extra fps panel
@@ -249,8 +258,9 @@ export default class GameState {
         canvas.requestPointerLock();
 
         //clear all game actions
-        this.Actions = {};
-        this.ActionsOnce = {};
+        this.actions = {};
+        this.actionsOnce = {};
+        this.mouseActions = {};
 
         //input management
         const input = this.game.input;
@@ -289,13 +299,17 @@ export default class GameState {
             yawObject.rotation.set(0, 0, 0);
         }
 
+        //game world (entities)
+        if (!this.world)
+            this.world = new World();
 
         //spawn player
         if (!this.player){
 
             const playerPos = this.game.yawObject.position.clone();
             this.player = this.game.systems.characterManager.spawnPlayer('player',
-                playerPos
+                playerPos,
+                this.world
                 //add rotation
             );
             //player health bar
@@ -321,6 +335,7 @@ export default class GameState {
                     'zombie',
                     zombiePos,
                     zombieRot,
+                    this.world
                     patrolPath
                 )
             }
@@ -334,7 +349,7 @@ export default class GameState {
         const action = this.KeyToActionMap[e.code];
         if (action) {
             // console.log("keydown", action);
-            this.Actions[action] = true;
+            this.actions[action] = true;
         }
     }
 
@@ -342,7 +357,7 @@ export default class GameState {
         const action = this.KeyToActionMap[e.code];
         if (action) {
             // console.log("keyup", action);
-            this.Actions[action] = false;
+            this.actions[action] = false;
         }
     }
 
@@ -350,67 +365,43 @@ export default class GameState {
         const action = this.KeyToActionOnceMap[e.detail.code];
         if (action) {
             // console.log("keypressonce", action);
-            this.ActionsOnce[action] = true;
+            this.actionsOnce[action] = true;
         }
     }
 
     mousedown(e) {
 
-        if (this.isInventoryOpen) return;
-
+        //lock to canvas if not the case
         const canvas = this.game.canvas;
         if (document.pointerLockElement !== canvas) {
             canvas.requestPointerLock();
             return;
         }
 
-        const animatorManager = this.game.systems.animatorManager;
-        if (e.button === 0) { //left click
-
-            const playerWpn = this.player.weapon;
-            if (playerWpn.isAttacking) return;
-            playerWpn.isAttacking = true;
-            playerWpn.timeSinceStartAttack = 0;
-
-            animatorManager.play(
-                this.player, 
-                Constants.ANIM.ATTACK,
-                false,
-                false,
-                false,
-                (() => {
-                    // console.log("END PLAYER ATTACK");
-                    playerWpn.isAttacking = false;
-                })
-            );
-
-            //raycast
-            this.raycastActionnables(); //raycast against actionnable objects
-
+        //update action dependending on if inventory is open
+        if (this.uiState.isInventoryOpen) {
+            return;
+        } else {
+            const action = this.MouseToActionMap[e.button];
+            if (action)
+                this.mouseActions[action] = true;
         }
+
     }
 
     mouseup(e) {
+        const action = this.MouseToActionMap[e.button];
+        if (action)
+            this.mouseActions[action] = false;
     }
 
     mousemove(e) {
 
-        if (this.isInventoryOpen) return;
-        if (!this.isPointerLocked) return;  // check the flag instead of pointerLockElement
+        if (this.uiState.isInventoryOpen) return;
+        if (!this.uiState.isPointerLocked) return;  // check the flag instead of pointerLockElement
 
-        const dx = e.movementX;
-        const dy = e.movementY;
+        this.game.systems.mousemove(e.movementX,e.movementY);
 
-        const sensitivity = 0.002;
-
-        const yawObject = this.game.yawObject;
-        const pitchObject = this.game.pitchObject;
-        yawObject.rotation.y -= e.movementX * sensitivity; // Y-axis (left/right)
-        pitchObject.rotation.x -= e.movementY * sensitivity; // X-axis (up/down)
-
-        // Clamp pitch to prevent flipping
-        const maxPitch = Math.PI / 2;
-        pitchObject.rotation.x = Math.max(-maxPitch, Math.min(maxPitch, pitchObject.rotation.x));
     }
 
     resize(e) {
@@ -423,7 +414,7 @@ export default class GameState {
     pointerlockchange(e) {
         console.log("GAME pointerlockchange")
         const isLocked = document.pointerLockElement === this.game.canvas;
-        this.isPointerLocked = isLocked;
+        this.uiState.isPointerLocked = isLocked;
         if (isLocked) {
             this.crosshair.style.display = "block";
         } else {
@@ -461,83 +452,35 @@ export default class GameState {
         //fps counter
         this.fpsPanel.begin(); // start measuring frame
 
+        const world = this.world;
+        const actions = { ...this.actions, ...this.actionsOnce, ...this.mouseActions };
+        const enableMovement = !this.uiState.isInventoryOpen
+        
+        //update every system
+        //the order is important here, since weapon kinematic collider is driven by animation
+        //update body, mesh and animation before scheduling weapon collider and step the world 
+        this.game.systems.playerCtrlManager.update(dt,world,actions,enableMovement);//player desired movement, desired animation
+        this.game.systems.aiManager.update(dt,world);//enemies desired movement, desired animation
+        this.game.systems.movementManager.update(dt,world);//apply gravity
+        this.game.systems.collisionManager.update(dt,world);//calculate collisions, sync mesh and schedule bodies
+        this.game.systems.animatorManager.update(dt,world); //update animated bone/mesh position, use desired animations
+        this.game.systems.collisionManager.updateWpn(dt,world); //sync the weapon body to its respective mesh (schedule) and test for collision (attack)
+        this.game.systems.collisionManager.step(dt); //step the rapier world
 
-        //loop through entities and update their rigidbodies        
-        const entities = this.game.entities;
-        const activeEntities = this.game.activeEntities;
-        const animatorManager = this.game.systems.animatorManager;
-        const uiManager = this.game.systems.uiManager;
+        //order not important here
+        this.game.systems.healthManager.update(dt,world); //update health and status (hurt, invincible) of entities
+        this.game.systems.cameraManager.update(dt,world); //sync camera
+        this.game.systems.materialManager.update(dt,world); //update materials
+        this.game.systems.uiManager.update(dt,world,actions); //update UI
 
-        for (const e of activeEntities) {
-
-            //kinematic collider driven by animation
-            //update mesh and animation before scheduling collider movement
-            //as some colliders track a bone
-
-            this.calculateDesiredMovement(dt, e); //calculate desired movement
-            this.calculateCorrectMovement(e); //calculate corrected movement (after collision)
-            this.syncMesh(e); //apply corrected movement to mesh
-            animatorManager.update(dt, e); //update animated bone/mesh position
-            this.scheduleSyncBody(e); //sync the kinematic rigidbodies to their mesh/bones (schedule)
-            this.weaponSyncBody(e); //sync the weapon body to its respective mesh (schedule)
-            this.weaponAttack(e, dt); //if weapon is attacking, test weapon collision
-
-            //update animations
-            this.updateAnimation(e);
-            //update material
-            this.updateMaterial(e);
-            //update GUI elements
-            uiManager.updateGUI(e);
-
-        }
-
-        // step physics world
-        this.game.systems.physicsManager.step(dt);
-
-        // keep camera holder at same position as body
-        const yawObject = this.game.yawObject;
-        const root = this.player.visual.root;
-        yawObject.position.copy(root.position);
-        yawObject.position.y += this.player.transform.cameraHeight; //keep same height for now
-
-        const ActionsOnce = this.ActionsOnce;
-        if (ActionsOnce.startEditor)
-            this.game.stateManager.setState(GAMESTATES.EDITOR);
-        // if (ActionsOnce.jump) jump();
-        if (ActionsOnce.interact) this.interact();
-        if (ActionsOnce.hideCol) {this.game.systems.physicsManager.toggle();};
-        if (ActionsOnce.toggleInventory) this.toggleInventory();
-
-        if (ActionsOnce.Item1) uiManager.highlightSelectedSlot(1);
-        if (ActionsOnce.Item2) uiManager.highlightSelectedSlot(2);
-        if (ActionsOnce.Item3) uiManager.highlightSelectedSlot(3);
-        if (ActionsOnce.Item4) uiManager.highlightSelectedSlot(4);
-        if (ActionsOnce.Item5) uiManager.highlightSelectedSlot(5);
-        if (ActionsOnce.Item6) uiManager.highlightSelectedSlot(6);
-        if (ActionsOnce.Item7) uiManager.highlightSelectedSlot(7);
-
+        //misc actions
+        if (actions.startEditor) this.game.stateManager.setState(GAMESTATES.EDITOR);
+        if (actions.hideCol) {this.game.systems.collisionManager.toggle();};
 
         //clear the onpress/onrelease actions now that they have been sampled
         //in that loop to avoid resampling
-        for (let key in this.ActionsOnce) this.ActionsOnce[key] = false;
+        for (let key in this.actionsOnce) this.actionsOnce[key] = false;
 
-    }
-
-    interact(){
-        console.log("interact");
-        //perform raycast from camera center
-        //if object hit is interactable, call its interact function component
-    }
-
-    toggleInventory(){
-        this.isInventoryOpen = !this.isInventoryOpen;
-        this.inventoryContainer.style.display = this.isInventoryOpen ? "block" : "none";
-
-        if (this.isInventoryOpen) {
-            document.exitPointerLock?.();
-        } else {
-            this.game.canvas.requestPointerLock?.(); // request lock on canvas
-        }
     }
 
     render(dt) {
@@ -551,372 +494,15 @@ export default class GameState {
         this.fpsPanel.end(); //end measuring frame
     }
 
-    calculateDesiredMovement(dt, e) {
-        const PlayerControllerComponent = e.playerController;
-        const transformComponent = e.transform;
-        const visualComponent = e.visual;
-        const physicsBodyComponent = e.physics;
-        const body = physicsBodyComponent?.body;
-        const moveVector = transformComponent?.moveVector;
-        const isPlayer = e.type === ENTITY_TYPES.PLAYER;
-        const isCharacter = e.type === ENTITY_TYPES.CHARACTER;
-        const root = visualComponent?.root;
-        const yawObject = this.game.yawObject;
-
-        if (isPlayer) {
-
-            //check if player in water/at surface
-            const belowChin = this.game.yawObject.position.clone()
-            belowChin.y -= 0.3;
-            physicsBodyComponent.isInWater = this.checkIsInWater(belowChin);
-            if (physicsBodyComponent.isInWater) {
-                const isHeadInWater = this.checkIsInWater(this.game.yawObject.position);
-                if (!physicsBodyComponent.isAtSurface && !isHeadInWater) console.log("ATSURFACE")
-                physicsBodyComponent.isAtSurface = !isHeadInWater;
-            } else {
-                physicsBodyComponent.isAtSurface = false;
-            }
-
-            //calculate moveVector from inputs + camera orientation + vertical speed 
-            moveVector.set(0, 0, 0);
-            const Actions = this.Actions;
-            if (Actions.moveCamLeft) moveVector.x = -1;
-            if (Actions.moveCamRight) moveVector.x = 1;
-            if (Actions.moveCamFront) moveVector.z = -1;
-            if (Actions.moveCamBack) moveVector.z = 1;
-            moveVector.normalize();
-            if (!physicsBodyComponent.isInWater)
-                this.game.yawObject.getWorldQuaternion(this.worldQuat);
-            else
-                this.game.pitchObject.getWorldQuaternion(this.worldQuat); //move in all directions in water
-            moveVector.applyQuaternion(this.worldQuat);
-            moveVector.multiplyScalar(transformComponent.moveSpeed);
-
-
-            //calculate desired rotation from camera orientation
-            const targetQuat = new THREE.Quaternion().multiplyQuaternions(yawObject.quaternion, transformComponent.tweakRot);
-            // const slerpQuat = root.quaternion.clone().slerp(targetQuat, 0.1);
-            // transformComponent.newRotation.copy(slerpQuat);
-            transformComponent.newRotation.copy(targetQuat);
-
-
-        } else if (isCharacter) {
-
-            const aiManager = this.game.systems.aiManager;
-            aiManager.calculateDesiredMovement(dt, e);
-
-        }
-
-        if (isCharacter || isPlayer) {
-
-            // update invincibility status
-            //TODO: not the best place for this, maybe move all player logic
-            //into player controller component (equivalent of ai manager for enemy)
-            //invincibility for enemy is driven by animation
-            const gp = e.gameplay;
-            gp.timeSinceLastHit += dt;
-            if (isPlayer) {
-                if (gp.invincibility && gp.timeSinceLastHit > 1)
-                    gp.invincibility = false;
-            } 
-
-            //update vertical speed
-            if (
-                (!physicsBodyComponent.isInWater && physicsBodyComponent.isTouchingGround)
-                || (physicsBodyComponent.isAtSurface)
-            ) {
-                if (isPlayer && this.ActionsOnce.jump) {
-                    transformComponent.verticalSpeed = transformComponent.jumpSpeed;
-                } else if (!physicsBodyComponent.isInWater) {
-                    transformComponent.verticalSpeed = - 0.1; //small downward force to keep grounded
-                }
-            } else if (physicsBodyComponent.isInWater) { //in water downward speed attenuates quickly to 0
-                transformComponent.verticalSpeed = (Math.abs(transformComponent.verticalSpeed) < 0.00001) ? 0 : (transformComponent.verticalSpeed * 0.93)
-            } else {
-                transformComponent.verticalSpeed = Math.max(-Constants.MAXFALLSPEED, transformComponent.verticalSpeed - (Constants.GRAVITY * dt));
-            }
-            moveVector.y += transformComponent.verticalSpeed;
-
-            //add repulsion forces from hit
-            const repulsionDuration = 0.2;//1s //TODO: move to constants
-            if (gp.timeSinceLastHit > repulsionDuration){
-                gp.hitRepulsionForce.set(0,0,0);
-            }
-            moveVector.add(gp.hitRepulsionForce);
-
-            //decorrelate from framerate
-            moveVector.multiplyScalar(dt);
-        }
-
-
-    }
-
-    calculateCorrectMovement(e) {
-        const physicsBodyComponent = e.physics;
-        const transformComponent = e.transform;
-        if (!transformComponent || !physicsBodyComponent) return;
-        // check for collision and correct movement
-        const result = this.game.systems.physicsManager.calculateCorrectMovement(
-            physicsBodyComponent.kcc,
-            physicsBodyComponent.body,
-            physicsBodyComponent.collider,
-            transformComponent.moveVector,
-            transformComponent.newRotation,
-            physicsBodyComponent.collisionGroup
-        );
-        physicsBodyComponent.isTouchingGround = result.isTouchingGround;
-        transformComponent.newPosition = result.newPosition;
-    }
-
-    syncMesh(e) {
-        const physicsBodyComponent = e.physics;
-        const transformComponent = e.transform;
-        if (!transformComponent || !physicsBodyComponent) return;
-        const visualComponent = e.visual;
-        const root = visualComponent.root;
-        //update rotation
-        if (e.type === ENTITY_TYPES.CHARACTER)
-            root.quaternion.slerp(transformComponent.newRotation, 0.1);
-        else
-            root.quaternion.copy(transformComponent.newRotation);
-        root.position.copy(transformComponent.newPosition);
-        root.position.sub(physicsBodyComponent?.offsetRootToBody);
-    }
-
-    scheduleSyncBody(e) {
-        const physicsBodyComponent = e.physics;
-        const visualComponent = e.visual;
-        const body = physicsBodyComponent?.body;
-        const off = physicsBodyComponent?.offsetRootToBody;
-        const target = visualComponent?.root;
-        if (!body || !target) return;
-        const result = this.game.systems.physicsManager.scheduleSyncBody(body, target, off);
-    }
-
-    weaponSyncBody(e) {
-        const weaponComponent = e.weapon;
-        if (!weaponComponent) return;
-        const physicsBodyComponent = e.physics;
-        const visualComponent = e.visual;
-        const body = weaponComponent?.weaponBody;
-        const off = weaponComponent?.weaponOffsetRootToBody;
-        const target = weaponComponent?.weapon;
-        if (!body || !target) return;
-        const result = this.game.systems.physicsManager.scheduleSyncBody(body, target, off);
-    }
-
-    weaponAttack(e, dt) {
-        const weaponComponent = e.weapon;
-        if (!weaponComponent) return;
-        if (!weaponComponent.isAttacking) return;
-        weaponComponent.timeSinceStartAttack += dt;
-        if (
-            weaponComponent.timeSinceStartAttack >= weaponComponent.attackDamageStart &&
-            (weaponComponent.attackDamageEnd ?
-                (weaponComponent.timeSinceStartAttack < weaponComponent.attackDamageEnd) : true)
-        ) { 
-            const characterBody = e.physics.body;
-            this.game.systems.physicsManager.intersectionsWithShape(
-                weaponComponent.weaponBody,
-                weaponComponent.weaponColliderDesc.shape,
-                {
-                    excludeCollider: weaponComponent.weaponCollider,
-                    excludeBody: characterBody,
-                    callback: ((otherCollider) => {
-                        const colentity = otherCollider?.userData?.entity;
-                        if (colentity){
-                            console.log(e.name, "hit something", colentity.name)
-                            this.hurt(colentity, e);
-                        }
-                    })
-                }
-            )
-        }
-    }
-
-    hurt(target, source) {
-        const maxHitRepulsionForce = 5;//1s //TODO: move in constants
-        const ai = target.ai;
-        const vs = target.visual;
-        const gp = target.gameplay;
-        if (gp.invincibility || gp.health <= 0)
-            return;
-
-        gp.health -= 10;
-        // gp.health -= 50;
-        const isPlayer = target.type === ENTITY_TYPES.PLAYER;
-
-        const wpn =target.weapon;
-        if (wpn){
-            wpn.isAttacking = false; //cancel the attack on hurt
-        }
-
-        const vssource = source.visual;
-        const hitRepulsionForce = vs.root.position.clone().sub(vssource.root.position);
-        hitRepulsionForce.y = 0;
-        hitRepulsionForce.normalize().multiplyScalar(maxHitRepulsionForce);
-        gp.hitRepulsionForce.copy(hitRepulsionForce);
-
-        if (gp.health <= 0) {
-            console.log("character dead");
-            if (isPlayer) {
-                this.game.stateManager.setState(GAMESTATES.GAMEOVER);
-            } else {
-                this.game.systems.aiManager.die(target);
-            }
-        } else {
-            if (isPlayer) {
-                gp.invincibility = true;
-                gp.timeSinceLastHit = 0;
-            } else {
-                this.game.systems.aiManager.hurt(target);       
-                gp.timeSinceLastHit = 0;
-            }
-                 
-        }
-
-    }
 
     disableEntity(e) {
-        const ps = e.physics;
+        const ps = e.collision;
         const wpn = e.weapon;
-        this.game.systems.physicsManager.scheduleRemoval(ps.body, ps.collider);
-        this.game.systems.physicsManager.scheduleRemoval(wpn.weaponBody, wpn.weaponCollider);
+        this.game.systems.collisionManager.scheduleRemoval(ps.body, ps.collider);
+        this.game.systems.collisionManager.scheduleRemoval(wpn.weaponBody, wpn.weaponCollider);
         this.game.activeEntities.delete(e);
     }
 
-    updateAnimation(e) {
-        const isPlayer = e.type === ENTITY_TYPES.PLAYER;
-        const isCharacter = e.type === ENTITY_TYPES.CHARACTER;
-        const animatorManager = this.game.systems.animatorManager;
-
-        if (isPlayer) {
-            const Actions = this.Actions;
-            if (
-                Actions.moveCamLeft ||
-                Actions.moveCamRight ||
-                Actions.moveCamFront ||
-                Actions.moveCamBack
-            ) {
-                animatorManager.play(e, Constants.ANIM.WALK_L);
-            } else {
-                animatorManager.stop(e, Constants.ANIM.WALK_L);
-            }
-        } else if (isCharacter) {
-            const aiComponent = e.ai;
-            switch (aiComponent.enemyState) {
-                case ENEMY_STATES.IDLE:    animatorManager.play(e, Constants.ANIM.IDLE); break;
-                case ENEMY_STATES.PATROL :
-                case ENEMY_STATES.CHASE : 
-                case ENEMY_STATES.SEARCH:
-                    animatorManager.play(e, Constants.ANIM.WALK); 
-                    break;
-                case ENEMY_STATES.ATTACK:  
-                    animatorManager.play(e, Constants.ANIM.ATTACK, false, false, false,
-                        (() => {
-                            aiComponent.animationFinished = true;
-                        }), 
-                    ); 
-                    break;
-                case ENEMY_STATES.HURT:    
-                    animatorManager.play(e, Constants.ANIM.HURT, false, true, false, 
-                        (() => {
-                            aiComponent.animationFinished = true;
-                        }), 
-                        false);
-                    break;
-                case ENEMY_STATES.DEATH:   
-                    animatorManager.stop(e, Constants.ANIM.ATTACK);
-                    animatorManager.play(e, Constants.ANIM.DIE, false, false, false, 
-                        (() => {
-                            this.disableEntity(e);
-                        })
-                    , false);
-                 break;
-            }
-
-            switch (aiComponent.enemyState) {
-                case ENEMY_STATES.PATROL:
-                    animatorManager.makeRigLookAt(e, aiComponent.patrolPath[0]);
-                    break;
-                case ENEMY_STATES.CHASE:
-                    animatorManager.makeRigLookAt(e, this.game.yawObject);
-                    break;
-                case ENEMY_STATES.SEARCH:
-                    animatorManager.makeRigLookAt(e, aiComponent.lastSeenPlayerPosition);
-                    break;
-            }
-        }
-    }
-
-    updateMaterial(e) {
-        const isPlayer = e.type === ENTITY_TYPES.PLAYER;
-        const aiComponent = e.ai;
-        if (isPlayer) {
-            const gp = e.gameplay;
-            const visualComponent = e.visual;
-            if (gp.invincibility)
-                visualComponent.skinnedMesh.material = visualComponent.hurtMaterial;
-            else
-                visualComponent.skinnedMesh.material = visualComponent.normalMaterial;
-        } else {
-            const aiComponent = e.ai;
-            const visualComponent = e.visual;
-            if (!aiComponent || !visualComponent) return;
-            if (aiComponent.enemyState === ENEMY_STATES.HURT){
-                visualComponent.skinnedMesh.material = visualComponent.hurtMaterial;
-            } else if (visualComponent.skinnedMesh.material !== visualComponent.normalMaterial) {
-                visualComponent.skinnedMesh.material = visualComponent.normalMaterial;
-            }
-        }
-    }
-
-
-    checkIsInWater(point) {
-        const physicsManager = this.game.systems.physicsManager;
-        return physicsManager.intersectionsWithPoint(point, Constants.COL_MASKS.WATER);
-    }
-
-    raycastActionnables() {
-        let selectObject = null;
-        const raycaster = this.game.raycaster;
-        const screenCenter = this.game.screenCenter;
-        const camera = this.game.camera;
-        const levelManager = this.game.systems.levelManager;
-
-        //TODO: only call this function when clicked
-        //TODO: optimize with octree or BVH tree
-        const visibleTargets = levelManager.getRaycastTargets(true, true); //static and actionnables
-        raycaster.setFromCamera(screenCenter, camera);
-        let doesIntersect = false;
-        const hits = raycaster.intersectObjects(visibleTargets, true);//true means recursive raycast, it parses children too
-
-        let closestHit = null;
-
-        for (const hit of hits) {
-            if (!closestHit || hit.distance < closestHit.distance) {
-                closestHit = hit;
-            }
-        }
-
-        if (closestHit && closestHit.distance < 3) {
-            doesIntersect = true;
-        }
-
-        if (doesIntersect) {
-
-            console.log("HIT", closestHit.object.name);
-            const selectEntity = closestHit.object?.userData?.entity;
-
-            if (selectEntity?.type === ENTITY_TYPES.ACTIONNABLE) {
-                console.log("hit actionnable");
-                const interactableComponent = selectEntity.interactable;
-                interactableComponent?.interact(this.player);
-            }
-
-        }
-
-    }
 
 
 }

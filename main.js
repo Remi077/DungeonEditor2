@@ -11,7 +11,8 @@ import GameOverState from './GameStates/GameOver.js';
 import * as Constants from '../Constants.js';
 import GameStateManager, { GAMESTATES } from './Systems/GameStateManager.js';
 import InputManager from './Systems/InputManager.js';
-import PhysicsManager from './Systems/PhysicsManager.js';
+import CollisionManager from './Systems/CollisionManager.js';
+import MovementManager from './Systems/MovementManager.js';
 import LevelManager from './Systems/LevelManager.js';
 import CharacterManager from './Systems/CharacterManager.js';
 import AnimatorManager from './Systems/AnimatorManager.js';
@@ -19,6 +20,7 @@ import InteractableManager from './Systems/InteractableManager.js';
 import PathFindingManager from './Systems/PathFindingManager.js';
 import AIManager from './Systems/AIManager.js';
 import UIManager from './Systems/UIManager.js';
+import HealthManager from './Systems/HealthManager.js';
 
 /*-----------------------------------------------------*/
 // REVISION NUMBER
@@ -45,29 +47,49 @@ if (isMobile()) {
 }
 
 
-//recommended structure
+//structure
 // Game/
+//  ├── Constants.js
+//  ├── Debug.js
+//  ├── index.html
+//  |
+//  ├── assets/
+//  |
 //  ├── Systems/
-//  │     ├── PhysicsManager
-//  │     ├── LevelManager
-//  │     ├── CharacterManager
-//  │     └── AnimationSystem
+//  │     ├── AIManager.js
+//  │     ├── AnimatorManager.js
+//  │     ├── CharacterManager.js //tomove in factories
+//  │     ├── CollisionManager.js
+//  │     ├── GameStateManager.js //tomove in infrastructure
+//  │     ├── HealthManager.js
+//  │     ├── InputManager.js //tomove in infrastructure
+//  │     ├── InteractableManager.js
+//  │     ├── LevelManager.js //tomove in factories
+//  │     ├── PathFindingManager.js
+//  │     ├── MovementManager.js
+//  │     └── UIManager.js
 //  │
 //  ├── Entities/
 //  │     ├── Entity.js
+//  │     ├── World.js
 //  │     ├── Components/
-//  │     │     ├── TransformComponent.js
-//  │     │     ├── PhysicsBodyComponent.js
-//  │     │     ├── AnimatorComponent.js
-//  │     │     ├── PlayerControllerComponent.js
 //  │     │     ├── AIComponent.js
-//  │     │     └── HealthComponent.js
+//  │     │     ├── AnimatorComponent.js
+//  │     │     ├── GameplayComponent.js
+//  │     │     ├── InteractableComponent.js
+//  │     │     ├── InventoryComponent.js
+//  │     │     ├── PathFindingComponent.js
+//  │     │     ├── CollisionsBodyComponent.js
+//  │     │     ├── PlayerControlComponent.js
+//  │     │     ├── TransformComponent.js
+//  │     │     ├── VisualComponent.js
+//  │     │     └── WeaponComponent.js
 //  │
-//  └── States/
-//        ├── EditorState
-//        ├── GameState
-//        ├── MenuState
-//        └── GameOverState
+//  └── GameStates/
+//        ├── Editor.js
+//        ├── Game.js
+//        ├── Menu.js
+//        └── GameOver.js
 
 
 // --- Create the state manager ---
@@ -97,19 +119,21 @@ const game = {
     yawObject: new THREE.Object3D(),
     pitchObject: new THREE.Object3D(),
     systems: {},
-    entities: new Set(),
-    activeEntities: new Set(),
-    playerEntity : null,
+    // entities: new Set(),
+    // activeEntities: new Set(),
+    // playerEntity : null,
     stateManager: stateManager
 }
 
-game.systems.physicsManager = new PhysicsManager();
-game.systems.levelManager = new LevelManager(game);
-game.systems.characterManager = new CharacterManager(game);
-game.systems.animatorManager = new AnimatorManager(game);
-game.systems.interactableManager = new InteractableManager(game);
-game.systems.pathFindingManager = new PathFindingManager(game);
 game.systems.aiManager = new AIManager(game);
+game.systems.animatorManager = new AnimatorManager(game);
+game.systems.characterManager = new CharacterManager(game);
+game.systems.collisionManager = new CollisionManager(game);
+game.systems.healthManager = new HealthManager(game);
+game.systems.interactableManager = new InteractableManager(game);
+game.systems.levelManager = new LevelManager(game);
+game.systems.pathFindingManager = new PathFindingManager(game);
+game.systems.movementManager = new MovementManager(game);
 game.systems.uiManager = new UIManager(game);
 await game.systems.uiManager.loadItems(); // ensure atlas is loaded before using it
 
@@ -125,7 +149,7 @@ if (0) {//to enable shadows
 game.scene.background = new THREE.Color(0x000000);
 
 //initialize systems
-game.systems.physicsManager.init(game.scene);
+game.systems.collisionManager.init(game.scene);
 
 // --- Register states ---
 stateManager.add(GAMESTATES.MENU, new MenuState(game));

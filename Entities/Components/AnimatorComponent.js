@@ -7,8 +7,9 @@ export default class AnimatorComponent {
         this.mixer = mixer;
         this.animationClips = new Map();   // name -> clip
         this.animationActions = new Map(); // name -> mixer action
-        this.currentAction = null;
         this.weaponBone = null;
         this.headBone = null;
+        this.desiredAnimation = new Map();//communicates the desired animation from other manager 
+        this.headTarget = null;//optionnally rotate head bone to look at something
     }
 }

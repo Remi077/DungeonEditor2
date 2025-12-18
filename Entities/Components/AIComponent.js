@@ -19,5 +19,6 @@ export default class AIComponent {
         this.patrolPath = [];
         this.debugSpheres = [];
         this.debugLine = new THREE.Line(Debug.debugLineGeometry, Debug.debugLineMaterial);
+
     }
 }

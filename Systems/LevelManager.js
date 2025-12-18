@@ -1,10 +1,10 @@
 // @ts-nocheck
 import * as THREE from 'three';
-import Entity, { ENTITY_TYPES } from '../Entities/Entity.js'; // optional, for NPCs
+import Entity from '../Entities/Entity.js'; // optional, for NPCs
 import { GLTFLoader } from 'GLTFLoader';
 import VisualComponent from '../Entities/Components/VisualComponent.js';
 import TransformComponent from '../Entities/Components/TransformComponent.js';
-import PhysicsBodyComponent from '../Entities/Components/PhysicsBodyComponent.js';
+import CollisionsBodyComponent from '../Entities/Components/CollisionsBodyComponent.js';
 import AnimatorComponent from '../Entities/Components/AnimatorComponent.js';
 import InteractableComponent from '../Entities/Components/InteractableComponent.js';
 import GameStateManager from './GameStateManager.js';
@@ -14,7 +14,7 @@ export default class LevelManager {
     constructor(game) {
         this.game = game;
         this.scene = game.scene;
-        this.physics = game.systems.physicsManager;
+        this.collision = game.systems.collisionManager;
 
         this.staticGroup = new THREE.Group();
         this.actionnablesGroup = new THREE.Group();
@@ -29,7 +29,7 @@ export default class LevelManager {
         this.gltf = null;
     }
 
-    async loadLevel(path) {
+    async loadLevel(path, world) {
         const arrayBuffer = await (await fetch(path)).arrayBuffer();
         const gltf = await this.loadLevelGlb(arrayBuffer);
         this.gltf = gltf;
@@ -50,7 +50,7 @@ export default class LevelManager {
         // Create physics for colliders/triggers
         this.processColliders();
 
-        this.processActionnables();
+        this.processActionnables(world);
 
         this.loaded = true;
     }
@@ -85,20 +85,20 @@ export default class LevelManager {
     }
 
     processColliders() {
-        const physics = this.physics; // reference to your PhysicsManager
+        const physics = this.collision; // reference to your collisionManager
 
         Array.from(this.colliderGroup.children).forEach(child => {
             if (child.name.startsWith("Collider_Kine")) {
                 const colGroup = (child.name.startsWith("Trigger_")) ?
                 Constants.COL_MASKS.WATER : Constants.COL_MASKS.SCENERY
-                this.physics.createKinematicColliderFromMesh(child, colGroup);
+                this.collision.createKinematicColliderFromMesh(child, colGroup);
             } else {
-                this.physics.createStaticColliderFromMesh(child, Constants.COL_MASKS.SCENERY);
+                this.collision.createStaticColliderFromMesh(child, Constants.COL_MASKS.SCENERY);
             }
         });
 
         Array.from(this.triggerGroup.children).forEach(child => {
-           this.physics.createStaticColliderFromMesh(child, Constants.COL_MASKS.WATER)
+           this.collision.createStaticColliderFromMesh(child, Constants.COL_MASKS.WATER)
         //    .setSensor(true); 
         });
 
@@ -125,8 +125,8 @@ export default class LevelManager {
         // return animatedNodes;
     }
 
-    processActionnables() {
-        const physics = this.physics; // reference to your PhysicsManager
+    processActionnables(world) {
+        const physics = this.collision; // reference to your collisionManager
 
         // First detect which level objects actually have animations
         // const animatedNodes = this.findAnimatedNodes(this.gltf);
@@ -140,7 +140,7 @@ export default class LevelManager {
             const transformComponent = new TransformComponent()
             
             //new entity
-            const entity = new Entity(child.name, ENTITY_TYPES.ACTIONNABLE);
+            const entity = new Entity(child.name    );
 
             //animator component
             if (animatedSet.has(child.name)) {
@@ -170,32 +170,32 @@ export default class LevelManager {
                     }
                 }
 
-                entity.addComponent(animator);
+                world.addComponent(entity, animator);
             }
             
             //physics body component
             const rb = physics.getRigidBodyByName(`Collider_Kine_${child.name}`);
             if (rb) {
-                const physicsBodyComponent = new PhysicsBodyComponent(rb);
+                const collisionBodyComponent = new CollisionsBodyComponent(rb);
                 const worldPos = new THREE.Vector3();
                 child.getWorldPosition(worldPos);
                 const rbPos = rb.translation();
-                physicsBodyComponent.offsetRootToBody = new THREE.Vector3(rbPos.x - worldPos.x, rbPos.y - worldPos.y, rbPos.z - worldPos.z);
-                entity.addComponent(physicsBodyComponent);
+                collisionBodyComponent.offsetRootToBody = new THREE.Vector3(rbPos.x - worldPos.x, rbPos.y - worldPos.y, rbPos.z - worldPos.z);
+                world.addComponent(entity, collisionBodyComponent);
             }
 
             // add visual and transform components
-            entity.addComponent(visualComponent);
+            world.addComponent(visualComponent);
             // entity.addComponent(transformComponent);
             if (
                 child.name.startsWith("Action_Door")
                 || child.name.startsWith("Action_Chest")
             ) {
-                entity.addComponent(new InteractableComponent(() => this.game.systems.interactableManager.doorInteract(entity)));
+                world.addComponent(entity, new InteractableComponent(() => this.game.systems.interactableManager.doorInteract(entity)));
             } else if (child.name.startsWith("Action_Switch")) {
-                entity.addComponent(new InteractableComponent(() => this.game.systems.interactableManager.switchInteract(entity)));
+                world.addComponent(entity, new InteractableComponent(() => this.game.systems.interactableManager.switchInteract(entity)));
             } else if (child.name.startsWith("Action_Item")) {
-                entity.addComponent(new InteractableComponent((callerEntity) => this.game.systems.interactableManager.itemInteract(entity, callerEntity)));
+                world.addComponent(entity, new InteractableComponent((callerEntity) => this.game.systems.interactableManager.itemInteract(entity, callerEntity)));
             } else {
                 if (child.parent?.name.startsWith("Action_Switch")) {
                     const parentEntity = child.parent.userData.entity;
@@ -207,7 +207,7 @@ export default class LevelManager {
             child.userData.entity = entity;
 
             //add entity to game entities list
-            this.game.entities.add(entity);
+            // this.game.entities.add(entity);
         });
     }
 

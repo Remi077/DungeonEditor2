@@ -1,44 +1,24 @@
 // @ts-nocheck
-import * as THREE from 'three';
-
 
 export default class InteractableManager {
     constructor(game) {
         this.game = game;
-        this.animatorManager = game.systems.animatorManager;
     }
 
     doorInteract(doorEntity) {
-        const animator = doorEntity.animator;
+        const anim = doorEntity.animator;
         const interact = doorEntity.interactable;
-        if (!animator || !interact) return;
+        if (!anim || !interact) return;
 
-        if (interact.open) {
-            // Close the door
-            this.animatorManager.play(
-                doorEntity, 
-                null, // pick first action
-                false,
-                false,
-                true, // play backwards
-                () => {this.game.activeEntities.delete(doorEntity);} //called at end of animation
-            ); 
-            interact.open = false;
-        } else {
-            // Open the door
-            this.animatorManager.play(
-                doorEntity, 
-                null, // pick first action
-                false,
-                false,
-                false, // play forwards
-                () => {this.game.activeEntities.delete(doorEntity);} //called at end of animation
-            ); 
-            interact.open = true;
-        }
+        interact.open = !interact.open;
+        anim.desiredAnimation.set(null, // null: pick first action
+        {
+            play: true,
+            reverse: !interact.open, //play reverse to close the door
+            callback: () => {this.game.activeEntities.delete(doorEntity);} //called at end of animation
+        })
         this.game.activeEntities.add(doorEntity);
     }
-
 
     switchInteract(switchEntity) {
         const interact = switchEntity.interactable;
@@ -46,31 +26,16 @@ export default class InteractableManager {
         const switchTarget = root.children[0];
         const switchTargetEntity = switchTarget?.userData?.entity;
         if (!interact || !switchTargetEntity) return;
-        const animator = switchTargetEntity.animator;
+        const anim = switchTargetEntity.animator;
         if (!interact || !animator) return;
-        if (interact.open) {
-            // Turn off the switch
-            this.animatorManager.play(
-                switchTargetEntity, 
-                null, 
-                false,
-                false,
-                true,
-                () => {this.game.activeEntities.delete(switchTargetEntity);} //called at end of animation
-            ); // play backwards
-            interact.open = false;
-        } else {
-            // Turn on the switch
-            this.animatorManager.play(
-                switchTargetEntity,
-                null,
-                false,
-                false,
-                false,
-                () => {this.game.activeEntities.delete(switchTargetEntity);} //called at end of animation
-                ); // play forwards
-            interact.open = true;
-        }
+
+        interact.open = !interact.open;
+        anim.desiredAnimation.set(null, // null: pick first action
+        {
+            play: true,
+            reverse: !interact.open, //play reverse to close the door
+            callback: () => {this.game.activeEntities.delete(switchTargetEntity);} //called at end of animation
+        })
         this.game.activeEntities.add(switchTargetEntity);
     }
 

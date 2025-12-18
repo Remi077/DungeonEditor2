@@ -5,103 +5,80 @@ export default class AnimatorManager {
     constructor() {
         // this.entities = new Set();  // or let ECS register automatically
         this.targetPos = new THREE.Vector3();
-        this.targetQuat = new THREE.Quaternion()        
+        this.targetQuat = new THREE.Quaternion();
     }
 
-    update(dt, entity) {
-            const anim = entity.animator;
-            if (!anim || !anim.mixer) return;
-            
+    update(dt, world) {
+       for (const e of world.query(ANIMATOR)) {
+            const anim = e.animator;
             anim.mixer.update(dt);
+
+            //update animation
+            const desiredAnimations = e.animator?.desiredAnimation;
+            if (desiredAnimations) desiredAnimations.foreach((clipname,options)=>this.play(e,clipname,options));
+
+            //update head rotation
+            if (!anim.headTarget)
+                updateHeadTarget(e)
+       }
     }
 
-    play(
-        entity, 
-        clipName = null, 
-        overlapSingle = false, //stop previous action before starting new single animation
-        stopSingle = false, //if true dont keep last frame of single animation at the end
-        backward = false,
-        callback = null,
-        repeatSingle = true
-    ) {
-        const anim = entity.animator;
-        if (!anim) return;
+    play(e,clipName,options) {
 
-        const action = clipName ? anim.animationActions.get(clipName) : 
-            anim.animationActions.values().next().value; // return first value
-        if (!action) {
-            console.warn("Animation not found:", clipName);
-            return;
-        }
+        const anim = e.animator;
 
-        if (backward) {
-            const clip = action.getClip();
-            action.time = clip.duration;
-            action.paused = false;
-            action.timeScale = -1;
-        } else {
-            // action.paused = true;
-            action.timeScale = 1;
-        }
+        if (!clipName) clipName =  anim.animationActions.keys().next().value; //defaults to first action
+        const play = options?.play;
 
-        // SPECIAL CASE: Attack or any non-looping animation
-        if (action.loop === THREE.LoopOnce) {
-            
-            //no new single action? abort
-            if (anim.singlecurrentAction === action) return;
-            anim.singlecurrentAction = action; //set single action
-            // Stop previous non-single action and clear it
-            if (anim.currentAction && !overlapSingle) {
-                anim.currentAction.fadeOut(0.15);
-                // anim.currentAction.stop();
-                anim.currentAction = null;
+        const action = anim.animationActions.get(clipName);
+        if (!action) console.warn("Animation not found:", clipName);
+        if (!action) return;
+        if (play && action.isRunning()) return; //already running
+        if (!play && !action.isRunning()) return; //already stopped
+
+        if (play){
+
+            const clampWhenFinished = options?.clampWhenFinished; //keep last frame at the end of animation
+            const reverse = options?.reverse; //play the animation backwards
+            const loop = options?.loop; //if true the same animation can be repeated several times in a row, if false only one time
+            const callback = options?.callback; //called at end of action
+
+            if (reverse) {
+                const clip = action.getClip();
+                action.time = clip.duration;
+                action.paused = false;
+                action.timeScale = -1;
+            } else {
+                // action.paused = true;
+                action.timeScale = 1;
             }
-            if (!backward) action.reset();//reset action only if play forward
+
+            action.clampWhenFinished = clampWhenFinished ?? false;
+            if (loop) {
+                action.setLoop(THREE.LoopRepeat);
+                action.clampWhenFinished = false; //force-disable clamping if we loop
+            } else {
+                action.setLoop(THREE.LoopOnce);
+            }
+
+            if (!reverse) action.reset();//reset action only if play forward
+
             action.play(); //play action
 
-            // Optional: event when finished
-            action.getMixer().addEventListener("finished", (e) => { 
-                if (e.action === action) {
-                    if (stopSingle) action.stop(); //stop single action
-                    if (repeatSingle) anim.singlecurrentAction = null; //clear single action
-                    // optionally return to idle etc.
-                    callback?.();
-                }
-            });
-
-            // return;
+            const mixer = action.getMixer()
+            const onFinished = (e) => {
+                if (e.action !== action) return;
+                mixer.removeEventListener("finished", onFinished);
+                callback?.();
+            };
+            mixer.addEventListener("finished", onFinished);
+            
         } else {
-
-            // Otherwise: normal looping action
-            if (anim.currentAction === action) return;
-            // Stop previous action
-            if (anim.currentAction) {
-                anim.currentAction.fadeOut(0.15);
-            }
-            if (!backward)
-                action.reset();
-            action.fadeIn(0.15).play();
-            anim.currentAction = action;
-
+            action.stop();
         }
-
 
     }
 
-
-    stop(entity, clipName) {
-        const anim = entity.animator;
-        const action = anim.animationActions.get(clipName);
-        if (!anim) return;
-        if (!action) {
-            console.warn("Animation not found:", clipName);
-            return;
-        }
-        action.stop();
-        if (anim.currentAction === action) {
-            anim.currentAction = null;
-        }
-    }
 
 
     makeRigLookAt(entity, target) {
@@ -139,6 +116,10 @@ export default class AnimatorManager {
 
     }
 
-
+    updateHeadTarget(e){
+        const anim = e.animator;
+        const headTarget = anim.headTarget;
+        this.makeRigLookAt(e, headTarget);
+    }
 
 }

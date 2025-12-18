@@ -1,6 +1,5 @@
 // @ts-nocheck
 import * as THREE from 'three';
-import { ENTITY_TYPES } from '../Entities/Entity.js';
 
 export default class UIManager {
     constructor(game) {
@@ -17,7 +16,7 @@ export default class UIManager {
     }
 
     updateHP(entity) {
-        const isPlayer = entity.type === ENTITY_TYPES.PLAYER;
+        const isPlayer = entity.playerCtrl;
         const gp = entity.gameplay;
         if (!gp) return;
         const healthBar = gp?.healthBar ;
@@ -42,9 +41,37 @@ export default class UIManager {
         }
     }
 
-    updateGUI(entity){
-        this.updateHP(entity);
-        this.updateInventory(entity);
+    update(dt, world, actions, uiState) {
+        for (const e of world.query(GAMEPLAY)) {
+            this.updateHP(e);
+        }
+        for (const e of world.query(INVENTORY)) {
+            this.updateInventory(e);
+        }
+
+        if (!action) return;
+        if (actions.toggleInventory) this.toggleInventory(uiState);
+        if (actions.Item1) this.highlightSelectedSlot(1);
+        if (actions.Item2) this.highlightSelectedSlot(2);
+        if (actions.Item3) this.highlightSelectedSlot(3);
+        if (actions.Item4) this.highlightSelectedSlot(4);
+        if (actions.Item5) this.highlightSelectedSlot(5);
+        if (actions.Item6) this.highlightSelectedSlot(6);
+        if (actions.Item7) this.highlightSelectedSlot(7);
+
+    }
+
+    toggleInventory(uiState){
+        uiState.isInventoryOpen = !uiState.isInventoryOpen;
+
+        const inventoryContainer = document.getElementById("inventory-grid-container");
+        inventoryContainer.style.display = uiState.isInventoryOpen ? "block" : "none";
+        
+        if (uiState.isInventoryOpen) {
+            document.exitPointerLock?.();
+        } else {
+            this.game.canvas.requestPointerLock?.(); // request lock on canvas
+        }
     }
 
     updateInventory(entity) {

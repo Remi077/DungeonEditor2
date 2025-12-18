@@ -2,9 +2,9 @@
 import * as THREE from 'three';
 import { ENTITY_COMPONENT_TAGS } from '../Entity.js';
 
-export default class PhysicsBodyComponent {
+export default class CollisionsBodyComponent {
     constructor(body = null, collider = null, bodyDesc = null, colliderDesc = null) {
-        this.type = ENTITY_COMPONENT_TAGS.PHYSICS;
+        this.type = ENTITY_COMPONENT_TAGS.COLLISION;
         this.body = body;
         this.collider = collider;
         this.bodyDesc = bodyDesc;
