@@ -15,7 +15,6 @@ export default class GameplayComponent {
         this.invincibility = false;
         this.isHurt = false;
         this.timeSinceLastHit = 0;
-        this.hitRepulsionForce = new THREE.Vector3(0,0,0);
 
         //UI related
         this.healthBar = null;
