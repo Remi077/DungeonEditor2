@@ -1,11 +1,10 @@
-// @ts-nocheck
 import * as THREE from 'three';
 import { GLTFLoader } from 'GLTFLoader';
 import { Pathfinding } from "three-pathfinding";
 import * as Debug from '../Debug.js';
-import PathFindingComponent from '../Entities/Components/PathFindingComponent.js';
 
 export default class PathFindingManager {
+
     constructor(game) {
         this.game = game;
         this.navmesh = null;
@@ -13,7 +12,6 @@ export default class PathFindingManager {
         this.currentPos = new THREE.Vector3();
         this.newEuler = new THREE.Euler();
         this.zone = "level";
-
     }
 
     async loadNavMesh(path) {
@@ -46,43 +44,44 @@ export default class PathFindingManager {
         });
     }
 
-    moveEntityToWithin(entity, targetPos, withinDistance, dt) {
+    moveEntityToWithin(e, targetPos, withinDistance, dt) {
 
-        const pathFindingComponent = entity.pathfinding;
-        const transformComponent = entity.transform;
-        const collisionBodyComponent = entity.collision;
+        const pf = e.pathfinding;
+        const tr = e.transform;
+        const mv = e.movement;
+        const col = e.collision;
 
-        if (!pathFindingComponent || !transformComponent || !collisionBodyComponent) return;
+        if (!pf || !tr || !col) return;
 
-        const moveVector = transformComponent.moveVector;
-        const newRotation = transformComponent.newRotation;
-        const pathbuffer = pathFindingComponent.pathbuffer;
-        const currentPos = collisionBodyComponent.getBodyTranslation(this.currentPos);
-        const offsetRootToBody = collisionBodyComponent.offsetRootToBody;
+        const moveVector = mv.moveVector;
+        const newRotation = tr.rotation;
+        const pathbuffer = pf.pathbuffer;
+        const currentPos = tr.position
+        const offsetRootToBody = col.offsetRootToBody;
 
         const withinReach = currentPos.distanceTo(targetPos) < withinDistance;
         moveVector.set(0,0,0);
 
         if (0) {
             
-            this.steerEntity(entity, targetPos, true);
+            this.steerEntity(e, targetPos, true);
 
         } else if (withinReach || 0) {
 
-            this.steerEntity(entity, targetPos);
+            this.steerEntity(e, targetPos);
 
         } else if (!withinReach) {
 
             // Compute path
-            if (pathFindingComponent.timeSinceLastCalculatedPath < pathFindingComponent.recalcPeriod) {
-                pathFindingComponent.timeSinceLastCalculatedPath += dt;
-            } else if (pathFindingComponent.lastKnownPlayerPosition !== null &&
-                pathFindingComponent.lastKnownPlayerPosition.equals(targetPos)){
+            if (pf.timeSinceLastCalculatedPath < pf.recalcPeriod) {
+                pf.timeSinceLastCalculatedPath += dt;
+            } else if (pf.lastKnownPlayerPosition !== null &&
+                pf.lastKnownPlayerPosition.equals(targetPos)){
                 //timer expired but player didnt move => dont recompute, just restart timer
-                pathFindingComponent.timeSinceLastCalculatedPath = 0;
+                pf.timeSinceLastCalculatedPath = 0;
             } else {
                 //timer expired and player moved => recompute path
-                pathFindingComponent.timeSinceLastCalculatedPath = 0;
+                pf.timeSinceLastCalculatedPath = 0;
 
                 // use the navmesh
                 const groupID = this.pathfinder.getGroup(this.zone, currentPos);
@@ -102,10 +101,10 @@ export default class PathFindingManager {
                 pathbuffer.length = 0
                 if (path) pathbuffer.push(...path);
 
-                // console.log(entity.name, "CALCULATE PATH", performance.now());
-                pathFindingComponent.lastKnownPlayerPosition.copy(targetPos);
+                // console.log(e.name, "CALCULATE PATH", performance.now());
+                pf.lastKnownPlayerPosition.copy(targetPos);
                 if (1) {
-                    const debugSpheres = pathFindingComponent.debugSpheres;
+                    const debugSpheres = pf.debugSpheres;
                     Debug.drawDebugSpheres(path, debugSpheres, this.game.scene); //TEMP TOFIX
                 }
             }
@@ -123,7 +122,7 @@ export default class PathFindingManager {
                     pathbuffer.shift();
                 } else {
                     dir.normalize();
-                    const desiredStep = dir.clone().multiplyScalar(transformComponent.moveSpeed);
+                    const desiredStep = dir.clone().multiplyScalar(mv.moveSpeed);
                     moveVector.copy(desiredStep);
 
                     const yaw2 = Math.atan2(desiredStep.x, desiredStep.z);
@@ -132,7 +131,7 @@ export default class PathFindingManager {
                 }
             } else {
                 // console.log("NO MORE PATH");
-                this.steerEntity(entity, targetPos, true);
+                this.steerEntity(e, targetPos, true);
             }
 
         }
@@ -142,28 +141,28 @@ export default class PathFindingManager {
 
     }
 
-    steerEntity(entity, targetPos, updatePos = false) {
-        const pathFindingComponent = entity.pathfinding;
-        const transformComponent = entity.transform;
-        const collisionBodyComponent = entity.collision;
+    steerEntity(e, targetPos, updatePos = false) {
+        const pf = e.pathfinding;
+        const tr = e.transform;
+        const mv = e.movement;
+        const col = e.collision;
 
-        if (!pathFindingComponent || !transformComponent || !collisionBodyComponent) return;
+        if (!pf || !tr || !col) return;
 
-        const moveVector  = transformComponent.moveVector;
-        const newRotation = transformComponent.newRotation;
-        const pathbuffer  = pathFindingComponent.pathbuffer;
-        const currentPos  = collisionBodyComponent.body.translation();
+        const moveVector  = mv.moveVector;
+        const newRotation = tr.rotation;
+        const pathbuffer  = pf.pathbuffer;
+        const currentPos  = tr.position;
 
         const toTarget = targetPos.clone().sub(currentPos);
         toTarget.y = 0; // <-- remove pitch
         toTarget.normalize();
-        toTarget.multiplyScalar(transformComponent.moveSpeed);
+        toTarget.multiplyScalar(mv.moveSpeed);
         if (updatePos) moveVector.copy(toTarget);
 
         const yaw = Math.atan2(toTarget.x, toTarget.z); // Compute yaw angle from direction (THREE uses Z-forward)
         this.newEuler.set(0, yaw, 0, "YXZ");
         newRotation.setFromEuler(this.newEuler); // Build quaternion with yaw only
-        //return false;
     }
 
     projectToNavmesh(pos) {
@@ -182,6 +181,5 @@ export default class PathFindingManager {
         node = this.pathfinder.getClosestNode(pos, this.zone, groupID, false);
         return node ? node.centroid.clone() : null;
     }
-
 
 }

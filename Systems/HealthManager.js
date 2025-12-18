@@ -1,5 +1,3 @@
-import * as THREE from 'three';
-
 export default class HealthManager {
     constructor(game) {
         this.game = game;
@@ -10,10 +8,10 @@ export default class HealthManager {
         for (const e of world.query(GAMEPLAY)) {
 
             const gp = e.gameplay;
-            const isPlayer = e.gameCtrl;
+            const isPlayer = e.playerCtrl;
+            const mv = e.movement;
 
             //is player alive?
-            const gp = e.gameplay;
             if (gp.health <= 0) {
                 if (isPlayer) this.game.stateManager.setState(GAMESTATES.GAMEOVER);
             } else if (gp.isHurt) {
@@ -24,10 +22,11 @@ export default class HealthManager {
             gp.timeSinceLastHit += dt;
             if (gp.timeSinceLastHit > 1) gp.invincibility = false;
 
-            //update repulsion forces from hit
-            const repulsionDuration = 0.2;//1s //TODO: move to constants
-            if (gp.timeSinceLastHit > repulsionDuration){
-                gp.hitRepulsionForce.set(0,0,0);
+            if (mv){
+                //update repulsion forces from hit
+                if (gp.timeSinceLastHit > mv.repulsionDuration){
+                    mv.hitRepulsionForce.set(0,0,0);
+                }
             }
 
         }
@@ -45,13 +44,15 @@ export default class HealthManager {
         if (wpn) wpn.isAttacking = false; //cancel the attack on hurt
         
         //repulsion force
-        const vs = target.visual;
-        const vssource = source.visual;
-        const maxHitRepulsionForce = 5;//1s //TODO: move in movementManager
-        const hitRepulsionForce = vs.root.position.clone().sub(vssource.root.position);
-        hitRepulsionForce.y = 0;
-        hitRepulsionForce.normalize().multiplyScalar(maxHitRepulsionForce);
-        gp.hitRepulsionForce.copy(hitRepulsionForce);
+        const mv = target.movement
+        if (mv){
+            const vs = target.visual;
+            const vssource = source.visual;
+            const hitRepulsionForce = vs.root.position.clone().sub(vssource.root.position);
+            hitRepulsionForce.y = 0;
+            hitRepulsionForce.normalize().multiplyScalar(mv.maxHitRepulsionForce);
+            mv.hitRepulsionForce.copy(hitRepulsionForce);
+        }
 
         //update hurt state
         gp.isHurt = true;

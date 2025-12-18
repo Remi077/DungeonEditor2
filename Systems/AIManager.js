@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as THREE from 'three';
 import * as Debug from '../Debug.js';
 
@@ -20,16 +19,19 @@ export default class AIManager {
 
     update(dt, world) {
 
-       for (const e of world.query(AI, TRANSFORM, GAMEPLAY)) {
+       for (const e of world.query(AI)) {
 
+        //components
         const ai = e.ai;
         const gp = e.gameplay;
-        const tr = e.transform;
-        const player = this.world.player;
+        const mv = e.movement;
 
-        const moveVector = tr.moveVector;
+        //references
+        const player = this.world.player;
+        const moveVector = mv.moveVector;
         const pf = this.pathFindingManager;
 
+        //variables
         let targetPos = null;
         let inReach = false;
 
@@ -47,7 +49,6 @@ export default class AIManager {
             ai.timeSinceLastSightCheck += dt;
         }
 
-
         //is enemy alive
         if (gp.health <= 0) ai.enemyState = ENEMY_STATES.DIE;
         else if (gp.isHurt) ai.enemyState = ENEMY_STATES.HURT;
@@ -56,9 +57,8 @@ export default class AIManager {
 
         // enemy state machine
 
-        const enemyAttackDistance = 1.1; //TODO: move in constants or in prefab
-        const invincibleDuration = 1;//TODO: same
         switch (ai.enemyState) {
+
             case ENEMY_STATES.IDLE:
                 //stay still
                 moveVector.set(0, 0, 0);
@@ -74,6 +74,7 @@ export default class AIManager {
                         // ;
                 }
                 break;
+
             case ENEMY_STATES.PATROL:
                 //go along patrol path
                 targetPos = ai.patrolPath[0].clone();
@@ -90,10 +91,11 @@ export default class AIManager {
                     ai.enemyState = ENEMY_STATES.IDLE;
                 }
                 break;
+
             case ENEMY_STATES.CHASE:
                 //chase player and attack if within reach
                 targetPos = this.game.yawObject.position.clone();
-                inReach = pf.moveEntityToWithin(entity, targetPos, enemyAttackDistance, dt);
+                inReach = pf.moveEntityToWithin(entity, targetPos, ai.enemyAttackDistance, dt);
                 if (inReach && !gp.invincibility) //enemy cannot attack if it just got hurt (invincible)
                     ai.enemyState = ENEMY_STATES.ATTACK;
                 //if line of sight breaks for a certain time, search
@@ -112,10 +114,11 @@ export default class AIManager {
                     }
                 }
                 break;
+
             case ENEMY_STATES.ATTACK:
                 //moveVector.set(0,0,0);
                 targetPos = this.game.yawObject.position.clone();
-                inReach = pf.moveEntityToWithin(entity, targetPos, enemyAttackDistance, dt);
+                inReach = pf.moveEntityToWithin(entity, targetPos, ai.enemyAttackDistance, dt);
                 const wpn = entity.weapon;
                 if (!wpn.isAttacking || ai.animationFinished) {
                     console.log("ATTACK")
@@ -130,18 +133,15 @@ export default class AIManager {
                     ai.enemyState = ENEMY_STATES.CHASE;
                 }
                 break;
+
             case ENEMY_STATES.HURT:
                 moveVector.set(0,0,0);
-                // gp.invincibility = true;
-                // if (ai.timeSinceChangedState > invincibleDuration) {
-                // if (ai.animationFinished) {
                 if (gp.timeSinceLastHit > 1) {
-                    // ai.animationFinished = false;
                     ai.timeSinceChangedState = 0;
                     ai.enemyState = ENEMY_STATES.CHASE;
-                    // gp.invincibility = false;
                 }
                 break;
+
             case ENEMY_STATES.SEARCH:
                 //go to last place where player was seen
                 //TODO: project lastSeenPlayerPosition on navmesh to be sure enemy cannot get stuck
@@ -157,18 +157,17 @@ export default class AIManager {
                     ai.timeSinceChangedState = 0;
                 }
                 break;
+
             case ENEMY_STATES.DEATH:
                 gp.invincibility = true;
                 moveVector.set(0,0,0);
-                // if (ai.animationFinished){
-                //     ai.animationFinished = false;
-                // }
                 //do nothing anymore (despawn?)
                 break;
         }
+
         ai.timeSinceChangedState += dt;
 
-        this.updateDesiredAnimation(e);
+        this.updateDesiredAnimation(e, world);
         this.updateHeadTarget(e);
     
        }
@@ -179,15 +178,16 @@ export default class AIManager {
         arr.push(arr.shift());
     }
 
-    
     canEnemySeeTarget(entity, targetEntity, sightDistance = 10, fovDegrees = 90) {
 
         //get target middle body and entity eye positions
-        const targetpc = targetEntity.collision;
-        const targetPos = targetpc.getBodyTranslation();
-        const pc = entity.collision;
-        const enemyEyes = pc.getBodyTranslation();
-        enemyEyes.y += ((pc.capsuleTotalHeight/2) * 0.9);
+        const targetPos = targetEntity.transform.position;
+        const tr = entity.transform;
+        const col = entity.collision;
+
+        //eyes
+        const eyes = tr.position;
+        eyes.y += ((col.capsuleTotalHeight/2) * 0.9);
     
     
         // 1️⃣ Early exit: too far
@@ -195,7 +195,7 @@ export default class AIManager {
         if (dist > sightDistance) return false;
     
         // 2️⃣ Check FOV
-        const enemyRotation = pc.getBodyQuaternion();
+        const enemyRotation = tr.rotation;
         const enemyForward = new THREE.Vector3(0, 0, 1).applyQuaternion(enemyRotation);
         const toTarget = targetPos.clone().sub(enemyEyes).normalize();
         const angle = enemyForward.angleTo(toTarget); // radians
@@ -209,7 +209,7 @@ export default class AIManager {
         }
         
         // 3️⃣ Collect raycastable objects
-        const visibleTargets = this.game.systems.levelManager.getRaycastTargets(true, true, true);//static, actionnables and characters
+        const visibleTargets = this.game.systems.levelFactory.getRaycastTargets(true, true, true);//static, actionnables and characters
         const targetMesh = targetEntity.visual.root;
         visibleTargets.push(targetMesh); //add player
 
@@ -264,31 +264,23 @@ export default class AIManager {
         }
     }
 
-    // hurt(entity) {
-    //     const ai = entity.ai;
-    //     ai.enemyState = ENEMY_STATES.HURT;
-    //     ai.timeSinceChangedState = 0;
-    // }
-
-    // die(entity) {
-    //     const ai = entity.ai;
-    //     ai.enemyState = ENEMY_STATES.DEATH;
-    //     ai.timeSinceChangedState = 0;
-    // }
-
-    updateDesiredAnimation(e){
+    updateDesiredAnimation(e, world){
         const an = e.animator;
         if (!an) return;
-        const ai = e.aiComponent;
+        const ai = e.ai;
+
         switch (ai.enemyState) {
+
             case ENEMY_STATES.IDLE:    
                 an.desiredAnimation.set(Constants.ANIM.IDLE,{play:true});
             break;
+
             case ENEMY_STATES.PATROL :
             case ENEMY_STATES.CHASE : 
             case ENEMY_STATES.SEARCH:
                 an.desiredAnimation.set(Constants.ANIM.WALK,{play:true});
                 break;
+
             case ENEMY_STATES.ATTACK:  
                 an.desiredAnimation.set(Constants.ANIM.ATTACK,{play:true,
                     callback: (() => {
@@ -296,6 +288,7 @@ export default class AIManager {
                     }),
                 });
                 break;
+
             case ENEMY_STATES.HURT:    
                 an.desiredAnimation.set(Constants.ANIM.HURT,{play:true,
                     repeat: true,
@@ -304,33 +297,40 @@ export default class AIManager {
                     }),
                 });
                 break;
+
             case ENEMY_STATES.DEATH:
                 // an.stop(e, Constants.ANIM.ATTACK);
                 an.desiredAnimation.set(Constants.ANIM.DIE,{play:true,
                     callback: (() => {
-                        this.disableEntity(e); //TOFIX
+                        this.disableEntity(e, world); //TOFIX
                     }),
                 });                
                 break;
         }
     }
 
-
     updateHeadTarget(e){
         const an = e.animator;
         if (!an) return;
-        const ai = e.aiComponent;
+        const ai = e.ai;
         switch (ai.enemyState) {
             case ENEMY_STATES.PATROL:
-                an.headTarget = aiComponent.patrolPath[0];
+                an.headTarget = ai.patrolPath[0];
                 break;
             case ENEMY_STATES.CHASE:
                 an.headTarget = this.game.yawObject;
                 break;
             case ENEMY_STATES.SEARCH:
-                an.headTarget = aiComponent.lastSeenPlayerPosition;
+                an.headTarget = ai.lastSeenPlayerPosition;
                 break;
         }
+    }
+
+
+    disableEntity(e, world) {
+        const col = e.collision;
+        if (col) col.toremove = true; //schedule body/collider to be removed
+        world.setActive(e, false); //remove entity from world queries
     }
 
 

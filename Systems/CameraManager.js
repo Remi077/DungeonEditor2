@@ -1,6 +1,3 @@
-// @ts-nocheck
-import * as THREE from 'three';
-
 export default class CameraManager {
     constructor(camera, camYawObj, camPitchObj) {
         this.camera = camera;
@@ -13,10 +10,8 @@ export default class CameraManager {
     update(dt, world) {
         // keep camera holder at same position as body
         const player = world.player;
-        const root = player.visual.root;
-        camera.position.copy(root.position);
-        camera.position.y += player.transform.cameraHeight; //keep same height for now
-        //maybe add some tweaks?
+        const position = player.tranform.positionRoot;
+        camera.position.copy(position).add(player.playerCtrl.offsetRootToCamera);
     }
 
     mousemove(x,y) {

@@ -1,7 +1,3 @@
-// @ts-nocheck
-import * as THREE from 'three';
-
-
 export default class MaterialManager {
     constructor(game) {
         this.game = game;

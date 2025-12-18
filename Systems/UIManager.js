@@ -1,6 +1,3 @@
-// @ts-nocheck
-import * as THREE from 'three';
-
 export default class UIManager {
     constructor(game) {
         this.game = game;
@@ -146,29 +143,5 @@ export default class UIManager {
             slotElement.appendChild(c);
         }
     }
-
-
-    // export function buildInventoryGrid(rows = 4, cols = 8) {
-    //     const grid = document.getElementById("inventory-grid");
-    //     grid.innerHTML = "";   // Clear existing
-
-    //     const total = rows * cols;
-
-    //     for (let i = 0; i < total; i++) {
-    //         const slot = document.createElement("div");
-    //         slot.className = "inv-slot";
-    //         slot.dataset.index = i;
-
-    //         const icon = document.createElement("div");
-    //         icon.className = "icon";
-    //         slot.appendChild(icon);
-
-    //         const count = document.createElement("div");
-    //         count.className = "count";
-    //         slot.appendChild(count);
-
-    //         grid.appendChild(slot);
-    //     }
-    // }
 
 }

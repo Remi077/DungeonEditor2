@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 export default class InputManager {
     constructor() {
         this.keysDown = new Set();

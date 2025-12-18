@@ -1,5 +1,3 @@
-// @ts-nocheck
-
 export const GAMESTATES = {
     MENU : "menu",
     GAME : "game",

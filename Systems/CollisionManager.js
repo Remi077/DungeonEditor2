@@ -1,8 +1,6 @@
-// @ts-nocheck
 import * as THREE from 'three';
 import * as RAPIER from 'rapier';
 import * as Constants from '../Constants.js';
-import * as Debug from '../Debug.js';
 
 export default class CollisionManager {
     constructor() {
@@ -88,15 +86,6 @@ export default class CollisionManager {
 
     }
 
-    // step(fixedDelta) {
-
-    //     this.world.timestep = fixedDelta;
-    //     this.world.step(this.events);
-
-    //     if (this.debugLines.visible)
-    //         this.updateDebug();
-    // }
-
     createStaticColliderFromMesh(mesh, collisionGroups) {
         const { halfExtents, center } = this.computeBoundingBox(mesh);
         const colliderDesc = RAPIER.ColliderDesc.cuboid(
@@ -168,21 +157,13 @@ export default class CollisionManager {
     }
 
     removeCollider(collider) {
-        // this.world.removeCollider(collider, true);
         try {
             this.world.removeCollider(collider, true);
-            // this.world.removeCollider(true, collider);
         } catch (e) {
             console.error("JS-level error:", e);
         }
-        // this.world.removeCollider(true, collider);
         this.colliders.delete(collider.handle);
     }
-
-    // removeColliderBody(col,rb){
-    //     this.removeCollider(col);
-    //     this.removeRigidBody(rb);
-    // }
 
     scheduleRemoval(body, collider){
         this.bodyToRemove.push(body);
@@ -338,18 +319,21 @@ export default class CollisionManager {
        for (const e of world.query(TRANSFORM, COLLISION)) {
             const col = e.collision;
             const tr = e.transform;
+            const mv = e.movement;
             // check for collision and correct movement
             const result = this.calculateCorrectMovement(
                 col.kcc,
                 col.body,
                 col.collider,
-                tr.moveVector,
-                tr.newRotation,
+                mv.moveVector,
+                tr.rotation,
                 col.collisionGroup
             );
             col.isTouchingGround = result.isTouchingGround;
-            tr.newPosition = result.newPosition;
 
+            //update entity transform
+            tr.positionCenter = result.newPosition;
+            tr.positionRoot = result.newPosition.clone().sub(col.offsetRootToBody);
 
             //check if player in water/at surface
             if (e.playerCtrl){
@@ -368,10 +352,12 @@ export default class CollisionManager {
 
             this.syncMesh(e);
             this.scheduleSyncBody(e);
+            this.cleanupEntity(e)
         }
     }
 
     calculateCorrectMovement(kcc, body, collider, desiredMovement, desiredRotation, collisionGroups=null) {
+        
         kcc.computeColliderMovement(
             collider,
             desiredMovement,
@@ -386,44 +372,6 @@ export default class CollisionManager {
             correctedMovement.z
         );
         const newPos = correctedMovementVector.clone().add( body.translation() );
-        // body.setNextKinematicTranslation(newPos);
-        // body.setNextKinematicRotation(desiredRotation);
-
-
-        if (0){
-            const num = kcc.numComputedCollisions();
-            if (num > 0){
-                const normals = [];
-
-                // Collect wall normals from Rapier
-                for (let i = 0; i < num; i++) {
-                    const c = kcc.computedCollision(i);
-                    normals.push(new THREE.Vector3(c.normal1.x, c.normal1.y, c.normal1.z));
-                }
-
-                // Apply frictionless sliding using those normals
-                const slippyMovement = this.applyWallSlide(desiredMovement.clone(), normals);
-
-                // Second pass: apply the corrected horizontal slide movement
-                kcc.computeColliderMovement(
-                    collider,
-                    slippyMovement,
-                    null,
-                    collisionGroups,
-                    null
-                );
-
-                const correctedMovement = kcc.computedMovement();
-                const correctedVector = new THREE.Vector3(
-                    correctedMovement.x,
-                    correctedMovement.y,
-                    correctedMovement.z
-                );
-
-                const newPos = correctedVector.clone().add(body.translation());
-            }
-        }
-
 
         return {
             newPosition: newPos,
@@ -433,17 +381,14 @@ export default class CollisionManager {
 
 
     syncMesh(e) {
-        const col = e.collision;
         const tr = e.transform;
-        const root = e.visual?.root;
+        const vs = e.visual
+        const root = vs?.root;
         if (!root) return;
-        //update rotation
-        if (!e.playerCtrl) //not player
-            root.quaternion.slerp(tr.newRotation, 0.1);
-        else
-            root.quaternion.copy(tr.newRotation);
-        root.position.copy(tr.newPosition);
-        root.position.sub(col?.offsetRootToBody);
+        root.quaternion.slerp(tr.rotation, vs.slerpRotation);//update rotation
+        const targetPos = tr.positionRoot.clone().add(vs.offsetPosition);
+        targetPos.applyQuaternion(root.quaternion); //rotate the offset too
+        root.position.copy(targetPos);
     }
 
 
@@ -541,6 +486,15 @@ export default class CollisionManager {
         this.colliders.clear();
     }
 
+    cleanupEntity(e){
+        const col = e.collision;
+        if (!col.toremove) return;
+        col.toremove = false;
+        this.scheduleRemoval(col.body, col.collider);
+        const wpn = e.weapon;
+        if (wpn) this.scheduleRemoval(wpn.body, wpn.collider);
+    }
+
     cleanup() {
         this.world.free();
         this.world = null;
@@ -566,8 +520,8 @@ export default class CollisionManager {
     weaponSyncBody(e) {
         const wpn = e.weapon;
         if (!wpn) return;
-        const body = wpn?.weaponBody;
-        const off = wpn?.weaponOffsetRootToBody;
+        const body = wpn?.body;
+        const off = wpn?.offsetRootToBody;
         const target = wpn?.weapon;
         if (!body || !target) return;
         const result = this.scheduleSyncBodyToTarget(body, target, off);
@@ -586,10 +540,10 @@ export default class CollisionManager {
         ) { 
             const characterBody = col.body;
             this.intersectionsWithShape(
-                wpn.weaponBody,
-                wpn.weaponColliderDesc.shape,
+                wpn.body,
+                wpn.colliderDesc.shape,
                 {
-                    excludeCollider: wpn.weaponCollider,
+                    excludeCollider: wpn.collider,
                     excludeBody: characterBody,
                     callback: ((otherCollider) => {
                         const colentity = otherCollider?.userData?.entity;

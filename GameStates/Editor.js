@@ -1,13 +1,7 @@
-// @ts-nocheck
 import * as THREE from 'three';
-import * as RAPIER from 'rapier';
-import { GLTFLoader } from 'GLTFLoader';
-import * as SkeletonUtils from 'SkeletonUtils';
 import Stats from "stats.js";
 
-import PathFindingManager from '../Systems/PathFindingManager.js';
-import { GAMESTATES } from '../Systems/GameStateManager.js';
-
+import { GAMESTATES } from '../Infra/GameStateManager.js';
 
 export default class EditorState {
     constructor(game) {
@@ -445,13 +439,13 @@ export default class EditorState {
         if (ActionsOnce.saveLevel) this.onSave();
         if (ActionsOnce.loadLevel) this.onLoad();
         if (ActionsOnce.loadTest){
-            const levelManager = this.game.systems.levelManager;
-            levelManager.loadLevel('./assets/glb/Level1.glb').then(() => levelManager.addToScene());
+            const levelFactory = this.game.systems.levelFactory;
+            levelFactory.loadLevel('./assets/glb/Level1.glb').then(() => levelFactory.addToScene());
             const pathFindingManager = this.game.systems.pathFindingManager;
             pathFindingManager.loadNavMesh('./assets/glb/navmesh.glb');
-            const characterManager = this.game.systems.characterManager;
-            characterManager.loadCharacter('./assets/glb/player.glb', 'player');
-            characterManager.loadCharacter('./assets/glb/zombietest.glb', 'zombie');
+            const characterFactory = this.game.systems.characterFactory;
+            characterFactory.loadCharacter('./assets/glb/player.glb', 'player');
+            characterFactory.loadCharacter('./assets/glb/zombietest.glb', 'zombie');
         }    
         if (ActionsOnce.resetLevel) this.onReset();
         // if (ActionsOnce.startGame) this.onStart();
@@ -461,9 +455,9 @@ export default class EditorState {
         this.axesHelper.quaternion.copy(this.worldQuat).invert();
 
         //step physics world
-        const rapierworld = this.game.systems.collisionManager;
-        if (rapierworld){
-            rapierworld.step(dt);
+        const collisionWorld = this.game.systems.collisionManager;
+        if (collisionWorld){
+            collisionWorld.step(dt);
         }
 
 

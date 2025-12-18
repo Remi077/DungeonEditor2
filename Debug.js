@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as THREE from 'three';
 
 // Debug sphere setup
@@ -29,13 +28,12 @@ export function drawDebugSpheres(points, debugSpheres, scene,
 }
 
 // Debug line setup
-export const debugLineMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
-export const debugLineGeometry = new THREE.BufferGeometry().setFromPoints([
+const debugLineMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
+const debugLineGeometry = new THREE.BufferGeometry().setFromPoints([
     new THREE.Vector3(),
     new THREE.Vector3()
 ]);
-export const debugLine = new THREE.Line(debugLineGeometry, debugLineMaterial);
 
-// Add it to the scene but keep it invisible
-debugLine.visible = false;
-// scene.add(debugLine);
+export function getNewDebugLine() {
+    return new THREE.Line(debugLineGeometry, debugLineMaterial);
+}

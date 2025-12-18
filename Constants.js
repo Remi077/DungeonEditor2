@@ -1,16 +1,8 @@
-// @ts-nocheck
-import * as THREE from 'three';
-import * as RAPIER from 'rapier';
-
 // Collision constants
-
 export const GRAVITY = 9.81;
 export const MAXFALLSPEED = 50; // meters per second, adjust as needed
 
-
-
 // mixamo bone constant
-
 export const UPPERBODYBONES = [
     'mixamorigSpine',
     'mixamorigSpine1',
@@ -31,9 +23,7 @@ export const LOWERBODYBONES = [//define bone whitelist for an animation
 ];
 export const WEAPON_BONE_NAME = "mixamorigLeftHand";
 
-
 // animation name constants
-
 export const ANIM = {
     IDLE   : "Idle",
     ATTACK : "Attack",
@@ -43,9 +33,7 @@ export const ANIM = {
     DIE    : "Die",
 }
 
-
 // collision groups constants
-
 export const COL_LAYERS = {
     PLAYER: 1 << 0,  // 000001
     PLAYERWPN: 1 << 1,  // 000010

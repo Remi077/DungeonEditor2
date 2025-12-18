@@ -1,45 +1,44 @@
-// @ts-nocheck
-
 export default class InteractableManager {
     constructor(game) {
         this.game = game;
     }
 
-    doorInteract(doorEntity) {
+    doorInteract(doorEntity, world) {
         const anim = doorEntity.animator;
-        const interact = doorEntity.interactable;
-        if (!anim || !interact) return;
+        const it = doorEntity.interactable;
+        if (!anim || !it) return;
 
-        interact.open = !interact.open;
+        it.open = !it.open;
         anim.desiredAnimation.set(null, // null: pick first action
         {
             play: true,
-            reverse: !interact.open, //play reverse to close the door
-            callback: () => {this.game.activeEntities.delete(doorEntity);} //called at end of animation
+            reverse: !it.open, //play reverse to close the door
+            callback: () => {world.setActive(doorEntity, false);} //called at end of animation
         })
-        this.game.activeEntities.add(doorEntity);
+        world.setActive(doorEntity, true);
     }
 
-    switchInteract(switchEntity) {
-        const interact = switchEntity.interactable;
+    switchInteract(switchEntity, world) {
+        const it = switchEntity.interactable;
         const root = switchEntity.visual?.root;
         const switchTarget = root.children[0];
         const switchTargetEntity = switchTarget?.userData?.entity;
-        if (!interact || !switchTargetEntity) return;
+        if (!it || !switchTargetEntity) return;
         const anim = switchTargetEntity.animator;
-        if (!interact || !animator) return;
+        if (!it || !animator) return;
 
-        interact.open = !interact.open;
+        it.open = !it.open;
         anim.desiredAnimation.set(null, // null: pick first action
         {
             play: true,
-            reverse: !interact.open, //play reverse to close the door
-            callback: () => {this.game.activeEntities.delete(switchTargetEntity);} //called at end of animation
+            reverse: !it.open, //play reverse to close the door
+            callback: () => {world.setActive(switchTargetEntity, false);} //called at end of animation
         })
-        this.game.activeEntities.add(switchTargetEntity);
+        world.setActive(switchTargetEntity, true);
     }
 
-    itemInteract(itemEntity, playerEntity) {
+    itemInteract(itemEntity, world) {
+        const playerEntity = world.player;
         const inventory = playerEntity.inventory?.inventory;
         const itemMesh = itemEntity.visual?.root;
         if (!inventory || !itemMesh) return;

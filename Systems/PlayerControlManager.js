@@ -1,8 +1,5 @@
 import * as THREE from 'three';
 import * as Constants from '../Constants.js';
-import { GAMESTATES } from '../Systems/GameStateManager.js';
-
-
 
 export default class PlayerControlManager {
     constructor(game) {
@@ -11,7 +8,6 @@ export default class PlayerControlManager {
         this.worldQuat = new THREE.Quaternion();
     }        
     
-
     update(world, dt, actions, enableMovement) {
 
         const e = world.player;
@@ -32,13 +28,9 @@ export default class PlayerControlManager {
         else
             this.game.pitchObject.getWorldQuaternion(this.worldQuat); //move in all directions in water
         moveVector.applyQuaternion(this.worldQuat);
-        // moveVector.multiplyScalar(e.transform.moveSpeed);
 
         //calculate desired rotation from camera orientation
-        const targetQuat = new THREE.Quaternion().multiplyQuaternions(yawObject.quaternion, e.transform.tweakRot);
-        // const slerpQuat = root.quaternion.clone().slerp(targetQuat, 0.1);
-        // transformComponent.newRotation.copy(slerpQuat);
-        e.transform.newRotation.copy(targetQuat);
+        e.transform.rotation.copy(yawObject.quaternion);
 
         //register jump
         if (actions.jump) e.transform?.jump = true;
@@ -47,7 +39,7 @@ export default class PlayerControlManager {
         this.updateDesiredAnimation(e, actions);
 
         //other actions
-        if (actions.interact) this.interact(e);
+        if (actions.interact) this.interact(e, world);
         if (actions.attack) this.attack(e);
 
     }
@@ -83,24 +75,23 @@ export default class PlayerControlManager {
 
     }
     
-    interact(e){
-        console.log("interact");
+    interact(e, world){
+        // console.log("interact");
         //perform raycast from camera center
         //if object hit is interactable, call its interact function component
         //raycast
-        this.raycastActionnables(e); //raycast against actionnable objects
+        this.raycastActionnables(e, world); //raycast against actionnable objects
     }
 
 
-    raycastActionnables(e) {
+    raycastActionnables(e, world) {
         const raycaster = this.game.raycaster;
         const screenCenter = this.game.screenCenter;
         const camera = this.game.camera;
-        const levelManager = this.game.systems.levelManager;
+        const levelFactory = this.game.systems.levelFactory;
 
-        //TODO: only call this function when clicked
         //TODO: optimize with octree or BVH tree
-        const visibleTargets = levelManager.getRaycastTargets(true, true); //static and actionnables
+        const visibleTargets = levelFactory.getRaycastTargets(true, true); //static and actionnables
         raycaster.setFromCamera(screenCenter, camera);
         let doesIntersect = false;
         const hits = raycaster.intersectObjects(visibleTargets, true);//true means recursive raycast, it parses children too
@@ -119,13 +110,13 @@ export default class PlayerControlManager {
 
         if (doesIntersect) {
 
-            console.log("HIT", closestHit.object.name);
+            // console.log("HIT", closestHit.object.name);
             const selectEntity = closestHit.object?.userData?.entity;
 
             if (selectEntity.interactable) {
-                console.log("hit actionnable");
+                // console.log("hit actionnable");
                 const interactableComponent = selectEntity.interactable;
-                interactableComponent?.interact(e);
+                interactableComponent?.interact(e, world);
             }
 
         }

@@ -1,6 +1,3 @@
-// @ts-nocheck
-
-
 export const ENTITY_COMPONENT_TAGS = {
     AI: 'AI',
     ANIMATOR: 'Animator',
@@ -13,6 +10,7 @@ export const ENTITY_COMPONENT_TAGS = {
     VISUAL: 'Visual',
     WEAPON: 'Weapon',
     INVENTORY: 'Inventory',
+    MOVEMENT: 'Movement',
 }
 
 export default class Entity {
@@ -35,6 +33,7 @@ export default class Entity {
     get collision() { return this.get(ENTITY_COMPONENT_TAGS.COLLISION); }
     get playerCtrl() { return this.get(ENTITY_COMPONENT_TAGS.PLAYERCONTROL); }
     get transform() { return this.get(ENTITY_COMPONENT_TAGS.TRANSFORM); }
+    get movement() { return this.get(ENTITY_COMPONENT_TAGS.MOVEMENT); }
     get visual() { return this.get(ENTITY_COMPONENT_TAGS.VISUAL); }
     get weapon() { return this.get(ENTITY_COMPONENT_TAGS.WEAPON); }
     get inventory() { return this.get(ENTITY_COMPONENT_TAGS.INVENTORY); }

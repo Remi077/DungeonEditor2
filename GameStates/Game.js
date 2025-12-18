@@ -1,15 +1,8 @@
-// @ts-nocheck
 import * as THREE from 'three';
-import * as RAPIER from 'rapier';
-import Pathfinding from "three-pathfinding";
 import Stats from "stats.js";
 
-import * as Constants from '../Constants.js';
 import World from '../Entities/World.js';
-import AnimatorManager from '../Systems/AnimatorManager.js';
-import { ENEMY_STATES } from '../Systems/AIManager.js';
-import { GAMESTATES } from '../Systems/GameStateManager.js';
-
+import { GAMESTATES } from '../Infra/GameStateManager.js';
 
 export default class GameState {
     constructor(game) {
@@ -54,8 +47,8 @@ export default class GameState {
 
         //substate: inventory open
         this.uiState = {
-            isInventoryOpen : false;
-            isPointerLocked : true;
+            isInventoryOpen : false,
+            isPointerLocked : true,
         }
 
         //stats
@@ -307,7 +300,7 @@ export default class GameState {
         if (!this.player){
 
             const playerPos = this.game.yawObject.position.clone();
-            this.player = this.game.systems.characterManager.spawnPlayer('player',
+            this.player = this.game.systems.characterFactory.spawnPlayer('player',
                 playerPos,
                 this.world
                 //add rotation
@@ -315,7 +308,7 @@ export default class GameState {
             //player health bar
             this.player.gameplay.healthBar = this.healthBar;
 
-            const spawnPoints = this.game?.systems?.levelManager?.enemySpawnGroup;
+            const spawnPoints = this.game?.systems?.levelFactory?.enemySpawnGroup;
             let num = 1;
             for (const spawnPoint of spawnPoints.children){
                 num --;
@@ -331,11 +324,11 @@ export default class GameState {
                         patrolPath.push(wp);
                     }
                 })
-                this.game.systems.characterManager.spawnCharacter(
+                this.game.systems.characterFactory.spawnCharacter(
                     'zombie',
                     zombiePos,
                     zombieRot,
-                    this.world
+                    this.world,
                     patrolPath
                 )
             }
@@ -343,84 +336,6 @@ export default class GameState {
         }
 
     }
-
-
-    keydown(e) {
-        const action = this.KeyToActionMap[e.code];
-        if (action) {
-            // console.log("keydown", action);
-            this.actions[action] = true;
-        }
-    }
-
-    keyup(e) {
-        const action = this.KeyToActionMap[e.code];
-        if (action) {
-            // console.log("keyup", action);
-            this.actions[action] = false;
-        }
-    }
-
-    keypressonce(e) {
-        const action = this.KeyToActionOnceMap[e.detail.code];
-        if (action) {
-            // console.log("keypressonce", action);
-            this.actionsOnce[action] = true;
-        }
-    }
-
-    mousedown(e) {
-
-        //lock to canvas if not the case
-        const canvas = this.game.canvas;
-        if (document.pointerLockElement !== canvas) {
-            canvas.requestPointerLock();
-            return;
-        }
-
-        //update action dependending on if inventory is open
-        if (this.uiState.isInventoryOpen) {
-            return;
-        } else {
-            const action = this.MouseToActionMap[e.button];
-            if (action)
-                this.mouseActions[action] = true;
-        }
-
-    }
-
-    mouseup(e) {
-        const action = this.MouseToActionMap[e.button];
-        if (action)
-            this.mouseActions[action] = false;
-    }
-
-    mousemove(e) {
-
-        if (this.uiState.isInventoryOpen) return;
-        if (!this.uiState.isPointerLocked) return;  // check the flag instead of pointerLockElement
-
-        this.game.systems.mousemove(e.movementX,e.movementY);
-
-    }
-
-    resize(e) {
-        const canvasContainer = this.game.canvasContainer;
-        this.game.renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
-        this.game.camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
-        this.game.camera.updateProjectionMatrix();
-    }
-
-    pointerlockchange(e) {
-        console.log("GAME pointerlockchange")
-        const isLocked = document.pointerLockElement === this.game.canvas;
-        this.uiState.isPointerLocked = isLocked;
-        if (isLocked) {
-            this.crosshair.style.display = "block";
-        } else {
-            this.crosshair.style.display = "none";
-        }
-    }    
 
     onExit() {
         if (this.crosshair) this.crosshair.remove();
@@ -446,6 +361,58 @@ export default class GameState {
         this.ambientLight.dispose?.(); // optional, safe
     }
 
+    keydown(e) {
+        const action = this.KeyToActionMap[e.code];
+        if (action) this.actions[action] = true;
+    }
+
+    keyup(e) {
+        const action = this.KeyToActionMap[e.code];
+        if (action) this.actions[action] = false;
+    }
+
+    keypressonce(e) {
+        const action = this.KeyToActionOnceMap[e.detail.code];
+        if (action) this.actionsOnce[action] = true;
+    }
+
+    mousedown(e) {
+        if (document.pointerLockElement !== this.game.canvas) {
+            canvas.requestPointerLock(); //lock to canvas if not the case
+            return;
+        }
+
+        if (this.uiState.isInventoryOpen) return;
+        const action = this.MouseToActionMap[e.button];
+        if (action) this.mouseActions[action] = true;
+    }
+
+    mouseup(e) {
+        const action = this.MouseToActionMap[e.button];
+        if (action) this.mouseActions[action] = false;
+    }
+
+    mousemove(e) {
+        if (this.uiState.isInventoryOpen || !this.uiState.isPointerLocked) return;
+        this.game.systems.mousemove(e.movementX, e.movementY);
+    }
+
+    resize(e) {
+        const canvasContainer = this.game.canvasContainer;
+        this.game.renderer.setSize(canvasContainer.clientWidth, canvasContainer.clientHeight);
+        this.game.camera.aspect = canvasContainer.clientWidth / canvasContainer.clientHeight;
+        this.game.camera.updateProjectionMatrix();
+    }
+
+    pointerlockchange(e) {
+        const isLocked = document.pointerLockElement === this.game.canvas;
+        this.uiState.isPointerLocked = isLocked;
+        if (isLocked) {
+            this.crosshair.style.display = "block";
+        } else {
+            this.crosshair.style.display = "none";
+        }
+    }    
 
     update(dt) {
 
@@ -465,7 +432,7 @@ export default class GameState {
         this.game.systems.collisionManager.update(dt,world);//calculate collisions, sync mesh and schedule bodies
         this.game.systems.animatorManager.update(dt,world); //update animated bone/mesh position, use desired animations
         this.game.systems.collisionManager.updateWpn(dt,world); //sync the weapon body to its respective mesh (schedule) and test for collision (attack)
-        this.game.systems.collisionManager.step(dt); //step the rapier world
+        this.game.systems.collisionManager.step(dt); //step the collision world
 
         //order not important here
         this.game.systems.healthManager.update(dt,world); //update health and status (hurt, invincible) of entities
@@ -493,17 +460,6 @@ export default class GameState {
 
         this.fpsPanel.end(); //end measuring frame
     }
-
-
-    disableEntity(e) {
-        const ps = e.collision;
-        const wpn = e.weapon;
-        this.game.systems.collisionManager.scheduleRemoval(ps.body, ps.collider);
-        this.game.systems.collisionManager.scheduleRemoval(wpn.weaponBody, wpn.weaponCollider);
-        this.game.activeEntities.delete(e);
-    }
-
-
 
 }
 

@@ -1,4 +1,4 @@
-import { GAMESTATES } from "../Systems/GameStateManager.js";
+import { GAMESTATES } from "../Infra/GameStateManager.js";
 
 export default class MenuState {
     constructor(game) {

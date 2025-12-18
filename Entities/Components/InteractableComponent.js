@@ -1,5 +1,6 @@
-import * as THREE from 'three';
 import { ENTITY_COMPONENT_TAGS } from '../Entity.js';
+
+// holds all entity interactable related properties
 
 export default class InteractableComponent {
     constructor(interact, open = false, dependentEntities = []) {

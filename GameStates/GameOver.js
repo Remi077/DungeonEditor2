@@ -1,7 +1,3 @@
-// @ts-nocheck
-import { GAMESTATES } from '../Systems/GameStateManager.js';
-
-
 export default class GameOverState {
     constructor(game) {
         this.game = game;

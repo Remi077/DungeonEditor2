@@ -1,16 +1,15 @@
-// @ts-nocheck
 import * as THREE from 'three';
-import Entity from '../Entities/Entity.js'; // optional, for NPCs
 import { GLTFLoader } from 'GLTFLoader';
+import * as Constants from '../Constants.js';
+
+import Entity from '../Entities/Entity.js';
 import VisualComponent from '../Entities/Components/VisualComponent.js';
 import TransformComponent from '../Entities/Components/TransformComponent.js';
 import CollisionsBodyComponent from '../Entities/Components/CollisionsBodyComponent.js';
 import AnimatorComponent from '../Entities/Components/AnimatorComponent.js';
 import InteractableComponent from '../Entities/Components/InteractableComponent.js';
-import GameStateManager from './GameStateManager.js';
-import * as Constants from '../Constants.js';
 
-export default class LevelManager {
+export default class LevelFactory {
     constructor(game) {
         this.game = game;
         this.scene = game.scene;
@@ -47,7 +46,7 @@ export default class LevelManager {
             else this.staticGroup.add(child);
         });
 
-        // Create physics for colliders/triggers
+        // Create collision for colliders/triggers
         this.processColliders();
 
         this.processActionnables(world);
@@ -114,25 +113,21 @@ export default class LevelManager {
             }
         }
 
-        // const animatedNodes = [];
-
         gltf.scene.traverse(obj => {
             if (animatedNames.has(obj.name) && !obj.isSkinnedMesh) {
                 this.animatedNodes.push(obj);
             }
         });
 
-        // return animatedNodes;
     }
 
     processActionnables(world) {
-        const physics = this.collision; // reference to your collisionManager
+        const col = this.collision; // reference to your collisionManager
 
         // First detect which level objects actually have animations
         // const animatedNodes = this.findAnimatedNodes(this.gltf);
         const animatedSet = new Set(this.animatedNodes.map(n => n.name));
 
-        // Array.from(this.actionnablesGroup.children).forEach(child => {
         this.actionnablesGroup.traverse(child => {
 
             // Setup actionnable properties here
@@ -140,7 +135,7 @@ export default class LevelManager {
             const transformComponent = new TransformComponent()
             
             //new entity
-            const entity = new Entity(child.name    );
+            const entity = new Entity(child.name);
 
             //animator component
             if (animatedSet.has(child.name)) {
@@ -173,8 +168,8 @@ export default class LevelManager {
                 world.addComponent(entity, animator);
             }
             
-            //physics body component
-            const rb = physics.getRigidBodyByName(`Collider_Kine_${child.name}`);
+            //body component
+            const rb = col.getRigidBodyByName(`Collider_Kine_${child.name}`);
             if (rb) {
                 const collisionBodyComponent = new CollisionsBodyComponent(rb);
                 const worldPos = new THREE.Vector3();
@@ -206,8 +201,6 @@ export default class LevelManager {
             //add a pointer to the entity on the mesh (for raycast)
             child.userData.entity = entity;
 
-            //add entity to game entities list
-            // this.game.entities.add(entity);
         });
     }
 

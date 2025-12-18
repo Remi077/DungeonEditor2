@@ -1,20 +1,18 @@
-// @ts-nocheck
-/*-----------------------------------------------------*/
-// IMPORTS //
-/*-----------------------------------------------------*/
 import * as THREE from 'three';
+
 import MenuState from './GameStates/Menu.js';
 import GameState from './GameStates/Game.js';
 import EditorState from './GameStates/Editor.js';
 import GameOverState from './GameStates/GameOver.js';
 
-import * as Constants from '../Constants.js';
-import GameStateManager, { GAMESTATES } from './Systems/GameStateManager.js';
-import InputManager from './Systems/InputManager.js';
+import LevelFactory from './Factories/LevelFactory.js';
+import CharacterFactory from './Factories/CharacterFactory.js';
+
+import GameStateManager, { GAMESTATES } from './Infra/GameStateManager.js';
+import InputManager from './Infra/InputManager.js';
+
 import CollisionManager from './Systems/CollisionManager.js';
 import MovementManager from './Systems/MovementManager.js';
-import LevelManager from './Systems/LevelManager.js';
-import CharacterManager from './Systems/CharacterManager.js';
 import AnimatorManager from './Systems/AnimatorManager.js';
 import InteractableManager from './Systems/InteractableManager.js';
 import PathFindingManager from './Systems/PathFindingManager.js';
@@ -27,7 +25,7 @@ import HealthManager from './Systems/HealthManager.js';
 /*-----------------------------------------------------*/
 
 // revision hash
-const revision = "0.8"; // Replace with actual Git hash
+const revision = "0.9"; // Replace with actual Git hash
 
 // Add it to the div
 document.getElementById('revision-info').innerText = `Version: ${revision}`;
@@ -55,35 +53,40 @@ if (isMobile()) {
 //  |
 //  ├── assets/
 //  |
+//  ├── Infra/
+//  │     ├── GameStateManager.js
+//  │     └── InputManager.js
+//  |
+//  ├── Infra/
+//  │     ├── CharacterFactory.js //tomove in factories
+//  │     └── LevelFactory.js //tomove in factories
+//  |
 //  ├── Systems/
 //  │     ├── AIManager.js
 //  │     ├── AnimatorManager.js
-//  │     ├── CharacterManager.js //tomove in factories
 //  │     ├── CollisionManager.js
-//  │     ├── GameStateManager.js //tomove in infrastructure
 //  │     ├── HealthManager.js
-//  │     ├── InputManager.js //tomove in infrastructure
 //  │     ├── InteractableManager.js
-//  │     ├── LevelManager.js //tomove in factories
-//  │     ├── PathFindingManager.js
 //  │     ├── MovementManager.js
+//  │     ├── PathFindingManager.js
 //  │     └── UIManager.js
 //  │
 //  ├── Entities/
 //  │     ├── Entity.js
 //  │     ├── World.js
-//  │     ├── Components/
-//  │     │     ├── AIComponent.js
-//  │     │     ├── AnimatorComponent.js
-//  │     │     ├── GameplayComponent.js
-//  │     │     ├── InteractableComponent.js
-//  │     │     ├── InventoryComponent.js
-//  │     │     ├── PathFindingComponent.js
-//  │     │     ├── CollisionsBodyComponent.js
-//  │     │     ├── PlayerControlComponent.js
-//  │     │     ├── TransformComponent.js
-//  │     │     ├── VisualComponent.js
-//  │     │     └── WeaponComponent.js
+//  │     └── Components/
+//  │           ├── AIComponent.js
+//  │           ├── AnimatorComponent.js
+//  │           ├── CollisionsBodyComponent.js
+//  │           ├── GameplayComponent.js
+//  │           ├── InteractableComponent.js
+//  │           ├── InventoryComponent.js
+//  │           ├── MovementComponent.js
+//  │           ├── PathFindingComponent.js
+//  │           ├── PlayerControlComponent.js
+//  │           ├── TransformComponent.js
+//  │           ├── VisualComponent.js
+//  │           └── WeaponComponent.js
 //  │
 //  └── GameStates/
 //        ├── Editor.js
@@ -119,19 +122,16 @@ const game = {
     yawObject: new THREE.Object3D(),
     pitchObject: new THREE.Object3D(),
     systems: {},
-    // entities: new Set(),
-    // activeEntities: new Set(),
-    // playerEntity : null,
     stateManager: stateManager
 }
 
 game.systems.aiManager = new AIManager(game);
 game.systems.animatorManager = new AnimatorManager(game);
-game.systems.characterManager = new CharacterManager(game);
+game.systems.characterFactory = new CharacterFactory(game);
 game.systems.collisionManager = new CollisionManager(game);
 game.systems.healthManager = new HealthManager(game);
 game.systems.interactableManager = new InteractableManager(game);
-game.systems.levelManager = new LevelManager(game);
+game.systems.levelFactory = new LevelFactory(game);
 game.systems.pathFindingManager = new PathFindingManager(game);
 game.systems.movementManager = new MovementManager(game);
 game.systems.uiManager = new UIManager(game);

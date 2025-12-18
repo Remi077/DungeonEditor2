@@ -1,4 +1,3 @@
-// @ts-nocheck
 import * as THREE from 'three';
 
 export default class AnimatorManager {
@@ -104,8 +103,6 @@ export default class AnimatorManager {
 
             // Smooth head motion
             headBone.quaternion.slerp(this.targetQuat, 0.8);
-            // headBone.quaternion.slerp(this.targetQuat, 0.3);
-            // headBone.quaternion.copy(targetQuat);
 
             // If you don’t want Exorcist-like twists:
             let c = 0.7;
