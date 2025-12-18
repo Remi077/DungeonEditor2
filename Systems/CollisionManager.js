@@ -1,10 +1,13 @@
 import * as THREE from 'three';
 import * as RAPIER from 'rapier';
 import * as Constants from '../Constants.js';
+import { ECT } from '../Entities/Entity.js';
 
 export default class CollisionManager {
-    constructor() {
-        this.world = null;
+    constructor(game) {
+        this.game = game;
+        this.world = game.world; //gamestate world storing the game entities
+        this.rapierWorld = null; //world used by rapier to store colliders
         this.fixedTimeStep = 1/60; //physics run at constant rate
         this.bodies = new Map();
         this.colliders = new Map();
@@ -38,11 +41,19 @@ export default class CollisionManager {
         this.worldQuat = new THREE.Quaternion();
         this.bodyToRemove = [];
         this.colliderToRemove = [];
+
+        //used in debug
+        const MAX_VERTS = 100_000; // adjust to your worst case
+        this.debugPositions = new Float32Array(MAX_VERTS * 3);
+        this.debugColors = new Float32Array(MAX_VERTS * 3);
+        this.debugPosAttr = new THREE.BufferAttribute(this.debugPositions, 3);
+        this.debugColorAttr = new THREE.BufferAttribute(this.debugColors, 3);
+
     }
 
     async init(scene) {
         await RAPIER.init();
-        this.world = new RAPIER.World({x: 0, y: -Constants.GRAVITY, z: 0});
+        this.rapierWorld = new RAPIER.World({x: 0, y: -Constants.GRAVITY, z: 0});
         this.events = new RAPIER.EventQueue(true);
 
         //rapier debug
@@ -60,13 +71,13 @@ export default class CollisionManager {
         if (this.accumulator > 0.25) this.accumulator = 0.25;
 
         while (this.accumulator >= this.fixedTimeStep) {
-            this.world.timestep = this.fixedTimeStep;
+            this.rapierWorld.timestep = this.fixedTimeStep;
             // try {
-            //     this.world.step(this.events);
+            //     this.rapierWorld.step(this.events);
             // } catch (e) {
             //     console.error("JS-level error:", e);
             // }
-            this.world.step(this.events);
+            this.rapierWorld.step(this.events);
             this.accumulator -= this.fixedTimeStep;
         }
 
@@ -82,7 +93,8 @@ export default class CollisionManager {
         this.bodyToRemove.length = 0;
 
         if (this.debugLines.visible)
-            this.updateDebug();
+            this.updateDebugOpti();
+            // this.updateDebug();
 
     }
 
@@ -135,7 +147,7 @@ export default class CollisionManager {
     }
 
     createRigidBody(bodydesc, options) {
-        const rb = this.world.createRigidBody(bodydesc);
+        const rb = this.rapierWorld.createRigidBody(bodydesc);
         this.bodies.set(rb.handle, rb);
         rb.userData = options.userData || null;
         return rb;
@@ -143,7 +155,7 @@ export default class CollisionManager {
 
     removeRigidBody(rb) {
         try {
-            this.world.removeRigidBody(rb);
+            this.rapierWorld.removeRigidBody(rb);
         } catch (e) {
             console.error("JS-level error:", e);
         }
@@ -151,14 +163,14 @@ export default class CollisionManager {
     }
 
     createCollider(options, rigidBody) {
-        const col = this.world.createCollider(options, rigidBody);
+        const col = this.rapierWorld.createCollider(options, rigidBody);
         this.colliders.set(col.handle, col);
         return col;
     }
 
     removeCollider(collider) {
         try {
-            this.world.removeCollider(collider, true);
+            this.rapierWorld.removeCollider(collider, true);
         } catch (e) {
             console.error("JS-level error:", e);
         }
@@ -180,7 +192,7 @@ export default class CollisionManager {
         const rigidBodyDesc = RAPIER.RigidBodyDesc.kinematicPositionBased()
             .setTranslation( translation.x, translation.y, translation.z) // initial position
             .setRotation(quat.x, quat.y, quat.z, quat.w);
-        const rb = this.world.createRigidBody(rigidBodyDesc);
+        const rb = this.rapierWorld.createRigidBody(rigidBodyDesc);
         rb.userData = { name };
         this.bodies.set(rb.handle, rb);
         return rb;
@@ -201,7 +213,7 @@ export default class CollisionManager {
         .setRestitution(0)
         .setCollisionGroups(collisionGroup);
 
-        const col = this.world.createCollider(colliderDesc, rigidBody);
+        const col = this.rapierWorld.createCollider(colliderDesc, rigidBody);
         this.colliders.set(col.handle, col);
         return col;
     }
@@ -210,7 +222,7 @@ export default class CollisionManager {
     static SKIN = 0.02;
 
     createKCC(){
-        const kcc = this.world.createCharacterController(collisionManager.SKIN); //0.1 is skin distance
+        const kcc = this.rapierWorld.createCharacterController(CollisionManager.SKIN); //0.1 is skin distance
         // Don’t allow climbing slopes larger than 45 degrees.
         kcc.setMaxSlopeClimbAngle(45 * Math.PI / 180);
         // Automatically slide down on slopes smaller than 30 degrees.
@@ -224,11 +236,11 @@ export default class CollisionManager {
     }
 
     getNumColliders() {
-        return this.world.colliders.len();
+        return this.rapierWorld.colliders.len();
     }
 
     getNumBodies() {
-        return this.world.bodies.len();
+        return this.rapierWorld.bodies.len();
     }
 
     syncMeshToRigidBody(mesh, rigidBody) {
@@ -239,7 +251,7 @@ export default class CollisionManager {
     }
 
     raycast(origin, dir, maxDist) {
-        return this.world.castRay(
+        return this.rapierWorld.castRay(
             new RAPIER.Ray(origin, dir),
             maxDist, 
             true
@@ -250,8 +262,8 @@ export default class CollisionManager {
 
         if (!this.debugLines.visible) return;
 
-        // IMPORTANT: call after world.step() so Rapier buffers are fresh
-        const debug = this.world.debugRender(); //returns vertex buffer and color buffer
+        // IMPORTANT: call after rapierWorld.step() so Rapier buffers are fresh
+        const debug = this.rapierWorld.debugRender(); //returns vertex buffer and color buffer
         const vertices = debug.vertices || [];
         const colors = debug.colors || [];
 
@@ -315,8 +327,59 @@ export default class CollisionManager {
         }
     }
 
-    update(dt, world){
-       for (const e of world.query(TRANSFORM, COLLISION)) {
+    updateDebugOpti() {
+        if (!this.debugLines.visible) return;
+
+        const { vertices, colors } = this.rapierWorld.debugRender();
+        if (!vertices || vertices.length === 0) {
+            this.debugGeo.setDrawRange(0, 0);
+            return;
+        }
+
+        const vertCount = vertices.length / 3;
+
+        // grow buffers only if needed
+        if (vertices.length > this.debugPositions.length) {
+            this._growDebugBuffers(vertices.length);
+        }
+
+        // positions
+        this.debugPositions.set(vertices, 0);
+        this.debugPosAttr.needsUpdate = true;
+
+        // colors
+        if (colors?.length) {
+            if (colors.length === vertices.length) {
+                this.debugColors.set(colors, 0);
+            } else if (colors.length === vertCount * 4) {
+                for (let i = 0, j = 0; i < colors.length; i += 4, j += 3) {
+                    this.debugColors[j + 0] = colors[i + 0] / 255;
+                    this.debugColors[j + 1] = colors[i + 1] / 255;
+                    this.debugColors[j + 2] = colors[i + 2] / 255;
+                }
+            }
+            this.debugColorAttr.needsUpdate = true;
+        }
+
+        this.debugGeo.setDrawRange(0, vertCount);
+    }
+
+    _growDebugBuffers(requiredLength) {
+        const newSize = Math.max(requiredLength, this.debugPositions.length * 2);
+
+        this.debugPositions = new Float32Array(newSize);
+        this.debugColors = new Float32Array(newSize);
+
+        this.debugPosAttr.array = this.debugPositions;
+        this.debugColorAttr.array = this.debugColors;
+
+        this.debugPosAttr.needsUpdate = true;
+        this.debugColorAttr.needsUpdate = true;
+    }
+
+
+    update(dt){
+       for (const e of this.world.query(ECT.TRANSFORM, ECT.COLLISION)) {
             const col = e.collision;
             const tr = e.transform;
             const mv = e.movement;
@@ -438,7 +501,7 @@ export default class CollisionManager {
 
     intersectionsWithPoint(point, colGroup) {
         let isInside = false;
-        this.world.intersectionsWithPoint(
+        this.rapierWorld.intersectionsWithPoint(
             point,
             (h) => {
                 isInside = true;
@@ -451,7 +514,7 @@ export default class CollisionManager {
 
     intersectionsWithShape(body, shape, options) {
 
-        this.world.intersectionsWithShape(
+        this.rapierWorld.intersectionsWithShape(
             body.translation(), //shapePos: pos,
             body.rotation(), //shapeRot: rot,
             shape, //shape: weaponColliderDesc.shape,
@@ -481,7 +544,7 @@ export default class CollisionManager {
     }
 
     reset() {
-        for (const rb of this.bodies.values()) this.world.removeRigidBody(rb);
+        for (const rb of this.bodies.values()) this.rapierWorld.removeRigidBody(rb);
         this.bodies.clear();
         this.colliders.clear();
     }
@@ -496,8 +559,8 @@ export default class CollisionManager {
     }
 
     cleanup() {
-        this.world.free();
-        this.world = null;
+        this.rapierWorld.free();
+        this.rapierWorld = null;
         this.bodies.clear();
         this.colliders.clear();
 
@@ -509,8 +572,8 @@ export default class CollisionManager {
 
 
 
-    updateWpn(dt, world) {
-       for (const e of world.query(WEAPON, COLLISION)) {
+    updateWpn(dt) {
+       for (const e of this.world.query(ECT.WEAPON, ECT.COLLISION)) {
             this.weaponSyncBody(e);
             this.weaponAttack(e, dt);
        }

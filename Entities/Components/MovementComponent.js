@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ENTITY_COMPONENT_TAGS } from '../Entity.js';
+import { ECT } from '../Entity.js';
 import * as Constants from '../../Constants.js';
 
 //Holds everything related to entity motion
@@ -8,7 +8,7 @@ export default class MovementComponent {
     static DEFAULT_MOVE_SPEED = 5;
     static DEFAULT_MAX_JUMP_HEIGHT = 1;
     constructor() {
-        this.type = ENTITY_COMPONENT_TAGS.MOVEMENT;
+        this.type = ECT.MOVEMENT;
 
         //movement constants (not supposed to change during gameplay)
         this.maxJumpHeight = this.constructor.DEFAULT_MAX_JUMP_HEIGHT;

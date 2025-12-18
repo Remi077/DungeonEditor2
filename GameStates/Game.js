@@ -1,14 +1,12 @@
 import * as THREE from 'three';
 import Stats from "stats.js";
 
-import World from '../Entities/World.js';
 import { GAMESTATES } from '../Infra/GameStateManager.js';
 
 export default class GameState {
     constructor(game) {
         this.game = game;
-
-        this.world = null; //contains the entities
+        this.world = game.world; //contains the entities
 
         this.crosshair = null;
         this.healthContainer = null;
@@ -292,10 +290,6 @@ export default class GameState {
             yawObject.rotation.set(0, 0, 0);
         }
 
-        //game world (entities)
-        if (!this.world)
-            this.world = new World();
-
         //spawn player
         if (!this.player){
 
@@ -394,7 +388,7 @@ export default class GameState {
 
     mousemove(e) {
         if (this.uiState.isInventoryOpen || !this.uiState.isPointerLocked) return;
-        this.game.systems.mousemove(e.movementX, e.movementY);
+        this.game.systems.cameraManager.mousemove(e.movementX, e.movementY);
     }
 
     resize(e) {
@@ -419,26 +413,25 @@ export default class GameState {
         //fps counter
         this.fpsPanel.begin(); // start measuring frame
 
-        const world = this.world;
         const actions = { ...this.actions, ...this.actionsOnce, ...this.mouseActions };
         const enableMovement = !this.uiState.isInventoryOpen
         
         //update every system
         //the order is important here, since weapon kinematic collider is driven by animation
         //update body, mesh and animation before scheduling weapon collider and step the world 
-        this.game.systems.playerCtrlManager.update(dt,world,actions,enableMovement);//player desired movement, desired animation
-        this.game.systems.aiManager.update(dt,world);//enemies desired movement, desired animation
-        this.game.systems.movementManager.update(dt,world);//apply gravity
-        this.game.systems.collisionManager.update(dt,world);//calculate collisions, sync mesh and schedule bodies
-        this.game.systems.animatorManager.update(dt,world); //update animated bone/mesh position, use desired animations
-        this.game.systems.collisionManager.updateWpn(dt,world); //sync the weapon body to its respective mesh (schedule) and test for collision (attack)
+        this.game.systems.playerCtrlManager.update(dt,actions,enableMovement);//player desired movement, desired animation
+        this.game.systems.aiManager.update(dt);//enemies desired movement, desired animation
+        this.game.systems.movementManager.update(dt);//apply gravity
+        this.game.systems.collisionManager.update(dt);//calculate collisions, sync mesh and schedule bodies
+        this.game.systems.animatorManager.update(dt); //update animated bone/mesh position, use desired animations
+        this.game.systems.collisionManager.updateWpn(dt); //sync the weapon body to its respective mesh (schedule) and test for collision (attack)
         this.game.systems.collisionManager.step(dt); //step the collision world
 
         //order not important here
-        this.game.systems.healthManager.update(dt,world); //update health and status (hurt, invincible) of entities
-        this.game.systems.cameraManager.update(dt,world); //sync camera
-        this.game.systems.materialManager.update(dt,world); //update materials
-        this.game.systems.uiManager.update(dt,world,actions); //update UI
+        this.game.systems.healthManager.update(dt); //update health and status (hurt, invincible) of entities
+        this.game.systems.cameraManager.update(dt); //sync camera
+        this.game.systems.materialManager.update(dt); //update materials
+        this.game.systems.uiManager.update(dt,actions); //update UI
 
         //misc actions
         if (actions.startEditor) this.game.stateManager.setState(GAMESTATES.EDITOR);

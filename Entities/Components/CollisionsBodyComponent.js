@@ -1,11 +1,11 @@
 
-import { ENTITY_COMPONENT_TAGS } from '../Entity.js';
+import { ECT } from '../Entity.js';
 
 // holds entity collision related properties  
 
 export default class CollisionsBodyComponent {
     constructor(body = null, collider = null, bodyDesc = null, colliderDesc = null) {
-        this.type = ENTITY_COMPONENT_TAGS.COLLISION;
+        this.type = ECT.COLLISION;
 
         //constants 
 

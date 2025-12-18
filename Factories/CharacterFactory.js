@@ -23,12 +23,13 @@ class CharacterPrefab {
     static DEFAULT_CHARACTER_EYE_HEIGHT = 1.5; // desired camera (eye) height above the floor
 
     constructor() {
+
         this.name = "";
         this.root = null;        // template armature hierarchy
         this.weaponBoneName = "";
         this.weaponMeshName = "";
 
-        //materials
+        //materials 
         this.normalMaterial = null;
         this.hurtMaterial = null;
 
@@ -59,6 +60,7 @@ class CharacterPrefab {
 export default class CharacterFactory {
     constructor(game) {
         this.game = game;
+        this.world = game.world;
         this.loader = new GLTFLoader();
 
         this.charaPrefabMap = new Map(); // multiple character types
@@ -75,8 +77,6 @@ export default class CharacterFactory {
         this.floatingHPFgMat = new THREE.MeshBasicMaterial({ color: this.floatingHPForegroundColor });
         this.floatingHPFgMesh = new THREE.Mesh(this.floatingHPGeom, this.floatingHPFgMat);        
         this.floatingHPFgMesh.name= "hp_fg";
-
-        // this.entities = [];
     }
 
     async loadCharacter(path, characterType) {
@@ -198,7 +198,7 @@ export default class CharacterFactory {
             // --- 6. Collision groups ---
             let weaponCollisionGroups = Constants.COL_MASKS.ENEMYWPN;
             if(isPlayerPrefab)
-                weaponColliderDesc.collisionGroups = Constants.COL_MASKS.PLAYERWPN;
+                weaponCollisionGroups = Constants.COL_MASKS.PLAYERWPN;
 
             // --- 7. Store inside prefab ---
             prefab.weaponBodyDesc = weaponBodyDesc;
@@ -223,37 +223,37 @@ export default class CharacterFactory {
         })
     }
 
-
-    spawnPlayer(characterType, spawnPosition, world) {
+    spawnPlayer(characterType, spawnPosition) {
 
         const prefab = this.charaPrefabMap.get(characterType);
         if (!prefab) throw new Error(`player prefab '${characterType}' not loaded`);
 
-        const player = this.instantiateCharacter(prefab, world, {
+        const player = this.instantiateCharacter(prefab, this.world, {
             isPlayer: true,
             position: spawnPosition,
             posRelativeToCam: true
         });
 
-        world.setPlayer(player);
+        this.world.setPlayer(player);
 
         return player;
     }
 
-    spawnCharacter(characterType, spawnPosition, spawnRotation, world, patrolPath = []) {
+    spawnCharacter(characterType, spawnPosition, spawnRotation, patrolPath = []) {
 
         const prefab = this.charaPrefabMap.get(characterType);
         if (!prefab) throw new Error(`character prefab '${characterType}' not loaded`);
 
-        return this.instantiateCharacter(prefab, world, {
+        return this.instantiateCharacter(prefab, this.world, {
             isPlayer: false,
             position: spawnPosition,
             rotation: spawnRotation,
             patrolPath: patrolPath,
         });
+
     }
 
-    instantiateCharacter(prefab, world, options) {
+    instantiateCharacter(prefab,  options) {
         const entity = new Entity(prefab.name);
 
         const rootPos = options?.position.clone();
@@ -350,26 +350,26 @@ export default class CharacterFactory {
         const gp = new GameplayComponent();
 
         //add components
-        world.addComponent(entity, vs);
-        world.addComponent(entity, new TransformComponent());
-        world.addComponent(entity, anim);
-        world.addComponent(entity, col);
-        world.addComponent(entity, gp);
-        world.addComponent(entity, wpn);
+        this.world.addComponent(entity, vs);
+        this.world.addComponent(entity, new TransformComponent());
+        this.world.addComponent(entity, anim);
+        this.world.addComponent(entity, col);
+        this.world.addComponent(entity, gp);
+        this.world.addComponent(entity, wpn);
 
         //add extra options
         if (options?.isPlayer) {
             const pc = new PlayerControlComponent(this.game.input);
             pc.offsetRootToCamera = prefab.offsetRootToCamera;
-            world.addComponent(entity, pc);
-            world.addComponent(entity, new InventoryComponent());
+            this.world.addComponent(entity, pc);
+            this.world.addComponent(entity, new InventoryComponent());
         } else {
             const ai = new AIComponent();
             const patrolPath = options?.patrolPath;
             if (patrolPath)
                 ai.patrolPath.push(...patrolPath);
-            world.addComponent(entity, ai);
-            world.addComponent(entity, new PathFindingComponent());
+            this.world.addComponent(entity, ai);
+            this.world.addComponent(entity, new PathFindingComponent());
 
             //add health bar
             const hp = this.createHealthBar();

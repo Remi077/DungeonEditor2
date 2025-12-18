@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { ENTITY_COMPONENT_TAGS } from '../Entity.js';
+import { ECT } from '../Entity.js';
 
 // holds all entity gameplay related properties
 
 export default class GameplayComponent {
     constructor() {
-        this.type = ENTITY_COMPONENT_TAGS.GAMEPLAY;
+        this.type = ECT.GAMEPLAY;
 
         //health
         this.health = 100;

@@ -371,10 +371,10 @@ export default class EditorState {
         }
         this.drawCallsSpan.textContent = this.drawCalls;
 
-        const world = this.game.systems.collisionManager;
-        if (world){
-            this.colliderCountSpan.textContent = world.getNumColliders();
-            this.rigidBodiesCountSpan.textContent = world.getNumBodies();
+        const collisionWorld = this.game.systems.collisionManager;
+        if (collisionWorld){
+            this.colliderCountSpan.textContent = collisionWorld.getNumColliders();
+            this.rigidBodiesCountSpan.textContent = collisionWorld.getNumBodies();
         }
 
         //traverse scene geometry+material every 1s

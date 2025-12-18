@@ -1,10 +1,10 @@
-import { ENTITY_COMPONENT_TAGS } from '../Entity.js';
+import { ECT } from '../Entity.js';
 
 // all weapon related stuff
 
 export default class WeaponComponent {
     constructor() {
-        this.type = ENTITY_COMPONENT_TAGS.WEAPON;
+        this.type = ECT.WEAPON;
 
         //mesh
         this.weapon = null;

@@ -1,12 +1,12 @@
 import { ENEMY_STATES } from '../../Systems/AIManager.js';
-import { ENTITY_COMPONENT_TAGS } from '../Entity.js';
+import { ECT } from '../Entity.js';
 import * as Debug from '../../Debug.js';
 
 // holds enemy AI related properties
 
 export default class AIComponent {
     constructor() {
-        this.type = ENTITY_COMPONENT_TAGS.AI;
+        this.type = ECT.AI;
         
         //main fsm state
         this.enemyState = ENEMY_STATES.IDLE;

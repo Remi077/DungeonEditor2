@@ -12,6 +12,7 @@ import InteractableComponent from '../Entities/Components/InteractableComponent.
 export default class LevelFactory {
     constructor(game) {
         this.game = game;
+        this.world = game.world;
         this.scene = game.scene;
         this.collision = game.systems.collisionManager;
 
@@ -28,7 +29,7 @@ export default class LevelFactory {
         this.gltf = null;
     }
 
-    async loadLevel(path, world) {
+    async loadLevel(path) {
         const arrayBuffer = await (await fetch(path)).arrayBuffer();
         const gltf = await this.loadLevelGlb(arrayBuffer);
         this.gltf = gltf;
@@ -49,7 +50,7 @@ export default class LevelFactory {
         // Create collision for colliders/triggers
         this.processColliders();
 
-        this.processActionnables(world);
+        this.processActionnables();
 
         this.loaded = true;
     }
@@ -121,7 +122,7 @@ export default class LevelFactory {
 
     }
 
-    processActionnables(world) {
+    processActionnables() {
         const col = this.collision; // reference to your collisionManager
 
         // First detect which level objects actually have animations
@@ -165,7 +166,7 @@ export default class LevelFactory {
                     }
                 }
 
-                world.addComponent(entity, animator);
+                this.world.addComponent(entity, animator);
             }
             
             //body component
@@ -176,21 +177,21 @@ export default class LevelFactory {
                 child.getWorldPosition(worldPos);
                 const rbPos = rb.translation();
                 collisionBodyComponent.offsetRootToBody = new THREE.Vector3(rbPos.x - worldPos.x, rbPos.y - worldPos.y, rbPos.z - worldPos.z);
-                world.addComponent(entity, collisionBodyComponent);
+                this.world.addComponent(entity, collisionBodyComponent);
             }
 
             // add visual and transform components
-            world.addComponent(visualComponent);
+            this.world.addComponent(entity, visualComponent);
             // entity.addComponent(transformComponent);
             if (
                 child.name.startsWith("Action_Door")
                 || child.name.startsWith("Action_Chest")
             ) {
-                world.addComponent(entity, new InteractableComponent(() => this.game.systems.interactableManager.doorInteract(entity)));
+                this.world.addComponent(entity, new InteractableComponent(() => this.game.systems.interactableManager.doorInteract(entity)));
             } else if (child.name.startsWith("Action_Switch")) {
-                world.addComponent(entity, new InteractableComponent(() => this.game.systems.interactableManager.switchInteract(entity)));
+                this.world.addComponent(entity, new InteractableComponent(() => this.game.systems.interactableManager.switchInteract(entity)));
             } else if (child.name.startsWith("Action_Item")) {
-                world.addComponent(entity, new InteractableComponent((callerEntity) => this.game.systems.interactableManager.itemInteract(entity, callerEntity)));
+                this.world.addComponent(entity, new InteractableComponent((callerEntity) => this.game.systems.interactableManager.itemInteract(entity, callerEntity)));
             } else {
                 if (child.parent?.name.startsWith("Action_Switch")) {
                     const parentEntity = child.parent.userData.entity;

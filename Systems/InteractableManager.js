@@ -1,9 +1,10 @@
 export default class InteractableManager {
     constructor(game) {
         this.game = game;
+        this.world = game.world;
     }
 
-    doorInteract(doorEntity, world) {
+    doorInteract(doorEntity) {
         const anim = doorEntity.animator;
         const it = doorEntity.interactable;
         if (!anim || !it) return;
@@ -13,12 +14,12 @@ export default class InteractableManager {
         {
             play: true,
             reverse: !it.open, //play reverse to close the door
-            callback: () => {world.setActive(doorEntity, false);} //called at end of animation
+            callback: () => {this.world.setActive(doorEntity, false);} //called at end of animation
         })
-        world.setActive(doorEntity, true);
+        this.world.setActive(doorEntity, true);
     }
 
-    switchInteract(switchEntity, world) {
+    switchInteract(switchEntity) {
         const it = switchEntity.interactable;
         const root = switchEntity.visual?.root;
         const switchTarget = root.children[0];
@@ -32,13 +33,13 @@ export default class InteractableManager {
         {
             play: true,
             reverse: !it.open, //play reverse to close the door
-            callback: () => {world.setActive(switchTargetEntity, false);} //called at end of animation
+            callback: () => {this.world.setActive(switchTargetEntity, false);} //called at end of animation
         })
-        world.setActive(switchTargetEntity, true);
+        this.world.setActive(switchTargetEntity, true);
     }
 
-    itemInteract(itemEntity, world) {
-        const playerEntity = world.player;
+    itemInteract(itemEntity) {
+        const playerEntity = this.world.player;
         const inventory = playerEntity.inventory?.inventory;
         const itemMesh = itemEntity.visual?.root;
         if (!inventory || !itemMesh) return;

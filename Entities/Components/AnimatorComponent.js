@@ -1,10 +1,10 @@
-import { ENTITY_COMPONENT_TAGS } from '../Entity.js';
+import { ECT } from '../Entity.js';
 
 // holds entity animation related properties
 
 export default class AnimatorComponent {
     constructor(skeleton = null, mixer = null) {
-        this.type = ENTITY_COMPONENT_TAGS.ANIMATOR;
+        this.type = ECT.ANIMATOR;
 
         //constants
         this.skeleton = skeleton;

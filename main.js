@@ -11,14 +11,18 @@ import CharacterFactory from './Factories/CharacterFactory.js';
 import GameStateManager, { GAMESTATES } from './Infra/GameStateManager.js';
 import InputManager from './Infra/InputManager.js';
 
-import CollisionManager from './Systems/CollisionManager.js';
-import MovementManager from './Systems/MovementManager.js';
-import AnimatorManager from './Systems/AnimatorManager.js';
-import InteractableManager from './Systems/InteractableManager.js';
-import PathFindingManager from './Systems/PathFindingManager.js';
+import World from './Entities/World.js';
+
 import AIManager from './Systems/AIManager.js';
-import UIManager from './Systems/UIManager.js';
+import AnimatorManager from './Systems/AnimatorManager.js';
+import CameraManager from './Systems/CameraManager.js';
+import CollisionManager from './Systems/CollisionManager.js';
 import HealthManager from './Systems/HealthManager.js';
+import InteractableManager from './Systems/InteractableManager.js';
+import MovementManager from './Systems/MovementManager.js';
+import PathFindingManager from './Systems/PathFindingManager.js';
+import PlayerControlManager from './Systems/PlayerControlManager.js';
+import UIManager from './Systems/UIManager.js';
 
 /*-----------------------------------------------------*/
 // REVISION NUMBER
@@ -69,6 +73,7 @@ if (isMobile()) {
 //  │     ├── InteractableManager.js
 //  │     ├── MovementManager.js
 //  │     ├── PathFindingManager.js
+//  │     ├── PlayerControlManager.js
 //  │     └── UIManager.js
 //  │
 //  ├── Entities/
@@ -122,17 +127,20 @@ const game = {
     yawObject: new THREE.Object3D(),
     pitchObject: new THREE.Object3D(),
     systems: {},
-    stateManager: stateManager
+    stateManager: stateManager,
+    world: new World(),
 }
 
 game.systems.aiManager = new AIManager(game);
 game.systems.animatorManager = new AnimatorManager(game);
+game.systems.cameraManager = new CameraManager(game);
 game.systems.characterFactory = new CharacterFactory(game);
 game.systems.collisionManager = new CollisionManager(game);
 game.systems.healthManager = new HealthManager(game);
 game.systems.interactableManager = new InteractableManager(game);
 game.systems.levelFactory = new LevelFactory(game);
 game.systems.pathFindingManager = new PathFindingManager(game);
+game.systems.playerCtrlManager = new PlayerControlManager(game);
 game.systems.movementManager = new MovementManager(game);
 game.systems.uiManager = new UIManager(game);
 await game.systems.uiManager.loadItems(); // ensure atlas is loaded before using it

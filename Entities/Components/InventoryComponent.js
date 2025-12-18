@@ -1,10 +1,10 @@
-import { ENTITY_COMPONENT_TAGS } from '../Entity.js';
+import { ECT } from '../Entity.js';
 
 // holds all stuff related to player inventory
 
 export default class InventoryComponent {
     constructor() {
-        this.type = ENTITY_COMPONENT_TAGS.INVENTORY;
+        this.type = ECT.INVENTORY;
 
         //inventory object
         this.inventory = {};

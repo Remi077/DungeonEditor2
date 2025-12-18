@@ -1,6 +1,9 @@
+import { ECT } from '../Entities/Entity.js';
+
 export default class UIManager {
     constructor(game) {
         this.game = game;
+        this.world = game.world;
         this.itemAtlas = null;
     }
 
@@ -38,11 +41,11 @@ export default class UIManager {
         }
     }
 
-    update(dt, world, actions, uiState) {
-        for (const e of world.query(GAMEPLAY)) {
+    update(dt, actions, uiState) {
+        for (const e of this.world.query(ECT.GAMEPLAY)) {
             this.updateHP(e);
         }
-        for (const e of world.query(INVENTORY)) {
+        for (const e of this.world.query(ECT.INVENTORY)) {
             this.updateInventory(e);
         }
 

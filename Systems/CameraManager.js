@@ -1,17 +1,18 @@
 export default class CameraManager {
-    constructor(camera, camYawObj, camPitchObj) {
-        this.camera = camera;
-        this.camYawObj = camYawObj;
-        this.camPitchObj = camPitchObj;
+    constructor(game) {
+        this.game = game;
+        this.world = game.world;
+        this.camYawObj = game.yawObject;
+        this.camPitchObj = game.pitchObject;
         this.sensitivity = 0.002;
         this.maxPitch = Math.PI / 2;
     }
 
-    update(dt, world) {
+   update(dt) {
         // keep camera holder at same position as body
-        const player = world.player;
+        const player = this.world.player;
         const position = player.tranform.positionRoot;
-        camera.position.copy(position).add(player.playerCtrl.offsetRootToCamera);
+        this.camYawObj.position.copy(position).add(player.playerCtrl.offsetRootToCamera);
     }
 
     mousemove(x,y) {

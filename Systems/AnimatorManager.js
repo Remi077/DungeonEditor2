@@ -1,14 +1,18 @@
 import * as THREE from 'three';
+import { ECT } from '../Entities/Entity.js';
 
 export default class AnimatorManager {
-    constructor() {
+    constructor(game) {
+        this.game = game;
+        this.world = game.world;
         // this.entities = new Set();  // or let ECS register automatically
         this.targetPos = new THREE.Vector3();
         this.targetQuat = new THREE.Quaternion();
+        this.forward = new THREE.Vector3(0, 0, 1);
     }
 
-    update(dt, world) {
-       for (const e of world.query(ANIMATOR)) {
+   update(dt) {
+       for (const e of this.world.query(ECT.ANIMATOR)) {
             const anim = e.animator;
             anim.mixer.update(dt);
 
@@ -99,7 +103,7 @@ export default class AnimatorManager {
             const dir = targetLocal.sub(headBone.position).normalize();
 
             // Create quaternion that turns +Z to face direction
-            this.targetQuat.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
+            this.targetQuat.setFromUnitVectors(this.forward, dir);
 
             // Smooth head motion
             headBone.quaternion.slerp(this.targetQuat, 0.8);

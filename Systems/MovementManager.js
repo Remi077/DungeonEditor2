@@ -1,10 +1,13 @@
+import { ECT } from '../Entities/Entity.js';
+
 export default class MovementManager {
     constructor(game) {
         this.game = game;
+        this.world = game.world;
     }
 
-    update(dt, world) {
-       for (const e of world.query(MOVEMENT, COLLISION)) {
+   update(dt) {
+       for (const e of this.world.query(ECT.MOVEMENT, ECT.COLLISION)) {
             const mv = e.movement;
             const col = e.collision;
 

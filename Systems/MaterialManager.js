@@ -1,10 +1,13 @@
+import { ECT } from '../Entities/Entity.js';
+
 export default class MaterialManager {
     constructor(game) {
         this.game = game;
+        this.world = game.world;
     }
 
-    update(dt, world){
-       for (const e of world.query(VISUAL, GAMEPLAY)) {
+    update(dt){
+       for (const e of this.world.query(ECT.VISUAL, ECT.GAMEPLAY)) {
             const gp = e.gameplay;
             const vs = e.visual;
             if (gp.invincibility)

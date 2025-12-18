@@ -1,4 +1,4 @@
-export const ENTITY_COMPONENT_TAGS = {
+export const ECT = {
     AI: 'AI',
     ANIMATOR: 'Animator',
     GAMEPLAY: 'Gameplay',
@@ -25,16 +25,16 @@ export default class Entity {
     get(type) { return this.components[type]; }
 
     //helper functions
-    get ai() { return this.get(ENTITY_COMPONENT_TAGS.AI); }
-    get animator() { return this.get(ENTITY_COMPONENT_TAGS.ANIMATOR); }
-    get gameplay() { return this.get(ENTITY_COMPONENT_TAGS.GAMEPLAY); }
-    get interactable() { return this.get(ENTITY_COMPONENT_TAGS.INTERACTABLE); }
-    get pathfinding() { return this.get(ENTITY_COMPONENT_TAGS.PATHFINDING); }
-    get collision() { return this.get(ENTITY_COMPONENT_TAGS.COLLISION); }
-    get playerCtrl() { return this.get(ENTITY_COMPONENT_TAGS.PLAYERCONTROL); }
-    get transform() { return this.get(ENTITY_COMPONENT_TAGS.TRANSFORM); }
-    get movement() { return this.get(ENTITY_COMPONENT_TAGS.MOVEMENT); }
-    get visual() { return this.get(ENTITY_COMPONENT_TAGS.VISUAL); }
-    get weapon() { return this.get(ENTITY_COMPONENT_TAGS.WEAPON); }
-    get inventory() { return this.get(ENTITY_COMPONENT_TAGS.INVENTORY); }
+    get ai() { return this.get(ECT.AI); }
+    get animator() { return this.get(ECT.ANIMATOR); }
+    get gameplay() { return this.get(ECT.GAMEPLAY); }
+    get interactable() { return this.get(ECT.INTERACTABLE); }
+    get pathfinding() { return this.get(ECT.PATHFINDING); }
+    get collision() { return this.get(ECT.COLLISION); }
+    get playerCtrl() { return this.get(ECT.PLAYERCONTROL); }
+    get transform() { return this.get(ECT.TRANSFORM); }
+    get movement() { return this.get(ECT.MOVEMENT); }
+    get visual() { return this.get(ECT.VISUAL); }
+    get weapon() { return this.get(ECT.WEAPON); }
+    get inventory() { return this.get(ECT.INVENTORY); }
 }

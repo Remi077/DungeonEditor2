@@ -4,13 +4,14 @@ import * as Constants from '../Constants.js';
 export default class PlayerControlManager {
     constructor(game) {
         this.game = game;
+        this.world = game.world;
         //used in update(dt)
         this.worldQuat = new THREE.Quaternion();
     }        
     
-    update(world, dt, actions, enableMovement) {
+    update(dt, actions, enableMovement) {
 
-        const e = world.player;
+        const e = this.world.player;
         if (!e || !enableMovement) return;
 
         const moveVector = e.transform?.moveVector;
@@ -33,13 +34,13 @@ export default class PlayerControlManager {
         e.transform.rotation.copy(yawObject.quaternion);
 
         //register jump
-        if (actions.jump) e.transform?.jump = true;
+        if (actions.jump) e.movement.jump = true;
 
         //update desired animation
         this.updateDesiredAnimation(e, actions);
 
         //other actions
-        if (actions.interact) this.interact(e, world);
+        if (actions.interact) this.interact(e);
         if (actions.attack) this.attack(e);
 
     }
@@ -68,23 +69,23 @@ export default class PlayerControlManager {
                 clampWhenFinished: true,
                 callback: (() => {
                     // console.log("END PLAYER ATTACK");
-                    e.weapon?.isAttacking = false;
+                    e.weapon.isAttacking = false;
                 }),
             })
         }
 
     }
     
-    interact(e, world){
+    interact(e){
         // console.log("interact");
         //perform raycast from camera center
         //if object hit is interactable, call its interact function component
         //raycast
-        this.raycastActionnables(e, world); //raycast against actionnable objects
+        this.raycastActionnables(e); //raycast against actionnable objects
     }
 
 
-    raycastActionnables(e, world) {
+    raycastActionnables(e) {
         const raycaster = this.game.raycaster;
         const screenCenter = this.game.screenCenter;
         const camera = this.game.camera;
@@ -116,7 +117,7 @@ export default class PlayerControlManager {
             if (selectEntity.interactable) {
                 // console.log("hit actionnable");
                 const interactableComponent = selectEntity.interactable;
-                interactableComponent?.interact(e, world);
+                interactableComponent?.interact(e);
             }
 
         }

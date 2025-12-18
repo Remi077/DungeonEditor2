@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import * as Debug from '../Debug.js';
+import { ECT } from '../Entities/Entity.js';
 
 export const ENEMY_STATES = {
     IDLE: 1,
@@ -14,12 +15,17 @@ export const ENEMY_STATES = {
 export default class AIManager {
     constructor(game) {
         this.game = game;
+        this.world = game.world;
         this.pathFindingManager = this.game.systems.pathFindingManager;
+        this.world = this.game.world;
+
+
+        this.forward = new THREE.Vector3(0, 0, 1);
     }
 
-    update(dt, world) {
+   update(dt) {
 
-       for (const e of world.query(AI)) {
+       for (const e of this.world.query(ECT.AI)) {
 
         //components
         const ai = e.ai;
@@ -167,7 +173,7 @@ export default class AIManager {
 
         ai.timeSinceChangedState += dt;
 
-        this.updateDesiredAnimation(e, world);
+        this.updateDesiredAnimation(e);
         this.updateHeadTarget(e);
     
        }
@@ -196,7 +202,7 @@ export default class AIManager {
     
         // 2️⃣ Check FOV
         const enemyRotation = tr.rotation;
-        const enemyForward = new THREE.Vector3(0, 0, 1).applyQuaternion(enemyRotation);
+        const enemyForward = this.forward.set(0,0,1).applyQuaternion(enemyRotation);
         const toTarget = targetPos.clone().sub(enemyEyes).normalize();
         const angle = enemyForward.angleTo(toTarget); // radians
         const ai = entity.ai;
@@ -264,7 +270,7 @@ export default class AIManager {
         }
     }
 
-    updateDesiredAnimation(e, world){
+    updateDesiredAnimation(e){
         const an = e.animator;
         if (!an) return;
         const ai = e.ai;
@@ -302,7 +308,7 @@ export default class AIManager {
                 // an.stop(e, Constants.ANIM.ATTACK);
                 an.desiredAnimation.set(Constants.ANIM.DIE,{play:true,
                     callback: (() => {
-                        this.disableEntity(e, world); //TOFIX
+                        this.disableEntity(e); //TOFIX
                     }),
                 });                
                 break;
@@ -327,10 +333,10 @@ export default class AIManager {
     }
 
 
-    disableEntity(e, world) {
+    disableEntity(e) {
         const col = e.collision;
         if (col) col.toremove = true; //schedule body/collider to be removed
-        world.setActive(e, false); //remove entity from world queries
+        this.world.setActive(e, false); //remove entity from world queries
     }
 
 

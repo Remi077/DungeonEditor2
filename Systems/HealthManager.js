@@ -1,11 +1,13 @@
+import { ECT } from '../Entities/Entity.js';
+
 export default class HealthManager {
     constructor(game) {
         this.game = game;
-
+        this.world = game.world;
     }
 
-    update(dt, world) {
-        for (const e of world.query(GAMEPLAY)) {
+   update(dt) {
+        for (const e of this.world.query(ECT.GAMEPLAY)) {
 
             const gp = e.gameplay;
             const isPlayer = e.playerCtrl;
