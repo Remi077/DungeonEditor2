@@ -19,12 +19,7 @@ export default class AnimatorManager {
         clips.forEach((clip, name) => {
             anim.animationClips.set(name, clip);
             const action = mixer.clipAction(clip);
-            anim.animationActions.set(name, 
-                {
-                    action: action,
-                    active: false,
-                }
-            );
+            anim.animationActions.set(name, action);
         });
         anim.headBone = skeleton.getBoneByName(Constants.HEAD_BONE_NAME); //TODO: put in constant
         return anim;
@@ -38,6 +33,7 @@ export default class AnimatorManager {
             //update animation
             const desiredAnimations = e.animator?.desiredAnimation;
             if (desiredAnimations) desiredAnimations.forEach((options, clipName) => this.play(e, clipName, options));
+            desiredAnimations.clear();
 
             //update head rotation
             if (anim.headTarget)
@@ -52,23 +48,16 @@ export default class AnimatorManager {
         if (!clipName) clipName = anim.animationActions.keys().next().value; //defaults to first action
         const play = options?.play;
 
-        const actionOb = anim.animationActions.get(clipName);
-        if (!actionOb) console.warn("Animation not found:", clipName);
-        if (!actionOb) return;
-        
-        const action = actionOb.action;
-
-        //replay
-        if (actionOb.active && !action.isRunning() && options?.replay)
-            actionOb.active = false;
+        const action = anim.animationActions.get(clipName);
+        if (!action) console.warn("Animation not found:", clipName);
+        if (!action) return;
 
         if (
-            (play  && actionOb.active ) || //already running (force replay if reset)
-            (!play && !actionOb.active)    //already stopped
+            (play  && action.isRunning() ) || //already running (force replay if reset)
+            (!play && !action.isRunning())    //already stopped
         ) return;
 
         if (play) {
-            console.log("ATTACK3")
 
             const clampWhenFinished = options?.clampWhenFinished; //keep last frame at the end of animation
             const reverse = options?.reverse; //play the animation backwards
@@ -96,7 +85,6 @@ export default class AnimatorManager {
             if (!reverse) action.reset();//reset action only if play forward
 
             action.play(); //play action
-            actionOb.active = true;
 
             const mixer = action.getMixer()
             const onFinished = (e) => {
@@ -108,7 +96,6 @@ export default class AnimatorManager {
 
         } else {
             action.stop();
-            actionOb.active = false;
         }
 
     }

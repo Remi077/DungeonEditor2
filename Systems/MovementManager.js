@@ -11,7 +11,7 @@ export default class MovementManager {
        for (const e of this.world.query(ECT.MOVEMENT, ECT.COLLISION)) {
             const mv = e.movement;
             const col = e.collision;
-            const isPlayer = e.playerCrtl
+            const isPlayer = e.playerCtrl
 
             // horizontal movement
             mv.moveVector.multiplyScalar(mv.moveSpeed);

@@ -182,7 +182,7 @@ export default class LevelFactory {
 
             // add visual and transform components
             this.world.addComponent(e, visualComponent);
-            // e.addComponent(transformComponent);
+            e.addComponent(transformComponent);
             if (
                 child.name.startsWith("Action_Door")
                 || child.name.startsWith("Action_Chest")

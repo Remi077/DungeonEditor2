@@ -16,6 +16,7 @@ export default class InteractableManager {
         {
             play: true,
             reverse: !it.open, //play reverse to close the door
+            clampWhenFinished: true,
             callback: () => {this.world.setActive(doorEntity, false);} //called at end of animation
         })
         this.world.setActive(doorEntity, true);
@@ -28,13 +29,14 @@ export default class InteractableManager {
         const switchTargetEntity = switchTarget?.userData?.[USER_DATA_FIELDS.INTERACT_ENTITY];
         if (!it || !switchTargetEntity) return;
         const anim = switchTargetEntity.animator;
-        if (!it || !animator) return;
+        if (!it || !anim) return;
 
         it.open = !it.open;
         anim.desiredAnimation.set(null, // null: pick first action
         {
             play: true,
             reverse: !it.open, //play reverse to close the door
+            clampWhenFinished: true,
             callback: () => {this.world.setActive(switchTargetEntity, false);} //called at end of animation
         })
         this.world.setActive(switchTargetEntity, true);

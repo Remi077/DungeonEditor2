@@ -34,7 +34,8 @@ export default class PlayerControlManager {
         e.transform.rotation.copy(yawObject.quaternion);
 
         //register jump
-        if (actions.jump) e.movement.jump = true;
+        if (actions.jump) 
+            e.movement.jump = true;
 
         //update desired animation
         this.updateDesiredAnimation(e, actions);
@@ -64,7 +65,6 @@ export default class PlayerControlManager {
         }
 
         if (actions.attack && !e.weapon.isAttacking) {
-            console.log("ATTACK1")
             anim.desiredAnimation.set(Constants.ANIM.ATTACK,{
                 play: true,
                 replay: true, //force reset since the animation is clamped
@@ -73,12 +73,6 @@ export default class PlayerControlManager {
                     // console.log("END PLAYER ATTACK");
                     e.weapon.isAttacking = false;
                 }),
-            })
-        } else if (!e.weapon.isAttacking) {
-            console.log("ATTACK2")
-            anim.desiredAnimation.set(Constants.ANIM.ATTACK,{
-                play: true,
-                clampWhenFinished: true,
             })
         }
 
