@@ -27,6 +27,6 @@ export default class AIComponent {
 
         //Debug
         this.debugSpheres = [];
-        this.debugLine = Debug.getNewDebugLine
+        this.debugLine = Debug.getNewDebugLine();
     }
 }

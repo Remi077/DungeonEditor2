@@ -4,6 +4,7 @@ import * as Constants from '../Constants.js';
 import { ECT } from '../Entities/Entity.js';
 
 export default class CollisionManager {
+
     constructor(game) {
         this.game = game;
         this.world = game.world; //gamestate world storing the game entities
@@ -41,6 +42,7 @@ export default class CollisionManager {
         this.worldQuat = new THREE.Quaternion();
         this.bodyToRemove = [];
         this.colliderToRemove = [];
+        this.correctedMovementVector = new THREE.Vector3();
 
         //used in debug
         const MAX_VERTS = 100_000; // adjust to your worst case
@@ -65,39 +67,13 @@ export default class CollisionManager {
         this.scene.add(this.debugLines);
     }
 
-    step(dt) {
+    /*--------------------*/
+    /*--------------------*/
+    /* CREATION FUNCTIONS */
+    /*--------------------*/
+    /*--------------------*/
 
-        this.accumulator += dt;
-        if (this.accumulator > 0.25) this.accumulator = 0.25;
-
-        while (this.accumulator >= this.fixedTimeStep) {
-            this.rapierWorld.timestep = this.fixedTimeStep;
-            // try {
-            //     this.rapierWorld.step(this.events);
-            // } catch (e) {
-            //     console.error("JS-level error:", e);
-            // }
-            this.rapierWorld.step(this.events);
-            this.accumulator -= this.fixedTimeStep;
-        }
-
-        //handle safe deferred removal of bodies and colliders after step
-        for (const collider of this.colliderToRemove){
-            this.removeCollider(collider);
-        }
-        for (const body of this.bodyToRemove){
-            this.removeRigidBody(body);
-        }
-
-        this.colliderToRemove.length = 0;
-        this.bodyToRemove.length = 0;
-
-        if (this.debugLines.visible)
-            this.updateDebugOpti();
-            // this.updateDebug();
-
-    }
-
+    /* COLLIDERS */
     createStaticColliderFromMesh(mesh, collisionGroups) {
         const { halfExtents, center } = this.computeBoundingBox(mesh);
         const colliderDesc = RAPIER.ColliderDesc.cuboid(
@@ -146,20 +122,22 @@ export default class CollisionManager {
         return { halfExtents: size.multiplyScalar(0.5), center: worldCenter };
     }
 
-    createRigidBody(bodydesc, options) {
-        const rb = this.rapierWorld.createRigidBody(bodydesc);
-        this.bodies.set(rb.handle, rb);
-        rb.userData = options.userData || null;
-        return rb;
-    }
+    createCapsuleCollider(radius, halfHeight, collisionGroup, rigidBody, sourceEntity=null) {
+        const colliderDesc = RAPIER.ColliderDesc.capsule(halfHeight, radius)
+        .setFriction(0.9)
+        .setRestitution(0)
+        .setCollisionGroups(collisionGroup);
 
-    removeRigidBody(rb) {
-        try {
-            this.rapierWorld.removeRigidBody(rb);
-        } catch (e) {
-            console.error("JS-level error:", e);
+        const col = this.rapierWorld.createCollider(colliderDesc, rigidBody);
+        this.colliders.set(col.handle, col);
+
+        //annotate the collider with entity for fast lookup on weapon collision
+        if (sourceEntity){
+            if (!col.userData) col.userData = {};
+            col.userData[Constants.USER_DATA_FIELDS.COLLIDER_ENTITY] = sourceEntity;
         }
-        this.bodies.delete(rb.handle);
+
+        return col;
     }
 
     createCollider(options, rigidBody) {
@@ -168,20 +146,13 @@ export default class CollisionManager {
         return col;
     }
 
-    removeCollider(collider) {
-        try {
-            this.rapierWorld.removeCollider(collider, true);
-        } catch (e) {
-            console.error("JS-level error:", e);
-        }
-        this.colliders.delete(collider.handle);
+    /* RIGIDBODIES */
+    createRigidBody(bodydesc, options) {
+        const rb = this.rapierWorld.createRigidBody(bodydesc);
+        this.bodies.set(rb.handle, rb);
+        rb.userData = options.userData || null;
+        return rb;
     }
-
-    scheduleRemoval(body, collider){
-        this.bodyToRemove.push(body);
-        this.colliderToRemove.push(collider);
-    }
-
 
     createKinematicRigidBody(translation,rotationEuler,name) {
 
@@ -198,26 +169,7 @@ export default class CollisionManager {
         return rb;
     }
 
-    getRigidBodyByName(name) {
-        for (const rb of this.bodies.values()) {
-            if (rb.userData && rb.userData.name === name) {
-                return rb;
-            }
-        }
-        return null;
-    }
-
-    createCapsuleCollider(radius, halfHeight, collisionGroup, rigidBody) {
-        const colliderDesc = RAPIER.ColliderDesc.capsule(halfHeight, radius)
-        .setFriction(0.9)
-        .setRestitution(0)
-        .setCollisionGroups(collisionGroup);
-
-        const col = this.rapierWorld.createCollider(colliderDesc, rigidBody);
-        this.colliders.set(col.handle, col);
-        return col;
-    }
-
+    /* KINEMATIC CHARACTER CONTROLLER (KCC) */
     //after a collision we snap the capsule bottom/up to the ground/ceiling and we nudge outward by skin distance to avoid penetration
     static SKIN = 0.02;
 
@@ -235,28 +187,11 @@ export default class CollisionManager {
         return kcc;
     }
 
-    getNumColliders() {
-        return this.rapierWorld.colliders.len();
-    }
-
-    getNumBodies() {
-        return this.rapierWorld.bodies.len();
-    }
-
-    syncMeshToRigidBody(mesh, rigidBody) {
-        const t = rigidBody.translation();
-        const r = rigidBody.rotation();
-        mesh.position.set(t.x, t.y, t.z);
-        mesh.quaternion.set(r.x, r.y, r.z, r.w);
-    }
-
-    raycast(origin, dir, maxDist) {
-        return this.rapierWorld.castRay(
-            new RAPIER.Ray(origin, dir),
-            maxDist, 
-            true
-        );
-    }
+    /*-----------------*/
+    /*-----------------*/
+    /* DEBUG FUNCTIONS */
+    /*-----------------*/
+    /*-----------------*/
 
     updateDebug() {
 
@@ -377,6 +312,50 @@ export default class CollisionManager {
         this.debugColorAttr.needsUpdate = true;
     }
 
+    /*-------------------*/
+    /*-------------------*/
+    /* RAPIER WORLD STEP */ 
+    /*-------------------*/
+    /*-------------------*/
+
+    step(dt) {
+
+        this.accumulator += dt;
+        if (this.accumulator > 0.25) this.accumulator = 0.25;
+
+        while (this.accumulator >= this.fixedTimeStep) {
+            this.rapierWorld.timestep = this.fixedTimeStep;
+            // try {
+            //     this.rapierWorld.step(this.events);
+            // } catch (e) {
+            //     console.error("JS-level error:", e);
+            // }
+            this.rapierWorld.step(this.events);
+            this.accumulator -= this.fixedTimeStep;
+        }
+
+        //handle safe deferred removal of bodies and colliders after step
+        for (const collider of this.colliderToRemove){
+            this.removeCollider(collider);
+        }
+        for (const body of this.bodyToRemove){
+            this.removeRigidBody(body);
+        }
+
+        this.colliderToRemove.length = 0;
+        this.bodyToRemove.length = 0;
+
+        if (this.debugLines.visible)
+            this.updateDebugOpti();
+            // this.updateDebug();
+
+    }
+
+    /*---------------------------*/
+    /*---------------------------*/
+    /* MAIN UPDATE LOOP FUNCTION */
+    /*---------------------------*/
+    /*---------------------------*/
 
     update(dt){
        for (const e of this.world.query(ECT.TRANSFORM, ECT.COLLISION)) {
@@ -429,12 +408,12 @@ export default class CollisionManager {
             null
         );
         const correctedMovement = kcc.computedMovement();
-        const correctedMovementVector = new THREE.Vector3(
+        this.correctedMovementVector.set(
             correctedMovement.x,
             correctedMovement.y,
             correctedMovement.z
         );
-        const newPos = correctedMovementVector.clone().add( body.translation() );
+        const newPos = this.correctedMovementVector.clone().add( body.translation() );
 
         return {
             newPosition: newPos,
@@ -442,6 +421,11 @@ export default class CollisionManager {
         };
     }
 
+    /*----------------*/
+    /*----------------*/
+    /* SYNC FUNCTIONS */
+    /*----------------*/
+    /*----------------*/
 
     syncMesh(e) {
         const tr = e.transform;
@@ -454,31 +438,13 @@ export default class CollisionManager {
         root.position.copy(targetPos);
     }
 
-
-    applyWallSlide(move, normals) {
-        // Work in direction space (no dt)
-        const dir = move.clone().normalize();
-        let correctedDir = dir.clone();
-
-        for (const n of normals) {
-            const dot = correctedDir.dot(n);
-            if (dot < 0) {
-                // Remove inward component of the *direction*
-                correctedDir.sub(n.clone().multiplyScalar(dot));
-            }
-        }
-
-        // Then re-apply the original dt magnitude
-        return correctedDir.normalize().multiplyScalar(move.length());
-    }
-
     //sync body to mesh
     scheduleSyncBody(e) {
         const target = e.visual?.root;
         if (!target) return;
         const body = e.collision?.body;
         const off = e.collision?.offsetRootToBody;
-        this.scheduleSyncBodyToTarget(body, off, target);
+        this.scheduleSyncBodyToTarget(body, target, off);
     }
 
     scheduleSyncBodyToTarget(body, target, off) {
@@ -491,13 +457,11 @@ export default class CollisionManager {
         body.setNextKinematicRotation(q);
     }
 
-
-    syncMeshToRigidBody(mesh, rigidBody, offset = new THREE.Vector3(0,0,0)) {
-        const t = rigidBody.translation();
-        const r = rigidBody.rotation();
-        mesh.position.set(t.x + offset.x, t.y + offset.y, t.z + offset.z);
-        mesh.quaternion.set(r.x, r.y, r.z, r.w);
-    }
+    /*-------------------------*/
+    /*-------------------------*/
+    /* INTERSECTIONS FUNCTIONS */
+    /*-------------------------*/
+    /*-------------------------*/
 
     intersectionsWithPoint(point, colGroup) {
         let isInside = false;
@@ -530,7 +494,35 @@ export default class CollisionManager {
         )
     }
 
-    //visibility helpers
+    checkIsInWater(point) {
+        return this.intersectionsWithPoint(point, Constants.COL_MASKS.WATER);
+    }
+
+    /*-----------*/
+    /*-----------*/
+    /* UTILITIES */
+    /*-----------*/
+    /*-----------*/
+
+    getRigidBodyByName(name) {
+        for (const rb of this.bodies.values()) {
+            if (rb.userData && rb.userData.name === name) {
+                return rb;
+            }
+        }
+        return null;
+    }
+
+    //stats
+    getNumColliders() {
+        return this.rapierWorld.colliders.len();
+    }
+
+    getNumBodies() {
+        return this.rapierWorld.bodies.len();
+    }
+
+    // debug visibility helpers
     hide() {
         this.debugLines.visible = false;
     }
@@ -543,11 +535,11 @@ export default class CollisionManager {
         this.debugLines.visible = !this.debugLines.visible;
     }
 
-    reset() {
-        for (const rb of this.bodies.values()) this.rapierWorld.removeRigidBody(rb);
-        this.bodies.clear();
-        this.colliders.clear();
-    }
+    /*-------------------*/
+    /*-------------------*/
+    /* CLEANUP FUNCTIONS */
+    /*-------------------*/
+    /*-------------------*/
 
     cleanupEntity(e){
         const col = e.collision;
@@ -556,6 +548,11 @@ export default class CollisionManager {
         this.scheduleRemoval(col.body, col.collider);
         const wpn = e.weapon;
         if (wpn) this.scheduleRemoval(wpn.body, wpn.collider);
+    }
+
+    scheduleRemoval(body, collider){
+        this.bodyToRemove.push(body);
+        this.colliderToRemove.push(collider);
     }
 
     cleanup() {
@@ -570,7 +567,29 @@ export default class CollisionManager {
         this.debugMat.dispose();
     }
 
+    removeRigidBody(rb) {
+        try {
+            this.rapierWorld.removeRigidBody(rb);
+        } catch (e) {
+            console.error("JS-level error:", e);
+        }
+        this.bodies.delete(rb.handle);
+    }
 
+    removeCollider(collider) {
+        try {
+            this.rapierWorld.removeCollider(collider, true);
+        } catch (e) {
+            console.error("JS-level error:", e);
+        }
+        this.colliders.delete(collider.handle);
+    }
+
+    /*------------------*/
+    /*------------------*/
+    /* WEAPON FUNCTIONS */
+    /*------------------*/
+    /*------------------*/
 
     updateWpn(dt) {
        for (const e of this.world.query(ECT.WEAPON, ECT.COLLISION)) {
@@ -578,7 +597,6 @@ export default class CollisionManager {
             this.weaponAttack(e, dt);
        }
     }
-
 
     weaponSyncBody(e) {
         const wpn = e.weapon;
@@ -589,7 +607,6 @@ export default class CollisionManager {
         if (!body || !target) return;
         const result = this.scheduleSyncBodyToTarget(body, target, off);
     }
-
 
     weaponAttack(e, dt) {
         const wpn = e.weapon;
@@ -609,22 +626,20 @@ export default class CollisionManager {
                     excludeCollider: wpn.collider,
                     excludeBody: characterBody,
                     callback: ((otherCollider) => {
-                        const colentity = otherCollider?.userData?.entity;
+                        const colentity = otherCollider?.userData?.[Constants.USER_DATA_FIELDS.COLLIDER_ENTITY];
                         if (colentity){
                             console.log(e.name, "hit something", colentity.name)
-                            this.hurt(colentity, e);
+                            const gp = colentity.gameplay;
+                            if (gp){
+                                    gp.isHurt = true; //register hurt
+                                    gp.perpetrator = e;
+                                }
                         }
                     })
                 }
             )
         }
     }
-
-    checkIsInWater(point) {
-        return this.intersectionsWithPoint(point, Constants.COL_MASKS.WATER);
-    }
-
-
 
 
 }

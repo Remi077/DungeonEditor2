@@ -1,4 +1,5 @@
 import { ECT } from '../Entities/Entity.js';
+import * as Constants from '../Constants.js';
 
 export default class MovementManager {
     constructor(game) {
@@ -10,9 +11,10 @@ export default class MovementManager {
        for (const e of this.world.query(ECT.MOVEMENT, ECT.COLLISION)) {
             const mv = e.movement;
             const col = e.collision;
+            const isPlayer = e.playerCrtl
 
             // horizontal movement
-                mv.moveVector.multiplyScalar(mv.moveSpeed);
+            mv.moveVector.multiplyScalar(mv.moveSpeed);
 
             //update vertical speed
             if (
@@ -30,12 +32,12 @@ export default class MovementManager {
             } else {
                 mv.verticalSpeed = Math.max(-Constants.MAXFALLSPEED, mv.verticalSpeed - (Constants.GRAVITY * dt));
             }
-            moveVector.y += mv.verticalSpeed;
+            mv.moveVector.y += mv.verticalSpeed;
 
-            moveVector.add(mv.hitRepulsionForce);
+            mv.moveVector.add(mv.hitRepulsionForce);
 
             //decorrelate from framerate
-            moveVector.multiplyScalar(dt);
+            mv.moveVector.multiplyScalar(dt);
 
         }
     }

@@ -1,3 +1,5 @@
+import { USER_DATA_FIELDS } from "../Constants.js";
+
 export default class InteractableManager {
     constructor(game) {
         this.game = game;
@@ -23,7 +25,7 @@ export default class InteractableManager {
         const it = switchEntity.interactable;
         const root = switchEntity.visual?.root;
         const switchTarget = root.children[0];
-        const switchTargetEntity = switchTarget?.userData?.entity;
+        const switchTargetEntity = switchTarget?.userData?.[USER_DATA_FIELDS.INTERACT_ENTITY];
         if (!it || !switchTargetEntity) return;
         const anim = switchTargetEntity.animator;
         if (!it || !animator) return;

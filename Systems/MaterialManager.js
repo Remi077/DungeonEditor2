@@ -16,6 +16,4 @@ export default class MaterialManager {
                 vs.skinnedMesh.material = vs.normalMaterial;
        }
     }
-
-
 }

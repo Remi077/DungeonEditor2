@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import * as Debug from '../Debug.js';
 import { ECT } from '../Entities/Entity.js';
 
+import * as Constants from '../Constants.js';
+
 export const ENEMY_STATES = {
     IDLE: 1,
     PATROL: 2,
@@ -16,9 +18,6 @@ export default class AIManager {
     constructor(game) {
         this.game = game;
         this.world = game.world;
-        this.pathFindingManager = this.game.systems.pathFindingManager;
-        this.world = this.game.world;
-
 
         this.forward = new THREE.Vector3(0, 0, 1);
     }
@@ -35,7 +34,7 @@ export default class AIManager {
         //references
         const player = this.world.player;
         const moveVector = mv.moveVector;
-        const pf = this.pathFindingManager;
+        const pf = this.game.systems.pathFindingManager;
 
         //variables
         let targetPos = null;
@@ -44,7 +43,7 @@ export default class AIManager {
         //check if enemy sees player (dont do this every frame)
         if (ai.timeSinceLastSightCheck > 0.3) {
             ai.timeSinceLastSightCheck = 0;
-            const {playerSeen, lastSeenPlayerPosition} = this.canEnemySeeTarget(entity, player);
+            const {playerSeen, lastSeenPlayerPosition} = this.canEnemySeeTarget(e, player);
             ai.playerSeen = playerSeen;
             if (ai.playerSeen) {
                 ai.lastSeenPlayerPosition = lastSeenPlayerPosition;
@@ -84,7 +83,7 @@ export default class AIManager {
             case ENEMY_STATES.PATROL:
                 //go along patrol path
                 targetPos = ai.patrolPath[0].clone();
-                inReach = pf.moveEntityToWithin(entity, targetPos, 1, dt);
+                inReach = pf.moveEntityToWithin(e, targetPos, 1, dt);
                 if (inReach)
                     this.rotateLeft(ai.patrolPath)
                 //if detects player go to chase
@@ -101,7 +100,7 @@ export default class AIManager {
             case ENEMY_STATES.CHASE:
                 //chase player and attack if within reach
                 targetPos = this.game.yawObject.position.clone();
-                inReach = pf.moveEntityToWithin(entity, targetPos, ai.enemyAttackDistance, dt);
+                inReach = pf.moveEntityToWithin(e, targetPos, ai.enemyAttackDistance, dt);
                 if (inReach && !gp.invincibility) //enemy cannot attack if it just got hurt (invincible)
                     ai.enemyState = ENEMY_STATES.ATTACK;
                 //if line of sight breaks for a certain time, search
@@ -124,8 +123,8 @@ export default class AIManager {
             case ENEMY_STATES.ATTACK:
                 //moveVector.set(0,0,0);
                 targetPos = this.game.yawObject.position.clone();
-                inReach = pf.moveEntityToWithin(entity, targetPos, ai.enemyAttackDistance, dt);
-                const wpn = entity.weapon;
+                inReach = pf.moveEntityToWithin(e, targetPos, ai.enemyAttackDistance, dt);
+                const wpn = e.weapon;
                 if (!wpn.isAttacking || ai.animationFinished) {
                     console.log("ATTACK")
                     wpn.isAttacking = true;
@@ -152,7 +151,7 @@ export default class AIManager {
                 //go to last place where player was seen
                 //TODO: project lastSeenPlayerPosition on navmesh to be sure enemy cannot get stuck
                 targetPos = ai.lastSeenPlayerPosition.clone();
-                inReach = pf.moveEntityToWithin(entity, targetPos, 1, dt);
+                inReach = pf.moveEntityToWithin(e, targetPos, 1, dt);
                 //if detects player go to chase
                 if (ai.playerSeen) {
                     ai.enemyState = ENEMY_STATES.CHASE;
@@ -184,28 +183,28 @@ export default class AIManager {
         arr.push(arr.shift());
     }
 
-    canEnemySeeTarget(entity, targetEntity, sightDistance = 10, fovDegrees = 90) {
+    canEnemySeeTarget(e, targetEntity, sightDistance = 10, fovDegrees = 90) {
 
         //get target middle body and entity eye positions
-        const targetPos = targetEntity.transform.position;
-        const tr = entity.transform;
-        const col = entity.collision;
+        const targetPos = targetEntity.transform.positionCenter;
+        const tr = e.transform;
+        const col = e.collision;
 
         //eyes
-        const eyes = tr.position;
+        const eyes = tr.positionCenter;
         eyes.y += ((col.capsuleTotalHeight/2) * 0.9);
     
     
         // 1️⃣ Early exit: too far
-        const dist = targetPos.distanceTo(enemyEyes);
+        const dist = targetPos.distanceTo(eyes);
         if (dist > sightDistance) return false;
     
         // 2️⃣ Check FOV
         const enemyRotation = tr.rotation;
         const enemyForward = this.forward.set(0,0,1).applyQuaternion(enemyRotation);
-        const toTarget = targetPos.clone().sub(enemyEyes).normalize();
+        const toTarget = targetPos.clone().sub(eyes).normalize();
         const angle = enemyForward.angleTo(toTarget); // radians
-        const ai = entity.ai;
+        const ai = e.ai;
         if (
             (ai.enemyState === ENEMY_STATES.IDLE) ||
             (ai.enemyState === ENEMY_STATES.PATROL)
@@ -221,7 +220,7 @@ export default class AIManager {
 
         // 4️⃣ Raycast from enemy to target
         // Setup ray from enemy to target
-        const origin = enemyEyes;
+        const origin = eyes;
         const direction = targetPos.clone().sub(origin).normalize();
     
         this.game.raycaster.set(origin, direction);
@@ -239,7 +238,7 @@ export default class AIManager {
         // 5️⃣ Check if first hit is the target or its descendant    
         // Check if the first hit is target or a descendant of target
         let hitObj = intersects[0].object;
-        // console.log("!!!ENEMY" + entity.name + "sees " + hitObj.name);
+        // console.log("!!!ENEMY" + e.name + "sees " + hitObj.name);
         while (hitObj) {
             if (hitObj === targetMesh) {
     

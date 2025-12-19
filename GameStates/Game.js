@@ -322,7 +322,6 @@ export default class GameState {
                     'zombie',
                     zombiePos,
                     zombieRot,
-                    this.world,
                     patrolPath
                 )
             }

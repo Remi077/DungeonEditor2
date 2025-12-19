@@ -17,7 +17,7 @@ export default class HealthManager {
             if (gp.health <= 0) {
                 if (isPlayer) this.game.stateManager.setState(GAMESTATES.GAMEOVER);
             } else if (gp.isHurt) {
-                gp.invincibility = true;
+                this.hurt(e, gp.perpetrator)
             }
 
             // update invincibility status
@@ -39,6 +39,7 @@ export default class HealthManager {
         //update health
         const gp = target.gameplay;
         if (gp.invincibility || gp.health <= 0) return;
+        gp.invincibility = true;
         gp.health -= 10;
         
         //cancel attack
@@ -56,8 +57,9 @@ export default class HealthManager {
             mv.hitRepulsionForce.copy(hitRepulsionForce);
         }
 
-        //update hurt state
-        gp.isHurt = true;
+        //reset hurt state
+        gp.isHurt = false;
+        gp.perpetrator = null;
         gp.timeSinceLastHit = 0;
 
     }

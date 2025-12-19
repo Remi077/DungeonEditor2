@@ -56,7 +56,7 @@ export default class PathFindingManager {
         const moveVector = mv.moveVector;
         const newRotation = tr.rotation;
         const pathbuffer = pf.pathbuffer;
-        const currentPos = tr.position
+        const currentPos = tr.positionRoot
         const offsetRootToBody = col.offsetRootToBody;
 
         const withinReach = currentPos.distanceTo(targetPos) < withinDistance;
@@ -152,7 +152,7 @@ export default class PathFindingManager {
         const moveVector  = mv.moveVector;
         const newRotation = tr.rotation;
         const pathbuffer  = pf.pathbuffer;
-        const currentPos  = tr.position;
+        const currentPos  = tr.positionRoot;
 
         const toTarget = targetPos.clone().sub(currentPos);
         toTarget.y = 0; // <-- remove pitch

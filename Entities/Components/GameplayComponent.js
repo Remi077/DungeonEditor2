@@ -14,6 +14,7 @@ export default class GameplayComponent {
         //hurt related
         this.invincibility = false;
         this.isHurt = false;
+        this.perpetrator = false;
         this.timeSinceLastHit = 0;
 
         //UI related

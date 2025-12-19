@@ -1,20 +1,20 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'GLTFLoader';
 import * as SkeletonUtils from 'SkeletonUtils';
-import * as Constants from '../Constants.js';
 
+import * as Constants from '../Constants.js';
 import Entity from '../Entities/Entity.js';
+import AIComponent from '../Entities/Components/AIComponent.js';
+import AnimatorComponent from '../Entities/Components/AnimatorComponent.js';
+import CollisionsBodyComponent from '../Entities/Components/CollisionsBodyComponent.js';
+import GameplayComponent from '../Entities/Components/GameplayComponent.js';
+import InventoryComponent from '../Entities/Components/InventoryComponent.js';
+import MovementComponent from '../Entities/Components/MovementComponent.js';
+import PathFindingComponent from '../Entities/Components/PathFindingComponent.js';
+import PlayerControlComponent from '../Entities/Components/PlayerControlComponent.js';
 import TransformComponent from '../Entities/Components/TransformComponent.js';
 import VisualComponent from '../Entities/Components/VisualComponent.js';
-import CollisionsBodyComponent from '../Entities/Components/CollisionsBodyComponent.js';
-import AnimatorComponent from '../Entities/Components/AnimatorComponent.js';
-import PlayerControlComponent from '../Entities/Components/PlayerControlComponent.js';
-import GameplayComponent from '../Entities/Components/GameplayComponent.js';
 import WeaponComponent from '../Entities/Components/WeaponComponent.js';
-import MovementComponent from '../Entities/Components/MovementComponent.js';
-import InventoryComponent from '../Entities/Components/InventoryComponent.js';
-import AIComponent from '../Entities/Components/AIComponent.js';
-import PathFindingComponent from '../Entities/Components/PathFindingComponent.js';
 
 class CharacterPrefab {
 
@@ -228,7 +228,7 @@ export default class CharacterFactory {
         const prefab = this.charaPrefabMap.get(characterType);
         if (!prefab) throw new Error(`player prefab '${characterType}' not loaded`);
 
-        const player = this.instantiateCharacter(prefab, this.world, {
+        const player = this.instantiateCharacter(prefab, {
             isPlayer: true,
             position: spawnPosition,
             posRelativeToCam: true
@@ -244,7 +244,7 @@ export default class CharacterFactory {
         const prefab = this.charaPrefabMap.get(characterType);
         if (!prefab) throw new Error(`character prefab '${characterType}' not loaded`);
 
-        return this.instantiateCharacter(prefab, this.world, {
+        return this.instantiateCharacter(prefab, {
             isPlayer: false,
             position: spawnPosition,
             rotation: spawnRotation,
@@ -253,8 +253,8 @@ export default class CharacterFactory {
 
     }
 
-    instantiateCharacter(prefab,  options) {
-        const entity = new Entity(prefab.name);
+    instantiateCharacter(prefab, options) {
+        const e = new Entity(prefab.name);
 
         const rootPos = options?.position.clone();
         if (options?.posRelativeToCam) //optionally position root wrt camera
@@ -301,10 +301,10 @@ export default class CharacterFactory {
         const playerCollider = collisionManager.createCapsuleCollider(
              prefab.capsuleRadius,
              (prefab.capsuleHeight * 0.5) - prefab.capsuleRadius,
-             prefab.collisionGroup
-        , playerBody);
-        if (!playerCollider.userData) playerCollider.userData = {};
-        playerCollider.userData.entity = entity;//annotate the collider with entity for fast lookup on weapon collision
+             prefab.collisionGroup, 
+             playerBody,
+             e
+            );
         const col = new CollisionsBodyComponent(playerBody, playerCollider);
 
         col.capsuleRadius = prefab.capsuleRadius ;
@@ -350,26 +350,27 @@ export default class CharacterFactory {
         const gp = new GameplayComponent();
 
         //add components
-        this.world.addComponent(entity, vs);
-        this.world.addComponent(entity, new TransformComponent());
-        this.world.addComponent(entity, anim);
-        this.world.addComponent(entity, col);
-        this.world.addComponent(entity, gp);
-        this.world.addComponent(entity, wpn);
+        this.world.addComponent(e, vs);
+        this.world.addComponent(e, new TransformComponent());
+        this.world.addComponent(e, new MovementComponent());
+        this.world.addComponent(e, anim);
+        this.world.addComponent(e, col);
+        this.world.addComponent(e, gp);
+        this.world.addComponent(e, wpn);
 
         //add extra options
         if (options?.isPlayer) {
             const pc = new PlayerControlComponent(this.game.input);
             pc.offsetRootToCamera = prefab.offsetRootToCamera;
-            this.world.addComponent(entity, pc);
-            this.world.addComponent(entity, new InventoryComponent());
+            this.world.addComponent(e, pc);
+            this.world.addComponent(e, new InventoryComponent());
         } else {
             const ai = new AIComponent();
             const patrolPath = options?.patrolPath;
             if (patrolPath)
                 ai.patrolPath.push(...patrolPath);
-            this.world.addComponent(entity, ai);
-            this.world.addComponent(entity, new PathFindingComponent());
+            this.world.addComponent(e, ai);
+            this.world.addComponent(e, new PathFindingComponent());
 
             //add health bar
             const hp = this.createHealthBar();
@@ -386,7 +387,7 @@ export default class CharacterFactory {
         root.position.copy(rootPos);
         root.rotation.copy(rootRot);
 
-        return entity;
+        return e;
     }
 
     createHealthBar() {

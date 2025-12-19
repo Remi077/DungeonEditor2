@@ -79,3 +79,9 @@ export const COL_MASKS = {
         COL_LAYERS.WATER
     ),    
 };
+
+// user data fields constant
+export const USER_DATA_FIELDS = {
+    COLLIDER_ENTITY : "colEntity",
+    INTERACT_ENTITY : "interactEntity"
+}

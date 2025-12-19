@@ -15,9 +15,9 @@ export default class UIManager {
         }
     }
 
-    updateHP(entity) {
-        const isPlayer = entity.playerCtrl;
-        const gp = entity.gameplay;
+    updateHP(e) {
+        const isPlayer = e.playerCtrl;
+        const gp = e.gameplay;
         if (!gp) return;
         const healthBar = gp?.healthBar ;
         if (gp.invincibility){
@@ -49,7 +49,7 @@ export default class UIManager {
             this.updateInventory(e);
         }
 
-        if (!action) return;
+        if (!actions) return;
         if (actions.toggleInventory) this.toggleInventory(uiState);
         if (actions.Item1) this.highlightSelectedSlot(1);
         if (actions.Item2) this.highlightSelectedSlot(2);
@@ -58,7 +58,6 @@ export default class UIManager {
         if (actions.Item5) this.highlightSelectedSlot(5);
         if (actions.Item6) this.highlightSelectedSlot(6);
         if (actions.Item7) this.highlightSelectedSlot(7);
-
     }
 
     toggleInventory(uiState){
@@ -74,8 +73,8 @@ export default class UIManager {
         }
     }
 
-    updateInventory(entity) {
-        const inventory = entity.inventory;
+    updateInventory(e) {
+        const inventory = e.inventory;
         if (!inventory) return;
         const inventoryObj = inventory?.inventory
         if (!inventory?.needsUpdate) return;
@@ -87,10 +86,10 @@ export default class UIManager {
         // Take first 7 items for hotbar
         const hotbarItems = inventoryEntries.slice(0, 7);
 
-        this.updateHotbarUI(entity, hotbarItems);
+        this.updateHotbarUI(e, hotbarItems);
     }
 
-    updateHotbarUI(entity, hotbarItems) {
+    updateHotbarUI(e, hotbarItems) {
         const hotbar = document.getElementById("hotbar");
 
         for (let i = 0; i < 7; i++) {

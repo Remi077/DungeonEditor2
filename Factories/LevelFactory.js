@@ -136,7 +136,7 @@ export default class LevelFactory {
             const transformComponent = new TransformComponent()
             
             //new entity
-            const entity = new Entity(child.name);
+            const e = new Entity(child.name);
 
             //animator component
             if (animatedSet.has(child.name)) {
@@ -166,7 +166,7 @@ export default class LevelFactory {
                     }
                 }
 
-                this.world.addComponent(entity, animator);
+                this.world.addComponent(e, animator);
             }
             
             //body component
@@ -177,30 +177,32 @@ export default class LevelFactory {
                 child.getWorldPosition(worldPos);
                 const rbPos = rb.translation();
                 collisionBodyComponent.offsetRootToBody = new THREE.Vector3(rbPos.x - worldPos.x, rbPos.y - worldPos.y, rbPos.z - worldPos.z);
-                this.world.addComponent(entity, collisionBodyComponent);
+                this.world.addComponent(e, collisionBodyComponent);
             }
 
             // add visual and transform components
-            this.world.addComponent(entity, visualComponent);
-            // entity.addComponent(transformComponent);
+            this.world.addComponent(e, visualComponent);
+            // e.addComponent(transformComponent);
             if (
                 child.name.startsWith("Action_Door")
                 || child.name.startsWith("Action_Chest")
             ) {
-                this.world.addComponent(entity, new InteractableComponent(() => this.game.systems.interactableManager.doorInteract(entity)));
+                this.world.addComponent(e, new InteractableComponent(() => this.game.systems.interactableManager.doorInteract(e)));
             } else if (child.name.startsWith("Action_Switch")) {
-                this.world.addComponent(entity, new InteractableComponent(() => this.game.systems.interactableManager.switchInteract(entity)));
+                this.world.addComponent(e, new InteractableComponent(() => this.game.systems.interactableManager.switchInteract(e)));
             } else if (child.name.startsWith("Action_Item")) {
-                this.world.addComponent(entity, new InteractableComponent((callerEntity) => this.game.systems.interactableManager.itemInteract(entity, callerEntity)));
+                this.world.addComponent(e, new InteractableComponent((callerEntity) => this.game.systems.interactableManager.itemInteract(e, callerEntity)));
             } else {
                 if (child.parent?.name.startsWith("Action_Switch")) {
-                    const parentEntity = child.parent.userData.entity;
-                    parentEntity.interactable?.dependentEntities?.push(entity);
+                    //this current mesh is parented to a switch, get the switch parent and its associated entity
+                    const parentEntity = child.parent.userData[Constants.USER_DATA_FIELDS.INTERACT_ENTITY];
+                    //add this current mesh to the list of dependables for the parent switch entity
+                    parentEntity.interactable?.dependentEntities?.push(e);
                 }
             }
 
             //add a pointer to the entity on the mesh (for raycast)
-            child.userData.entity = entity;
+            child.userData[Constants.USER_DATA_FIELDS.INTERACT_ENTITY] = e;
 
         });
     }

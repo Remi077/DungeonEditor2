@@ -14,7 +14,7 @@ export default class PlayerControlManager {
         const e = this.world.player;
         if (!e || !enableMovement) return;
 
-        const moveVector = e.transform?.moveVector;
+        const moveVector = e.movement?.moveVector;
         const yawObject = this.game.yawObject;
 
         //calculate moveVector from inputs + camera orientation + vertical speed 
@@ -112,7 +112,7 @@ export default class PlayerControlManager {
         if (doesIntersect) {
 
             // console.log("HIT", closestHit.object.name);
-            const selectEntity = closestHit.object?.userData?.entity;
+            const selectEntity = closestHit.object?.userData?.[Constants.USER_DATA_FIELDS.INTERACT_ENTITY];
 
             if (selectEntity.interactable) {
                 // console.log("hit actionnable");

@@ -18,11 +18,11 @@ export default class AnimatorManager {
 
             //update animation
             const desiredAnimations = e.animator?.desiredAnimation;
-            if (desiredAnimations) desiredAnimations.foreach((clipname,options)=>this.play(e,clipname,options));
+            if (desiredAnimations) desiredAnimations.forEach((options,clipName)=>this.play(e,clipName,options));
 
             //update head rotation
             if (!anim.headTarget)
-                updateHeadTarget(e)
+                this.updateHeadTarget(e)
        }
     }
 
@@ -82,45 +82,41 @@ export default class AnimatorManager {
 
     }
 
-
-
-    makeRigLookAt(entity, target) {
-        const ac = entity.animator;
-        const headBone = ac?.headBone;
-        if (headBone) {
-
-            // Get player position in bone parent space
-            if (target.type === "Object3D")
-                target.getWorldPosition(this.targetPos);
-            else
-                this.targetPos.copy(target);
-
-            const parent = headBone.parent;
-            const targetLocal = this.targetPos.clone();
-            parent.worldToLocal(targetLocal);
-
-            // Direction the head should look
-            const dir = targetLocal.sub(headBone.position).normalize();
-
-            // Create quaternion that turns +Z to face direction
-            this.targetQuat.setFromUnitVectors(this.forward, dir);
-
-            // Smooth head motion
-            headBone.quaternion.slerp(this.targetQuat, 0.8);
-
-            // If you don’t want Exorcist-like twists:
-            let c = 0.7;
-            headBone.rotation.x = THREE.MathUtils.clamp(headBone.rotation.x, -c, c);
-            headBone.rotation.z = THREE.MathUtils.clamp(headBone.rotation.z, -c, c);
-
-        }
-
-    }
-
     updateHeadTarget(e){
         const anim = e.animator;
         const headTarget = anim.headTarget;
         this.makeRigLookAt(e, headTarget);
+    }    
+
+    makeRigLookAt(e, target) {
+        const ac = e.animator;
+        const headBone = ac?.headBone;
+        if (!headBone || !target) return;
+
+        // Get player position in bone parent space
+        if (target.type === "Object3D")
+            target.getWorldPosition(this.targetPos);
+        else
+            this.targetPos.copy(target);
+
+        const parent = headBone.parent;
+        const targetLocal = this.targetPos.clone();
+        parent.worldToLocal(targetLocal);
+
+        // Direction the head should look
+        const dir = targetLocal.sub(headBone.position).normalize();
+
+        // Create quaternion that turns +Z to face direction
+        this.targetQuat.setFromUnitVectors(this.forward, dir);
+
+        // Smooth head motion
+        headBone.quaternion.slerp(this.targetQuat, 0.8);
+
+        // If you don’t want Exorcist-like twists:
+        let c = 0.7;
+        headBone.rotation.x = THREE.MathUtils.clamp(headBone.rotation.x, -c, c);
+        headBone.rotation.z = THREE.MathUtils.clamp(headBone.rotation.z, -c, c);
+
     }
 
 }
