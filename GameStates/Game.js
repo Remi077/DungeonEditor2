@@ -303,7 +303,7 @@ export default class GameState {
             this.player.gameplay.healthBar = this.healthBar;
 
             const spawnPoints = this.game?.systems?.levelFactory?.enemySpawnGroup;
-            let num = 1;
+            let num = 0;
             for (const spawnPoint of spawnPoints.children){
                 num --;
                 if (num < 0) return;
