@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { ECT } from '../Entities/Entity.js';
+import AnimatorComponent from '../Entities/Components/AnimatorComponent.js';
+import * as Constants from '../../Constants.js';
 
 export default class AnimatorManager {
     constructor(game) {
@@ -11,35 +13,62 @@ export default class AnimatorManager {
         this.forward = new THREE.Vector3(0, 0, 1);
     }
 
-   update(dt) {
-       for (const e of this.world.query(ECT.ANIMATOR)) {
+    //animator component factory
+    createAnimatorComponent(skeleton, mixer, clips) {
+        const anim = new AnimatorComponent(skeleton,mixer);
+        clips.forEach((clip, name) => {
+            anim.animationClips.set(name, clip);
+            const action = mixer.clipAction(clip);
+            anim.animationActions.set(name, 
+                {
+                    action: action,
+                    active: false,
+                }
+            );
+        });
+        anim.headBone = skeleton.getBoneByName(Constants.HEAD_BONE_NAME); //TODO: put in constant
+        return anim;
+    }
+
+    update(dt) {
+        for (const e of this.world.query(ECT.ANIMATOR)) {
             const anim = e.animator;
             anim.mixer.update(dt);
 
             //update animation
             const desiredAnimations = e.animator?.desiredAnimation;
-            if (desiredAnimations) desiredAnimations.forEach((options,clipName)=>this.play(e,clipName,options));
+            if (desiredAnimations) desiredAnimations.forEach((options, clipName) => this.play(e, clipName, options));
 
             //update head rotation
-            if (!anim.headTarget)
+            if (anim.headTarget)
                 this.updateHeadTarget(e)
-       }
+        }
     }
 
-    play(e,clipName,options) {
+    play(e, clipName, options) {
 
         const anim = e.animator;
 
-        if (!clipName) clipName =  anim.animationActions.keys().next().value; //defaults to first action
+        if (!clipName) clipName = anim.animationActions.keys().next().value; //defaults to first action
         const play = options?.play;
 
-        const action = anim.animationActions.get(clipName);
-        if (!action) console.warn("Animation not found:", clipName);
-        if (!action) return;
-        if (play && action.isRunning()) return; //already running
-        if (!play && !action.isRunning()) return; //already stopped
+        const actionOb = anim.animationActions.get(clipName);
+        if (!actionOb) console.warn("Animation not found:", clipName);
+        if (!actionOb) return;
+        
+        const action = actionOb.action;
 
-        if (play){
+        //replay
+        if (actionOb.active && !action.isRunning() && options?.replay)
+            actionOb.active = false;
+
+        if (
+            (play  && actionOb.active ) || //already running (force replay if reset)
+            (!play && !actionOb.active)    //already stopped
+        ) return;
+
+        if (play) {
+            console.log("ATTACK3")
 
             const clampWhenFinished = options?.clampWhenFinished; //keep last frame at the end of animation
             const reverse = options?.reverse; //play the animation backwards
@@ -67,6 +96,7 @@ export default class AnimatorManager {
             if (!reverse) action.reset();//reset action only if play forward
 
             action.play(); //play action
+            actionOb.active = true;
 
             const mixer = action.getMixer()
             const onFinished = (e) => {
@@ -75,18 +105,19 @@ export default class AnimatorManager {
                 callback?.();
             };
             mixer.addEventListener("finished", onFinished);
-            
+
         } else {
             action.stop();
+            actionOb.active = false;
         }
 
     }
 
-    updateHeadTarget(e){
+    updateHeadTarget(e) {
         const anim = e.animator;
         const headTarget = anim.headTarget;
         this.makeRigLookAt(e, headTarget);
-    }    
+    }
 
     makeRigLookAt(e, target) {
         const ac = e.animator;

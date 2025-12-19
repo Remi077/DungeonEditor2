@@ -11,7 +11,6 @@ export default class AnimatorComponent {
         this.mixer = mixer;
         this.animationClips = new Map();   // name -> clip
         this.animationActions = new Map(); // name -> mixer action
-        this.weaponBone = null;
         this.headBone = null;
 
         //loop variables

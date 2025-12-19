@@ -11,7 +11,7 @@ export default class World {
         this.player = entity;
     }
 
-    addEntity(entity, { active = true } = {}) {
+    addEntity(entity, { active = false } = {}) {
         this.entities.add(entity);
         if (active) this.activeEntities.add(entity);
     }

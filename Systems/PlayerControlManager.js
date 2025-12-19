@@ -64,13 +64,21 @@ export default class PlayerControlManager {
         }
 
         if (actions.attack && !e.weapon.isAttacking) {
+            console.log("ATTACK1")
             anim.desiredAnimation.set(Constants.ANIM.ATTACK,{
                 play: true,
+                replay: true, //force reset since the animation is clamped
                 clampWhenFinished: true,
                 callback: (() => {
                     // console.log("END PLAYER ATTACK");
                     e.weapon.isAttacking = false;
                 }),
+            })
+        } else if (!e.weapon.isAttacking) {
+            console.log("ATTACK2")
+            anim.desiredAnimation.set(Constants.ANIM.ATTACK,{
+                play: true,
+                clampWhenFinished: true,
             })
         }
 

@@ -46,8 +46,8 @@ export default class CollisionManager {
 
         //used in debug
         const MAX_VERTS = 100_000; // adjust to your worst case
-        this.debugPositions = new Float32Array(MAX_VERTS * 3);
-        this.debugColors = new Float32Array(MAX_VERTS * 3);
+        this.debugPositions = new THREE.Float32BufferAttribute([], 3);
+        this.debugColors = new THREE.Float32BufferAttribute([], 3);
         this.debugPosAttr = new THREE.BufferAttribute(this.debugPositions, 3);
         this.debugColorAttr = new THREE.BufferAttribute(this.debugColors, 3);
 
@@ -204,8 +204,10 @@ export default class CollisionManager {
 
         //early exit if no vertices
         if (!vertices.length) {
-            this.debugGeo.setAttribute('position', new THREE.Float32BufferAttribute([], 3));   
-            this.debugGeo.setAttribute('color', new THREE.Float32BufferAttribute([], 3));
+            // this.debugGeo.setAttribute('position', new THREE.Float32BufferAttribute([], 3));   
+            // this.debugGeo.setAttribute('color', new THREE.Float32BufferAttribute([], 3));
+            this.debugGeo.setAttribute('position', this.debugPositions);   
+            this.debugGeo.setAttribute('color', this.debugColors);            
             return;   
         }
 
@@ -262,56 +264,6 @@ export default class CollisionManager {
         }
     }
 
-    updateDebugOpti() {
-        if (!this.debugLines.visible) return;
-
-        const { vertices, colors } = this.rapierWorld.debugRender();
-        if (!vertices || vertices.length === 0) {
-            this.debugGeo.setDrawRange(0, 0);
-            return;
-        }
-
-        const vertCount = vertices.length / 3;
-
-        // grow buffers only if needed
-        if (vertices.length > this.debugPositions.length) {
-            this._growDebugBuffers(vertices.length);
-        }
-
-        // positions
-        this.debugPositions.set(vertices, 0);
-        this.debugPosAttr.needsUpdate = true;
-
-        // colors
-        if (colors?.length) {
-            if (colors.length === vertices.length) {
-                this.debugColors.set(colors, 0);
-            } else if (colors.length === vertCount * 4) {
-                for (let i = 0, j = 0; i < colors.length; i += 4, j += 3) {
-                    this.debugColors[j + 0] = colors[i + 0] / 255;
-                    this.debugColors[j + 1] = colors[i + 1] / 255;
-                    this.debugColors[j + 2] = colors[i + 2] / 255;
-                }
-            }
-            this.debugColorAttr.needsUpdate = true;
-        }
-
-        this.debugGeo.setDrawRange(0, vertCount);
-    }
-
-    _growDebugBuffers(requiredLength) {
-        const newSize = Math.max(requiredLength, this.debugPositions.length * 2);
-
-        this.debugPositions = new Float32Array(newSize);
-        this.debugColors = new Float32Array(newSize);
-
-        this.debugPosAttr.array = this.debugPositions;
-        this.debugColorAttr.array = this.debugColors;
-
-        this.debugPosAttr.needsUpdate = true;
-        this.debugColorAttr.needsUpdate = true;
-    }
-
     /*-------------------*/
     /*-------------------*/
     /* RAPIER WORLD STEP */ 
@@ -346,8 +298,7 @@ export default class CollisionManager {
         this.bodyToRemove.length = 0;
 
         if (this.debugLines.visible)
-            this.updateDebugOpti();
-            // this.updateDebug();
+            this.updateDebug();
 
     }
 
@@ -377,6 +328,13 @@ export default class CollisionManager {
             tr.positionCenter = result.newPosition;
             tr.positionRoot = result.newPosition.clone().sub(col.offsetRootToBody);
 
+            //schedule sync body
+            col.body.setNextKinematicTranslation(tr.positionCenter);
+            col.body.setNextKinematicRotation(tr.rotation);
+
+            //sync mesh
+            this.syncMesh(e);
+
             //check if player in water/at surface
             if (e.playerCtrl){
                 const belowChin = this.game.yawObject.position.clone();
@@ -392,8 +350,7 @@ export default class CollisionManager {
                 }
             }
 
-            this.syncMesh(e);
-            this.scheduleSyncBody(e);
+            //eventually cleanup bodies if not used anymore
             this.cleanupEntity(e)
         }
     }
@@ -432,21 +389,17 @@ export default class CollisionManager {
         const vs = e.visual
         const root = vs?.root;
         if (!root) return;
-        root.quaternion.slerp(tr.rotation, vs.slerpRotation);//update rotation
-        const targetPos = tr.positionRoot.clone().add(vs.offsetPosition);
-        targetPos.applyQuaternion(root.quaternion); //rotate the offset too
+
+        //take the transform rotation + the offset rotation, slerp it and apply it to the mesh
+        const fullRotation = tr.rotation.clone().multiply(vs.offsetRotation);
+        root.quaternion.slerp(fullRotation, vs.slerpRotation);
+        //take the offset position, apply root rotation, add it to transform pos and apply to mesh
+        const rotatedOff = vs.offsetPosition.clone().applyQuaternion(root.quaternion);
+        const targetPos = tr.positionRoot.clone().add(rotatedOff);
         root.position.copy(targetPos);
     }
 
-    //sync body to mesh
-    scheduleSyncBody(e) {
-        const target = e.visual?.root;
-        if (!target) return;
-        const body = e.collision?.body;
-        const off = e.collision?.offsetRootToBody;
-        this.scheduleSyncBodyToTarget(body, target, off);
-    }
-
+    //sync body to a scene target
     scheduleSyncBodyToTarget(body, target, off) {
         const q = target.getWorldQuaternion(this.worldQuat);
         const newoff = off.clone().applyQuaternion(q);

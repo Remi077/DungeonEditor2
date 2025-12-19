@@ -21,7 +21,7 @@ export const LOWERBODYBONES = [//define bone whitelist for an animation
     'mixamorigLeftFoot',
     'mixamorigRightArm',  //for walk cycle, weapon is in left hand so leave right arm go with walk
 ];
-export const WEAPON_BONE_NAME = "mixamorigLeftHand";
+export const HEAD_BONE_NAME = "mixamorigHead";
 
 // animation name constants
 export const ANIM = {

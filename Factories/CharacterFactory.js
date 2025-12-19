@@ -26,7 +26,6 @@ class CharacterPrefab {
 
         this.name = "";
         this.root = null;        // template armature hierarchy
-        this.weaponBoneName = "";
         this.weaponMeshName = "";
 
         //materials 
@@ -126,7 +125,6 @@ export default class CharacterFactory {
             };
             if (child.name.startsWith("weapon")) {
                 child.frustumCulled = !isPlayerPrefab;
-                prefab.weaponBoneName = prefab.weapon?.parent?.name;
                 prefab.weaponMeshName = prefab.weapon?.name;
             }
             if (child.name.startsWith("Collider_Kine")) prefab.weaponColliderMesh = child;
@@ -278,8 +276,11 @@ export default class CharacterFactory {
         vs.normalMaterial = prefab.normalMaterial;
         vs.hurtMaterial = prefab.hurtMaterial;
         vs.offsetPosition.set(0,0,0);
-        if (options?.isPlayer)
+        if (options?.isPlayer){
+            //adjust mesh position wrt to the capsule collider here
             vs.offsetRotation.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+            vs.offsetPosition.set(0,0,-0.07);
+        }
 
         // 2. Traverse cloned root to find skeleton
         let clonedSkeleton = null;
@@ -316,21 +317,21 @@ export default class CharacterFactory {
 
         // Prepare animations
         const mixer = new THREE.AnimationMixer(root);
-        // const clips = prefab.animations;
 
         //movement
         const mv = new MovementComponent();
         if (!options?.isPlayer) mv.moveSpeed *= 0.15; //TEMP: to move in constants
 
         //AnimatorComponent
-        const anim = new AnimatorComponent(clonedSkeleton,mixer);
-        prefab.animationClips.forEach((clip, name) => {
-            anim.animationClips.set(name, clip);
-            const action = mixer.clipAction(clip);
-            anim.animationActions.set(name, action);
-        });
-        anim.weaponBone = clonedSkeleton.getBoneByName(prefab.weaponBoneName);
-        anim.headBone = clonedSkeleton.getBoneByName("mixamorigHead"); //TODO: put in constant
+        const animatorManager = this.game.systems.animatorManager;
+        const anim = animatorManager.createAnimatorComponent(clonedSkeleton, mixer, prefab.animationClips);
+        // const anim = new AnimatorComponent(clonedSkeleton,mixer);
+        // prefab.animationClips.forEach((clip, name) => {
+        //     anim.animationClips.set(name, clip);
+        //     const action = mixer.clipAction(clip);
+        //     anim.animationActions.set(name, action);
+        // });
+        // anim.headBone = clonedSkeleton.getBoneByName("mixamorigHead"); //TODO: put in constant
 
         //weapon
         const wpn = new WeaponComponent();
@@ -379,6 +380,8 @@ export default class CharacterFactory {
             gp.healthBar = hp;
         }
 
+        //make the entity active
+        this.world.setActive(e, true);
 
         // Add to scene
         this.game.scene.add(root);//TODO: add to rig or enemygroup

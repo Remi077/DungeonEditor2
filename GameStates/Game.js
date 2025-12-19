@@ -371,7 +371,7 @@ export default class GameState {
 
     mousedown(e) {
         if (document.pointerLockElement !== this.game.canvas) {
-            canvas.requestPointerLock(); //lock to canvas if not the case
+            this.game.canvas.requestPointerLock(); //lock to canvas if not the case
             return;
         }
 
