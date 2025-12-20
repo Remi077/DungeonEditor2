@@ -43,8 +43,8 @@ export default class HealthManager {
         gp.health -= 10;
         
         //cancel attack
-        const wpn = target?.weapon;
-        if (wpn) wpn.isAttacking = false; //cancel the attack on hurt
+        const att = target?.attack;
+        if (att) att.isAttacking = false; //cancel the attack on hurt
         
         //repulsion force
         const mv = target.movement

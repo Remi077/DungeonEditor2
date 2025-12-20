@@ -5,8 +5,9 @@ import * as SkeletonUtils from 'SkeletonUtils';
 import * as Constants from '../Constants.js';
 import Entity from '../Entities/Entity.js';
 import AIComponent from '../Entities/Components/AIComponent.js';
-import AnimatorComponent from '../Entities/Components/AnimatorComponent.js';
-import CollisionsBodyComponent from '../Entities/Components/CollisionsBodyComponent.js';
+import AnimColliderComponent from '../Entities/Components/AnimColliderComponent.js';
+import AttackComponent from '../Entities/Components/AttackComponent.js';
+import CapsuleColliderComponent from '../Entities/Components/CapsuleColliderComponent.js';
 import GameplayComponent from '../Entities/Components/GameplayComponent.js';
 import InventoryComponent from '../Entities/Components/InventoryComponent.js';
 import MovementComponent from '../Entities/Components/MovementComponent.js';
@@ -14,7 +15,6 @@ import PathFindingComponent from '../Entities/Components/PathFindingComponent.js
 import PlayerControlComponent from '../Entities/Components/PlayerControlComponent.js';
 import TransformComponent from '../Entities/Components/TransformComponent.js';
 import VisualComponent from '../Entities/Components/VisualComponent.js';
-import WeaponComponent from '../Entities/Components/WeaponComponent.js';
 
 class CharacterPrefab {
 
@@ -290,7 +290,7 @@ export default class CharacterFactory {
             }
         });
 
-        // 3. Create CollisionsBodyComponent with capsule collider
+        // 3. Create CapsuleColliderComponent with capsule collider
         const collisionManager = this.game.systems.collisionManager;
 
         const playerBody = collisionManager.createKinematicRigidBody(
@@ -306,7 +306,7 @@ export default class CharacterFactory {
              playerBody,
              e
             );
-        const col = new CollisionsBodyComponent(playerBody, playerCollider);
+        const col = new CapsuleColliderComponent(playerBody, playerCollider);
 
         col.capsuleRadius = prefab.capsuleRadius ;
         col.capsuleTotalHeight = prefab.capsuleHeight;
@@ -333,19 +333,28 @@ export default class CharacterFactory {
         // });
         // anim.headBone = clonedSkeleton.getBoneByName("mixamorigHead"); //TODO: put in constant
 
-        //weapon
-        const wpn = new WeaponComponent();
-        wpn.weapon = root.getObjectByName(prefab.weaponName);
+        /*--------------------*/
+        /*--------------------*/
+        //animated collider
+        const wpn = new AnimColliderComponent();
         const {body: weaponBody, collider: weaponCollider, colliderDesc: weaponColliderDesc} = collisionManager.createKinematicColliderFromMesh(
             prefab.weaponColliderMesh,
             prefab.weaponCollisionGroups
         );
+        wpn.mesh = root.getObjectByName(prefab.weaponName);
         wpn.body = weaponBody;
         wpn.collider = weaponCollider;
         wpn.colliderDesc = weaponColliderDesc;
         wpn.offsetRootToBody = prefab.weaponOffsetRootToBody;
-        wpn.attackDamageStart = prefab.attackDamageStart;
-        wpn.attackDamageEnd = prefab.attackDamageEnd;
+        this.world.addComponent(e, wpn);
+
+        //attack
+        const wpnAttack = new AttackComponent();
+        wpnAttack.attackDamageStart = prefab.attackDamageStart;
+        wpnAttack.attackDamageEnd = prefab.attackDamageEnd;
+        this.world.addComponent(e, wpnAttack);
+        /*--------------------*/
+        /*--------------------*/
 
         //gameplay
         const gp = new GameplayComponent();
@@ -357,7 +366,6 @@ export default class CharacterFactory {
         this.world.addComponent(e, anim);
         this.world.addComponent(e, col);
         this.world.addComponent(e, gp);
-        this.world.addComponent(e, wpn);
 
         //add extra options
         if (options?.isPlayer) {

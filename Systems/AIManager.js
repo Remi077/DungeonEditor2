@@ -124,16 +124,16 @@ export default class AIManager {
                 //moveVector.set(0,0,0);
                 targetPos = this.game.yawObject.position.clone();
                 inReach = pf.moveEntityToWithin(e, targetPos, ai.enemyAttackDistance, dt);
-                const wpn = e.weapon;
-                if (!wpn.isAttacking || ai.animationFinished) {
+                const att = e.attack;
+                if (!att.isAttacking || ai.animationFinished) {
                     console.log("ATTACK")
-                    wpn.isAttacking = true;
-                    wpn.timeSinceStartAttack = 0;
+                    att.isAttacking = true;
+                    att.timeSinceStartAttack = 0;
                     ai.animationFinished = false;
                 }
                 if (!inReach){
                     console.log("OUTOFREACH")
-                    wpn.isAttacking = false;
+                    att.isAttacking = false;
                     ai.animationFinished = false;
                     ai.enemyState = ENEMY_STATES.CHASE;
                 }
@@ -188,7 +188,7 @@ export default class AIManager {
         //get target middle body and entity eye positions
         const targetPos = targetEntity.transform.positionCenter;
         const tr = e.transform;
-        const col = e.collision;
+        const col = e.capsuleCol;
 
         //eyes
         const eyes = tr.positionCenter;
@@ -333,7 +333,7 @@ export default class AIManager {
 
 
     disableEntity(e) {
-        const col = e.collision;
+        const col = e.capsuleCol;
         if (col) col.toremove = true; //schedule body/collider to be removed
         this.world.setActive(e, false); //remove entity from world queries
     }

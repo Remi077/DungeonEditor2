@@ -24,7 +24,7 @@ export default class PlayerControlManager {
         if (actions.moveCamFront) moveVector.z = -1;
         if (actions.moveCamBack) moveVector.z = 1;
         moveVector.normalize();
-        if (!e.collision.isInWater)
+        if (!e.capsuleCol.isInWater)
             this.game.yawObject.getWorldQuaternion(this.worldQuat);
         else
             this.game.pitchObject.getWorldQuaternion(this.worldQuat); //move in all directions in water
@@ -34,7 +34,12 @@ export default class PlayerControlManager {
         e.transform.rotation.copy(yawObject.quaternion);
 
         //register jump
-        if (actions.jump) 
+        if (actions.jump && 
+            (
+                e.capsuleCol.isTouchingGround ||
+                e.capsuleCol.isAtSurface
+            )
+        ) 
             e.movement.jump = true;
 
         //update desired animation
@@ -64,14 +69,14 @@ export default class PlayerControlManager {
             anim.desiredAnimation.set(Constants.ANIM.WALK_L,{play: false});
         }
 
-        if (actions.attack && !e.weapon.isAttacking) {
+        if (actions.attack && !e.attack.isAttacking) {
             anim.desiredAnimation.set(Constants.ANIM.ATTACK,{
                 play: true,
                 replay: true, //force reset since the animation is clamped
                 clampWhenFinished: true,
                 callback: (() => {
                     // console.log("END PLAYER ATTACK");
-                    e.weapon.isAttacking = false;
+                    e.attack.isAttacking = false;
                 }),
             })
         }
@@ -127,7 +132,7 @@ export default class PlayerControlManager {
     }
 
     attack(e) {
-        const wpn = e.weapon;
+        const wpn = e.attack;
         if (wpn.isAttacking) return;
         wpn.isAttacking = true;
         wpn.timeSinceStartAttack = 0;

@@ -3,9 +3,9 @@ import { GLTFLoader } from 'GLTFLoader';
 import * as Constants from '../Constants.js';
 
 import Entity from '../Entities/Entity.js';
+import AnimColliderComponent from '../Entities/Components/AnimColliderComponent.js';
 import VisualComponent from '../Entities/Components/VisualComponent.js';
 import TransformComponent from '../Entities/Components/TransformComponent.js';
-import CollisionsBodyComponent from '../Entities/Components/CollisionsBodyComponent.js';
 import AnimatorComponent from '../Entities/Components/AnimatorComponent.js';
 import InteractableComponent from '../Entities/Components/InteractableComponent.js';
 
@@ -172,12 +172,17 @@ export default class LevelFactory {
             //body component
             const rb = col.getRigidBodyByName(`Collider_Kine_${child.name}`);
             if (rb) {
-                const collisionBodyComponent = new CollisionsBodyComponent(rb);
+                const col = new AnimColliderComponent();
+                col.mesh = child;
+                col.body = rb;
                 const worldPos = new THREE.Vector3();
                 child.getWorldPosition(worldPos);
                 const rbPos = rb.translation();
-                collisionBodyComponent.offsetRootToBody = new THREE.Vector3(rbPos.x - worldPos.x, rbPos.y - worldPos.y, rbPos.z - worldPos.z);
-                this.world.addComponent(e, collisionBodyComponent);
+                col.offsetRootToBody = new THREE.Vector3(
+                    rbPos.x - worldPos.x, 
+                    rbPos.y - worldPos.y, 
+                    rbPos.z - worldPos.z);
+                this.world.addComponent(e, col);
             }
 
             // add visual and transform components

@@ -416,14 +416,15 @@ export default class GameState {
         const enableMovement = !this.uiState.isInventoryOpen
         
         //update every system
-        //the order is important here, since weapon kinematic collider is driven by animation
-        //update body, mesh and animation before scheduling weapon collider and step the world 
+        //the order is important here, because some colliders are animation driven (weapons, doors...)
+        //update body, mesh and animation before scheduling these animated weapon collider and step the world 
         this.game.systems.playerCtrlManager.update(dt,actions,enableMovement);//player desired movement, desired animation
         this.game.systems.aiManager.update(dt);//enemies desired movement, desired animation
         this.game.systems.movementManager.update(dt);//apply gravity
         this.game.systems.collisionManager.update(dt);//calculate collisions, sync mesh and schedule bodies
         this.game.systems.animatorManager.update(dt); //update animated bone/mesh position, use desired animations
-        this.game.systems.collisionManager.updateWpn(dt); //sync the weapon body to its respective mesh (schedule) and test for collision (attack)
+        this.game.systems.collisionManager.updateAnimCollider(dt); //sync the animation driven collider to their respective mesh (schedule) 
+        this.game.systems.collisionManager.updateAttack(dt);//attack component test for collision (attack)
         this.game.systems.collisionManager.step(dt); //step the collision world
 
         //order not important here

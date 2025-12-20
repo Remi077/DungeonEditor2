@@ -8,9 +8,9 @@ export default class MovementManager {
     }
 
    update(dt) {
-       for (const e of this.world.query(ECT.MOVEMENT, ECT.COLLISION)) {
+       for (const e of this.world.query(ECT.MOVEMENT, ECT.CAPSULECOLLIDER)) {
             const mv = e.movement;
-            const col = e.collision;
+            const col = e.capsuleCol;
             const isPlayer = e.playerCtrl
 
             // horizontal movement

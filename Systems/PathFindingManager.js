@@ -49,7 +49,7 @@ export default class PathFindingManager {
         const pf = e.pathfinding;
         const tr = e.transform;
         const mv = e.movement;
-        const col = e.collision;
+        const col = e.capsuleCol;
 
         if (!pf || !tr || !col) return;
 
@@ -145,7 +145,7 @@ export default class PathFindingManager {
         const pf = e.pathfinding;
         const tr = e.transform;
         const mv = e.movement;
-        const col = e.collision;
+        const col = e.capsuleCol;
 
         if (!pf || !tr || !col) return;
 

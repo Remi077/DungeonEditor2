@@ -3,9 +3,9 @@ import { ECT } from '../Entity.js';
 
 // holds entity collision related properties  
 
-export default class CollisionsBodyComponent {
+export default class CapsuleColliderComponent {
     constructor(body = null, collider = null, bodyDesc = null, colliderDesc = null) {
-        this.type = ECT.COLLISION;
+        this.type = ECT.CAPSULECOLLIDER;
 
         //constants 
 

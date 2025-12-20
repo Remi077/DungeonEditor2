@@ -84,7 +84,9 @@ if (isMobile()) {
 //  │     └── Components/
 //  │           ├── AIComponent.js
 //  │           ├── AnimatorComponent.js
-//  │           ├── CollisionsBodyComponent.js
+//  │           ├── AnimColliderComponent.js
+//  │           ├── AttackComponent.js
+//  │           ├── CapsuleColliderComponent.js
 //  │           ├── GameplayComponent.js
 //  │           ├── InteractableComponent.js
 //  │           ├── InventoryComponent.js
@@ -92,8 +94,7 @@ if (isMobile()) {
 //  │           ├── PathFindingComponent.js
 //  │           ├── PlayerControlComponent.js
 //  │           ├── TransformComponent.js
-//  │           ├── VisualComponent.js
-//  │           └── WeaponComponent.js
+//  │           └── VisualComponent.js
 //  │
 //  └── GameStates/
 //        ├── Editor.js

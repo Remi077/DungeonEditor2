@@ -309,8 +309,8 @@ export default class CollisionManager {
     /*---------------------------*/
 
     update(dt){
-       for (const e of this.world.query(ECT.TRANSFORM, ECT.COLLISION)) {
-            const col = e.collision;
+       for (const e of this.world.query(ECT.TRANSFORM, ECT.CAPSULECOLLIDER)) {
+            const col = e.capsuleCol;
             const tr = e.transform;
             const mv = e.movement;
             // check for collision and correct movement
@@ -339,14 +339,14 @@ export default class CollisionManager {
             if (e.playerCtrl){
                 const belowChin = this.game.yawObject.position.clone();
                 belowChin.y -= 0.3;
-                const col = e.collision;
+                const col = e.capsuleCol;
                 col.isInWater = this.checkIsInWater(belowChin);
-                if (e.collision.isInWater) {
+                if (e.capsuleCol.isInWater) {
                     const isHeadInWater = this.checkIsInWater(this.game.yawObject.position);
-                    if (!e.collision.isAtSurface && !isHeadInWater) console.log("ATSURFACE")
-                    e.collision.isAtSurface = !isHeadInWater;
+                    if (!e.capsuleCol.isAtSurface && !isHeadInWater) console.log("ATSURFACE")
+                    e.capsuleCol.isAtSurface = !isHeadInWater;
                 } else {
-                    e.collision.isAtSurface = false;
+                    e.capsuleCol.isAtSurface = false;
                 }
             }
 
@@ -432,18 +432,17 @@ export default class CollisionManager {
     intersectionsWithShape(body, shape, options) {
 
         this.rapierWorld.intersectionsWithShape(
-            body.translation(), //shapePos: pos,
-            body.rotation(), //shapeRot: rot,
-            shape, //shape: weaponColliderDesc.shape,
+            body.translation(), //shapePos
+            body.rotation(), //shapeRot
+            shape, //shape
             (otherCollider) => {
                 options?.callback?.(otherCollider)
-            }, //callback: null, // callback: (collider: Collider) => boolean,
-            null, //filterFlags?: QueryFilterFlags,
-            options?.filterGroups, //filterGroups?: InteractionGroups,
-            options?.excludeCollider, //filterExcludeCollider?: Collider,
-            options?.excludeBody,
-            // weaponBody, //filterExcludeRigidBody?: RigidBody,
-            null //filterPredicate?: (collider: Collider) => boolean,
+            }, //callback
+            null, //filterFlags
+            options?.filterGroups, //filterGroups
+            options?.excludeCollider, //filterExcludeCollider
+            options?.excludeBody, //filterExcludeBody
+            null //filterPredicate
         )
     }
 
@@ -495,12 +494,20 @@ export default class CollisionManager {
     /*-------------------*/
 
     cleanupEntity(e){
-        const col = e.collision;
-        if (!col.toremove) return;
-        col.toremove = false;
-        this.scheduleRemoval(col.body, col.collider);
-        const wpn = e.weapon;
-        if (wpn) this.scheduleRemoval(wpn.body, wpn.collider);
+        if (e.capsuleCol) {
+            const col = e.capsuleCol;
+            if (col.toremove) {
+                col.toremove = false;
+                this.scheduleRemoval(col.body, col.collider);
+            }
+        }
+        if (e.animCol) {
+            const animCol = e.animCol;
+            if (animCol.toremove) {
+                animCol.toremove = false;
+                this.scheduleRemoval(animCol.body, animCol.collider);
+            }
+        }
     }
 
     scheduleRemoval(body, collider){
@@ -538,45 +545,55 @@ export default class CollisionManager {
         this.colliders.delete(collider.handle);
     }
 
-    /*------------------*/
-    /*------------------*/
-    /* WEAPON FUNCTIONS */
-    /*------------------*/
-    /*------------------*/
+    /*-----------------------------*/
+    /*-----------------------------*/
+    /* ANIMATED COLLIDER FUNCTIONS */
+    /*-----------------------------*/
+    /*-----------------------------*/
 
-    updateWpn(dt) {
-       for (const e of this.world.query(ECT.WEAPON, ECT.COLLISION)) {
-            this.weaponSyncBody(e);
-            this.weaponAttack(e, dt);
+    updateAnimCollider(dt) {
+       for (const e of this.world.query(ECT.ANIMCOLLIDER)) {
+            this.animSyncBody(e);
        }
     }
 
-    weaponSyncBody(e) {
-        const wpn = e.weapon;
-        if (!wpn) return;
-        const body = wpn?.body;
-        const off = wpn?.offsetRootToBody;
-        const target = wpn?.weapon;
+    animSyncBody(e) {
+        const col = e.animCol;
+        const body = col?.body;
+        const off = col?.offsetRootToBody;
+        const target = col?.mesh;
         if (!body || !target) return;
         const result = this.scheduleSyncBodyToTarget(body, target, off);
     }
 
-    weaponAttack(e, dt) {
-        const wpn = e.weapon;
-        const col = e.collision;
-        if (!wpn.isAttacking) return;
-        wpn.timeSinceStartAttack += dt;
+    /*---------------*/
+    /*---------------*/
+    /* UPDATE ATTACK */
+    /*---------------*/
+    /*---------------*/
+
+    updateAttack(dt) {
+       for (const e of this.world.query(ECT.ANIMCOLLIDER, ECT.ATTACK)) {
+            this.attack(e, dt);
+       }
+    }
+
+    attack(e, dt) {
+        const col = e.animCol;
+        const att = e.attack;
+        if (!att.isAttacking) return;
+        att.timeSinceStartAttack += dt;
         if (
-            wpn.timeSinceStartAttack >= wpn.attackDamageStart &&
-            (wpn.attackDamageEnd ?
-                (wpn.timeSinceStartAttack < wpn.attackDamageEnd) : true)
+            att.timeSinceStartAttack >= att.attackDamageStart &&
+            (att.attackDamageEnd ?
+                (att.timeSinceStartAttack < att.attackDamageEnd) : true)
         ) { 
             const characterBody = col.body;
             this.intersectionsWithShape(
-                wpn.body,
-                wpn.colliderDesc.shape,
+                col.body,
+                col.colliderDesc.shape,
                 {
-                    excludeCollider: wpn.collider,
+                    excludeCollider: col.collider,
                     excludeBody: characterBody,
                     callback: ((otherCollider) => {
                         const colentity = otherCollider?.userData?.[Constants.USER_DATA_FIELDS.COLLIDER_ENTITY];
