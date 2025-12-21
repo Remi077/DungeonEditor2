@@ -121,7 +121,7 @@ export default class PlayerControlManager {
             // console.log("HIT", closestHit.object.name);
             const selectEntity = closestHit.object?.userData?.[Constants.USER_DATA_FIELDS.INTERACT_ENTITY];
 
-            if (selectEntity.interactable) {
+            if (selectEntity?.interactable) {
                 // console.log("hit actionnable");
                 const interactableComponent = selectEntity.interactable;
                 interactableComponent?.interact(e);

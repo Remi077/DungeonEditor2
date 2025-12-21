@@ -588,7 +588,7 @@ export default class CollisionManager {
             (att.attackDamageEnd ?
                 (att.timeSinceStartAttack < att.attackDamageEnd) : true)
         ) { 
-            const characterBody = col.body;
+            const characterBody = e.capsuleCol?.body; //filter out capsule body on this entity if it exists
             this.intersectionsWithShape(
                 col.body,
                 col.colliderDesc.shape,
