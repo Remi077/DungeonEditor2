@@ -1,10 +1,226 @@
 import { ECT } from '../Entities/Entity.js';
+import Stats from "stats.js";
 
 export default class UIManager {
     constructor(game) {
         this.game = game;
         this.world = game.world;
         this.itemAtlas = null;
+
+        this.styleTag = null;
+        this.crosshair = null;
+        this.healthContainer = null;
+        this.healthBar = null;
+        this.hotbar = null;
+        this.inventoryContainer = null;
+
+        //stats
+        this.fpsPanel = new Stats();//extra fps panel
+        this.fpsPanel.showPanel(0);//fps
+
+        //substate: inventory open
+        this.uiState = {
+            isInventoryOpen : false,
+            isPointerLocked : true,
+        }
+    }
+
+    showGameUI(){
+        // ---------------------------
+        // Inject CSS for this state
+        // ---------------------------
+        this.styleTag = document.createElement('style');
+        this.styleTag.textContent = `
+            #crosshair {
+                position: absolute;
+                color: white;
+                font-size: 24px;
+                pointer-events: none;
+                z-index: 10;
+                display: block;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+            }
+
+            #health-container {
+                position: fixed;
+                top: 20px;
+                left: 20px;
+                width: 200px;
+                height: 20px;
+                background: #300;
+                border: 2px solid #900;
+                border-radius: 4px;
+            }
+
+            #health-bar {
+                width: 100%;
+                height: 100%;
+                background: #0f0;
+                transition: width 0.2s ease-out;
+            }
+
+            #hotbar {
+                position: absolute;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                display: flex;
+                gap: 12px;
+                padding: 10px 16px;
+                background: rgba(0, 0, 0, 0.45);
+                border-radius: 10px;
+                backdrop-filter: blur(4px);
+            }
+
+            .slot {
+                width: 64px;
+                height: 64px;
+                background: rgba(255,255,255,0.15);
+                border: 2px solid rgba(255,255,255,0.2);
+                border-radius: 6px;
+                position: relative;
+            }
+
+            .slot.selected {
+                border: 2px solid white;
+                box-shadow: 0 0 8px white;
+            }
+
+            #inventory-grid-container {
+                position: absolute;
+                bottom: 100px;
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 12px;
+                background: rgba(0,0,0,0.7);
+                border-radius: 10px;
+                display: none;
+                z-index: 100;
+            }
+
+            #inventory-grid {
+                display: grid;
+                grid-template-columns: repeat(8, 64px);
+                grid-template-rows: repeat(4, 64px);
+                gap: 8px;
+            }
+
+            .inv-slot {
+                width: 64px;
+                height: 64px;
+                background: rgba(255,255,255,0.1);
+                border: 2px solid rgba(255,255,255,0.2);
+                border-radius: 6px;
+                position: relative;
+                cursor: pointer;
+            }
+
+            .inv-slot .icon {
+                width: 100%;
+                height: 100%;
+                background-image: url("./assets/textures/items.png");
+                background-size: 128px 128px;
+                background-repeat: no-repeat;
+                background-position -9999px -9999px;
+            }
+
+            .inv-slot .count {
+                position: absolute;
+                bottom: 4px;
+                right: 6px;
+                font-size: 16px;
+                color: white;
+                text-shadow: 0 0 4px black;
+            }
+        `;
+        document.head.appendChild(this.styleTag);
+
+        // -------------------------
+        // Locate canvas-container
+        // -------------------------
+        const canvasContainer = this.game.canvasContainer;
+
+        // =========== CROSSHAIR ===========
+        this.crosshair = document.createElement('div');
+        this.crosshair.id = 'crosshair';
+        this.crosshair.textContent = '+';
+        canvasContainer.appendChild(this.crosshair);
+
+        // =========== HEALTH BAR ===========
+        this.healthContainer = document.createElement('div');
+        this.healthContainer.id = 'health-container';
+
+        this.healthBar = document.createElement('div');
+        this.healthBar.id = 'health-bar';
+        this.healthContainer.appendChild(this.healthBar);
+
+        canvasContainer.appendChild(this.healthContainer);
+
+        // =========== HOTBAR ===========
+        this.hotbar = document.createElement('div');
+        this.hotbar.id = 'hotbar';
+        for (let i = 0; i < 7; i++) {
+            const slot = document.createElement('div');
+            slot.className = 'slot';
+            slot.dataset.index = i;
+            this.hotbar.appendChild(slot);
+        }
+        canvasContainer.appendChild(this.hotbar);
+
+        // =========== INVENTORY GRID ===========
+        this.inventoryContainer = document.createElement('div');
+        this.inventoryContainer.id = 'inventory-grid-container';
+
+        const grid = document.createElement('div');
+        grid.id = 'inventory-grid';
+
+        for (let i = 0; i < 32; i++) {
+            const slot = document.createElement('div');
+            slot.className = 'inv-slot';
+
+            const icon = document.createElement('div');
+            icon.className = 'icon';
+
+            // slot.appendChild(icon);
+            grid.appendChild(slot);
+        }
+
+        this.inventoryContainer.appendChild(grid);
+        canvasContainer.appendChild(this.inventoryContainer);
+
+        // --- extra FPS Panel ---
+        this.fpsPanel = new Stats();//extra fps panel
+        this.fpsPanel.showPanel(0);//fps
+        const fpsPanel = this.fpsPanel;
+        Object.assign(fpsPanel.dom.style, {
+            position: 'absolute',
+            top: '100px',
+            left: 'auto',
+            right: '100px',
+            margin: '0',
+            transform: 'scale(2)',
+            transformOrigin: 'top right'
+        });
+        this.game.mainContainer.appendChild(fpsPanel.dom);
+    }
+
+    hideGameUI() {
+        if (this.crosshair) this.crosshair.remove();
+        if (this.healthContainer) this.healthContainer.remove();
+        if (this.hotbar) this.hotbar.remove();
+        if (this.inventoryContainer) this.inventoryContainer.remove();
+        if (this.fpsPanel && this.fpsPanel.dom && this.fpsPanel.dom.parentNode) {
+            this.fpsPanel.dom.parentNode.removeChild(this.fpsPanel.dom);
+        }
+        // Optionally null out the reference
+        this.fpsPanel = null;
+
+        if (this.styleTag) {
+            this.styleTag.remove();
+            this.styleTag = null;
+        }
     }
 
     async loadItems() {
@@ -41,7 +257,7 @@ export default class UIManager {
         }
     }
 
-    update(dt, actions, uiState) {
+    update(dt, actions) {
         for (const e of this.world.query(ECT.GAMEPLAY)) {
             this.updateHP(e);
         }
@@ -50,7 +266,7 @@ export default class UIManager {
         }
 
         if (!actions) return;
-        if (actions.toggleInventory) this.toggleInventory(uiState);
+        if (actions.toggleInventory) this.toggleInventory();
         if (actions.Item1) this.highlightSelectedSlot(1);
         if (actions.Item2) this.highlightSelectedSlot(2);
         if (actions.Item3) this.highlightSelectedSlot(3);
@@ -60,13 +276,13 @@ export default class UIManager {
         if (actions.Item7) this.highlightSelectedSlot(7);
     }
 
-    toggleInventory(uiState){
-        uiState.isInventoryOpen = !uiState.isInventoryOpen;
+    toggleInventory(){
+        this.uiState.isInventoryOpen = !this.uiState.isInventoryOpen;
 
         const inventoryContainer = document.getElementById("inventory-grid-container");
-        inventoryContainer.style.display = uiState.isInventoryOpen ? "block" : "none";
+        inventoryContainer.style.display = this.uiState.isInventoryOpen ? "block" : "none";
         
-        if (uiState.isInventoryOpen) {
+        if (this.uiState.isInventoryOpen) {
             document.exitPointerLock?.();
         } else {
             this.game.canvas.requestPointerLock?.(); // request lock on canvas

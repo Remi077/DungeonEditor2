@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import Stats from "stats.js";
 
 import { GAMESTATES } from '../Infra/GameStateManager.js';
 import { CHARACTER_TYPES } from '../Constants.js';
@@ -8,14 +7,6 @@ export default class GameState {
     constructor(game) {
         this.game = game;
         this.world = game.world; //contains the entities
-
-        this.crosshair = null;
-        this.healthContainer = null;
-        this.healthBar = null;
-        this.hotbar = null;
-        this.inventoryContainer = null;
-
-        this.styleTag = null;
 
         this.KeyToActionMap = {
             "KeyD": "moveCamRight",
@@ -44,16 +35,6 @@ export default class GameState {
             0: "attack",
         }
 
-        //substate: inventory open
-        this.uiState = {
-            isInventoryOpen : false,
-            isPointerLocked : true,
-        }
-
-        //stats
-        this.fpsPanel = new Stats();//extra fps panel
-        this.fpsPanel.showPanel(0);//fps
-
         this.player = null; // player handle
         this.targetPos = new THREE.Vector3();
 
@@ -66,188 +47,13 @@ export default class GameState {
     }
 
     onEnter() {
-        // ---------------------------
-        // Inject CSS for this state
-        // ---------------------------
-        this.styleTag = document.createElement('style');
-        this.styleTag.textContent = `
-            #crosshair {
-                position: absolute;
-                color: white;
-                font-size: 24px;
-                pointer-events: none;
-                z-index: 10;
-                display: block;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-            }
-
-            #health-container {
-                position: fixed;
-                top: 20px;
-                left: 20px;
-                width: 200px;
-                height: 20px;
-                background: #300;
-                border: 2px solid #900;
-                border-radius: 4px;
-            }
-
-            #health-bar {
-                width: 100%;
-                height: 100%;
-                background: #0f0;
-                transition: width 0.2s ease-out;
-            }
-
-            #hotbar {
-                position: absolute;
-                bottom: 20px;
-                left: 50%;
-                transform: translateX(-50%);
-                display: flex;
-                gap: 12px;
-                padding: 10px 16px;
-                background: rgba(0, 0, 0, 0.45);
-                border-radius: 10px;
-                backdrop-filter: blur(4px);
-            }
-
-            .slot {
-                width: 64px;
-                height: 64px;
-                background: rgba(255,255,255,0.15);
-                border: 2px solid rgba(255,255,255,0.2);
-                border-radius: 6px;
-                position: relative;
-            }
-
-            .slot.selected {
-                border: 2px solid white;
-                box-shadow: 0 0 8px white;
-            }
-
-            #inventory-grid-container {
-                position: absolute;
-                bottom: 100px;
-                left: 50%;
-                transform: translateX(-50%);
-                padding: 12px;
-                background: rgba(0,0,0,0.7);
-                border-radius: 10px;
-                display: none;
-                z-index: 100;
-            }
-
-            #inventory-grid {
-                display: grid;
-                grid-template-columns: repeat(8, 64px);
-                grid-template-rows: repeat(4, 64px);
-                gap: 8px;
-            }
-
-            .inv-slot {
-                width: 64px;
-                height: 64px;
-                background: rgba(255,255,255,0.1);
-                border: 2px solid rgba(255,255,255,0.2);
-                border-radius: 6px;
-                position: relative;
-                cursor: pointer;
-            }
-
-            .inv-slot .icon {
-                width: 100%;
-                height: 100%;
-                background-image: url("./assets/textures/items.png");
-                background-size: 128px 128px;
-                background-repeat: no-repeat;
-                background-position -9999px -9999px;
-            }
-
-            .inv-slot .count {
-                position: absolute;
-                bottom: 4px;
-                right: 6px;
-                font-size: 16px;
-                color: white;
-                text-shadow: 0 0 4px black;
-            }
-        `;
-        document.head.appendChild(this.styleTag);
-
-        // -------------------------
-        // Locate canvas-container
-        // -------------------------
-        const canvasContainer = this.game.canvasContainer;
-
-        // =========== CROSSHAIR ===========
-        this.crosshair = document.createElement('div');
-        this.crosshair.id = 'crosshair';
-        this.crosshair.textContent = '+';
-        canvasContainer.appendChild(this.crosshair);
-
-        // =========== HEALTH BAR ===========
-        this.healthContainer = document.createElement('div');
-        this.healthContainer.id = 'health-container';
-
-        this.healthBar = document.createElement('div');
-        this.healthBar.id = 'health-bar';
-        this.healthContainer.appendChild(this.healthBar);
-
-        canvasContainer.appendChild(this.healthContainer);
-
-        // =========== HOTBAR ===========
-        this.hotbar = document.createElement('div');
-        this.hotbar.id = 'hotbar';
-        for (let i = 0; i < 7; i++) {
-            const slot = document.createElement('div');
-            slot.className = 'slot';
-            slot.dataset.index = i;
-            this.hotbar.appendChild(slot);
-        }
-        canvasContainer.appendChild(this.hotbar);
-
-        // =========== INVENTORY GRID ===========
-        this.inventoryContainer = document.createElement('div');
-        this.inventoryContainer.id = 'inventory-grid-container';
-
-        const grid = document.createElement('div');
-        grid.id = 'inventory-grid';
-
-        for (let i = 0; i < 32; i++) {
-            const slot = document.createElement('div');
-            slot.className = 'inv-slot';
-
-            const icon = document.createElement('div');
-            icon.className = 'icon';
-
-            // slot.appendChild(icon);
-            grid.appendChild(slot);
-        }
-
-        this.inventoryContainer.appendChild(grid);
-        canvasContainer.appendChild(this.inventoryContainer);
-
-        // --- extra FPS Panel ---
-        this.fpsPanel = new Stats();//extra fps panel
-        this.fpsPanel.showPanel(0);//fps
-        const fpsPanel = this.fpsPanel;
-        Object.assign(fpsPanel.dom.style, {
-            position: 'absolute',
-            top: '100px',
-            left: 'auto',
-            right: '100px',
-            margin: '0',
-            transform: 'scale(2)',
-            transformOrigin: 'top right'
-        });
-        this.game.mainContainer.appendChild(fpsPanel.dom);
 
         // lock pointer on click canvas
         const canvas = this.game.canvas;
         canvas.requestPointerLock();
+
+        // show game UI
+        this.game.systems.uiManager.showGameUI();
 
         //clear all game actions
         this.actions = {};
@@ -333,20 +139,8 @@ export default class GameState {
     }
 
     onExit() {
-        if (this.crosshair) this.crosshair.remove();
-        if (this.healthContainer) this.healthContainer.remove();
-        if (this.hotbar) this.hotbar.remove();
-        if (this.inventoryContainer) this.inventoryContainer.remove();
-        if (this.fpsPanel && this.fpsPanel.dom && this.fpsPanel.dom.parentNode) {
-            this.fpsPanel.dom.parentNode.removeChild(this.fpsPanel.dom);
-        }
-        // Optionally null out the reference
-        this.fpsPanel = null;
-
-        if (this.styleTag) {
-            this.styleTag.remove();
-            this.styleTag = null;
-        }
+        //hide game UI
+        this.game.uiManager.hideGameUI();
 
         //input management
         this.game.input.clearAllListeners(); //cleanup
@@ -377,7 +171,7 @@ export default class GameState {
             return;
         }
 
-        if (this.uiState.isInventoryOpen) return;
+        if (this.game.systems.uiManager.uiState.isInventoryOpen) return;
         const action = this.MouseToActionMap[e.button];
         if (action) this.mouseActions[action] = true;
     }
@@ -388,7 +182,9 @@ export default class GameState {
     }
 
     mousemove(e) {
-        if (this.uiState.isInventoryOpen || !this.uiState.isPointerLocked) return;
+        const uiState = this.game.systems.uiManager.uiState;
+        if (uiState.isInventoryOpen || 
+            !uiState.isPointerLocked) return;
         this.game.systems.cameraManager.mousemove(e.movementX, e.movementY);
     }
 
@@ -401,21 +197,24 @@ export default class GameState {
 
     pointerlockchange(e) {
         const isLocked = document.pointerLockElement === this.game.canvas;
-        this.uiState.isPointerLocked = isLocked;
+        this.game.systems.uiManager.uiState.isPointerLocked = isLocked;
+        const crosshair = this.game.systems.uiManager.crosshair;
         if (isLocked) {
-            this.crosshair.style.display = "block";
+            crosshair.style.display = "block";
         } else {
-            this.crosshair.style.display = "none";
+            crosshair.style.display = "none";
         }
     }    
 
     update(dt) {
 
         //fps counter
-        this.fpsPanel.begin(); // start measuring frame
+        const fpsPanel = this.game.systems.uiManager.fpsPanel;
+        fpsPanel.begin(); // start measuring frame
 
         const actions = { ...this.actions, ...this.actionsOnce, ...this.mouseActions };
-        const enableMovement = !this.uiState.isInventoryOpen
+        const uiState = this.game.systems.uiManager.uiState;
+        const enableMovement = !uiState.isInventoryOpen
         
         //update every system
         //the order is important here, because some colliders are animation driven (weapons, doors...)
@@ -456,7 +255,8 @@ export default class GameState {
         renderer.setViewport(0, 0, canvasContainer.clientWidth, canvasContainer.clientHeight);//TODO: you just need to do that once?
         renderer.render(scene, camera);
 
-        this.fpsPanel.end(); //end measuring frame
+        const fpsPanel = this.game.systems.uiManager.fpsPanel;
+        fpsPanel.end(); //end measuring frame
     }
 
 }
