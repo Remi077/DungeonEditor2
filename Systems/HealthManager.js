@@ -1,4 +1,5 @@
 import { ECT } from '../Entities/Entity.js';
+import GameStateManager, { GAMESTATES } from '../Infra/GameStateManager.js';
 
 export default class HealthManager {
     constructor(game) {
@@ -13,11 +14,16 @@ export default class HealthManager {
             const isPlayer = e.playerCtrl;
             const mv = e.movement;
 
+            // console.log(e.name, gp.isHurt, gp.invincibility)
             //is player alive?
             if (gp.health <= 0) {
                 if (isPlayer) this.game.stateManager.setState(GAMESTATES.GAMEOVER);
-            } else if (gp.isHurt) {
+            } else if (gp.isHit) {
                 this.hurt(e, gp.perpetrator)
+                //we've processed the hit 
+                //now reset hit state
+                gp.isHit = false;
+                gp.perpetrator = null;
             }
 
             // update invincibility status
@@ -40,8 +46,12 @@ export default class HealthManager {
         const gp = target.gameplay;
         if (gp.invincibility || gp.health <= 0) return;
         gp.invincibility = true;
+        // gp.health -= 50;
         gp.health -= 10;
-        
+        gp.isHurt = true;
+        console.log("OUCH")
+        console.log(target.name, "was hurt by", source.name)
+
         //cancel attack
         const att = target?.attack;
         if (att) att.isAttacking = false; //cancel the attack on hurt
@@ -56,10 +66,6 @@ export default class HealthManager {
             hitRepulsionForce.normalize().multiplyScalar(mv.maxHitRepulsionForce);
             mv.hitRepulsionForce.copy(hitRepulsionForce);
         }
-
-        //reset hurt state
-        gp.isHurt = false;
-        gp.perpetrator = null;
         gp.timeSinceLastHit = 0;
 
     }

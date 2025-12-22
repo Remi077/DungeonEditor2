@@ -34,7 +34,7 @@ export default class CapsuleColliderComponent {
         this.isAtSurface = false;
 
         //when set the body/collider will be removed
-        this.toremove = false; 
+        this.toRemove = false; 
     }
 
 }

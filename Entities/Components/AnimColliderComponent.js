@@ -18,7 +18,7 @@ export default class AnimColliderComponent {
         this.offsetRootToBody = null;
 
         //when set the body/collider will be removed
-        this.toremove = false;         
+        this.toRemove = false;         
     }
 }
 

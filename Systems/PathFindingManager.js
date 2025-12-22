@@ -12,6 +12,7 @@ export default class PathFindingManager {
         this.currentPos = new THREE.Vector3();
         this.newEuler = new THREE.Euler();
         this.zone = "level";
+        this.targetQuat = new THREE.Quaternion();
     }
 
     async loadNavMesh(path) {
@@ -56,7 +57,7 @@ export default class PathFindingManager {
         const moveVector = mv.moveVector;
         const newRotation = tr.rotation;
         const pathbuffer = pf.pathbuffer;
-        const currentPos = tr.positionRoot
+        const currentPos = tr.positionCenter
         const offsetRootToBody = col.offsetRootToBody;
 
         const withinReach = currentPos.distanceTo(targetPos) < withinDistance;
@@ -122,12 +123,14 @@ export default class PathFindingManager {
                     pathbuffer.shift();
                 } else {
                     dir.normalize();
-                    const desiredStep = dir.clone().multiplyScalar(mv.moveSpeed);
-                    moveVector.copy(desiredStep);
+                    const desiredStep = dir.clone();
+                    // const desiredStep = dir.clone().multiplyScalar(mv.moveSpeed);
+                    moveVector.copy(dir);
 
                     const yaw2 = Math.atan2(desiredStep.x, desiredStep.z);
                     this.newEuler.set(0, yaw2, 0, "YXZ");
-                    newRotation.setFromEuler(this.newEuler);
+                    this.targetQuat.setFromEuler(this.newEuler);
+                    newRotation.slerp(this.targetQuat, 0.1); // 0.0–1.0
                 }
             } else {
                 // console.log("NO MORE PATH");
@@ -157,7 +160,7 @@ export default class PathFindingManager {
         const toTarget = targetPos.clone().sub(currentPos);
         toTarget.y = 0; // <-- remove pitch
         toTarget.normalize();
-        toTarget.multiplyScalar(mv.moveSpeed);
+        // toTarget.multiplyScalar(mv.moveSpeed);
         if (updatePos) moveVector.copy(toTarget);
 
         const yaw = Math.atan2(toTarget.x, toTarget.z); // Compute yaw angle from direction (THREE uses Z-forward)

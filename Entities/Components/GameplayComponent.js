@@ -13,6 +13,7 @@ export default class GameplayComponent {
 
         //hurt related
         this.invincibility = false;
+        this.isHit = false;
         this.isHurt = false;
         this.perpetrator = false;
         this.timeSinceLastHit = 0;

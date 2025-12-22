@@ -19,7 +19,7 @@ export default class AIComponent {
         
         //fsm control
         this.timeSinceChangedState = 0;
-        this.animationFinished = false;
+        this.animationFinished = new Map();
 
         //constant
         this.enemyAttackDistance = 1.1; //default (should be set by prefab)

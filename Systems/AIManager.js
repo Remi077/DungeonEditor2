@@ -11,7 +11,8 @@ export const ENEMY_STATES = {
     ATTACK: 4,
     HURT: 5,
     SEARCH: 6,
-    DEATH: 7
+    DEATH: 7,
+    DESPAWN: 8
 };
 
 export default class AIManager {
@@ -54,11 +55,18 @@ export default class AIManager {
             ai.timeSinceLastSightCheck += dt;
         }
 
+        const previousState = ai.enemyState;
+
         //is enemy alive
-        if (gp.health <= 0) ai.enemyState = ENEMY_STATES.DIE;
-        else if (gp.isHurt) ai.enemyState = ENEMY_STATES.HURT;
-        if (gp.isHurt) ai.timeSinceChangedState = 0;
-        gp.isHurt = false;
+        if (
+            ai.enemyState !== ENEMY_STATES.DEATH &&
+            ai.enemyState !== ENEMY_STATES.DESPAWN
+        ) {
+            if (gp.health <= 0) ai.enemyState = ENEMY_STATES.DEATH;
+            else if (gp.isHurt) ai.enemyState = ENEMY_STATES.HURT;
+            if (gp.isHurt) ai.timeSinceChangedState = 0;
+            gp.isHurt = false;
+        }
 
         // enemy state machine
 
@@ -86,7 +94,7 @@ export default class AIManager {
                 inReach = pf.moveEntityToWithin(e, targetPos, 1, dt);
                 if (inReach)
                     this.rotateLeft(ai.patrolPath)
-                //if detects player go to chase
+                // if detects player go to chase
                 if (ai.playerSeen) {
                     ai.enemyState = ENEMY_STATES.CHASE;
                 }
@@ -105,10 +113,10 @@ export default class AIManager {
                     ai.enemyState = ENEMY_STATES.ATTACK;
                 //if line of sight breaks for a certain time, search
                 if (!ai.playerSeen) {
-                    console.log("timeSinceLastSeen", ai.timeSinceLastSeen)
+                    // console.log("timeSinceLastSeen", ai.timeSinceLastSeen)
                     ai.timeSinceLastSeen += dt;
                     if (ai.timeSinceLastSeen > 1) {
-                        console.log("SEARCH");
+                        // console.log("SEARCH");
                         ai.enemyState = ENEMY_STATES.SEARCH;
                         if (1) Debug.drawDebugSpheres(
                             [ai.lastSeenPlayerPosition],
@@ -125,24 +133,27 @@ export default class AIManager {
                 targetPos = this.game.yawObject.position.clone();
                 inReach = pf.moveEntityToWithin(e, targetPos, ai.enemyAttackDistance, dt);
                 const att = e.attack;
-                if (!att.isAttacking || ai.animationFinished) {
+                if (!att.isAttacking || ai.animationFinished.get(ENEMY_STATES.ATTACK)) {
                     console.log("ATTACK")
                     att.isAttacking = true;
                     att.timeSinceStartAttack = 0;
-                    ai.animationFinished = false;
                 }
                 if (!inReach){
                     console.log("OUTOFREACH")
                     att.isAttacking = false;
-                    ai.animationFinished = false;
                     ai.enemyState = ENEMY_STATES.CHASE;
                 }
+                ai.animationFinished.set(ENEMY_STATES.ATTACK,false);
                 break;
 
             case ENEMY_STATES.HURT:
+                // console.trace("HURT")
                 moveVector.set(0,0,0);
-                if (gp.timeSinceLastHit > 1) {
+                // if (gp.timeSinceLastHit > 1) {
+                if (ai.animationFinished.get(ENEMY_STATES.HURT)) {
+                    gp.isHurt = false;//set by healthmanager, reset here TOFIX
                     ai.timeSinceChangedState = 0;
+                    ai.animationFinished.set(ENEMY_STATES.HURT,false);
                     ai.enemyState = ENEMY_STATES.CHASE;
                 }
                 break;
@@ -164,15 +175,21 @@ export default class AIManager {
                 break;
 
             case ENEMY_STATES.DEATH:
+                // console.log("DEATH168")
                 gp.invincibility = true;
                 moveVector.set(0,0,0);
-                //do nothing anymore (despawn?)
+                if (ai.animationFinished.get(ENEMY_STATES.DEATH)) 
+                    ai.enemyState = ENEMY_STATES.DESPAWN;
+                break;
+
+            case ENEMY_STATES.DESPAWN:
+                this.disableEntity(e);                
                 break;
         }
 
         ai.timeSinceChangedState += dt;
 
-        this.updateDesiredAnimation(e);
+        this.updateDesiredAnimation(e,previousState);
         this.updateHeadTarget(e);
     
        }
@@ -183,6 +200,7 @@ export default class AIManager {
         arr.push(arr.shift());
     }
 
+    ///TOFIX: move this elsewhere
     canEnemySeeTarget(e, targetEntity, sightDistance = 10, fovDegrees = 90) {
 
         //get target middle body and entity eye positions
@@ -194,12 +212,11 @@ export default class AIManager {
         const eyes = tr.positionCenter;
         eyes.y += ((col.capsuleTotalHeight/2) * 0.9);
     
-    
-        // 1️⃣ Early exit: too far
+        // 1) Early exit: too far
         const dist = targetPos.distanceTo(eyes);
         if (dist > sightDistance) return false;
     
-        // 2️⃣ Check FOV
+        // 2) Check FOV
         const enemyRotation = tr.rotation;
         const enemyForward = this.forward.set(0,0,1).applyQuaternion(enemyRotation);
         const toTarget = targetPos.clone().sub(eyes).normalize();
@@ -213,12 +230,12 @@ export default class AIManager {
             if (angle > THREE.MathUtils.degToRad(fovDegrees / 2)) return false; // outside FOV
         }
         
-        // 3️⃣ Collect raycastable objects
+        // 3) Collect raycastable objects
         const visibleTargets = this.game.systems.levelFactory.getRaycastTargets(true, true, true);//static, actionnables and characters
         const targetMesh = targetEntity.visual.root;
         visibleTargets.push(targetMesh); //add player
 
-        // 4️⃣ Raycast from enemy to target
+        // 4) Raycast from enemy to target
         // Setup ray from enemy to target
         const origin = eyes;
         const direction = targetPos.clone().sub(origin).normalize();
@@ -235,7 +252,7 @@ export default class AIManager {
         // this.game.scene.add(ai.debugLine);
 
 
-        // 5️⃣ Check if first hit is the target or its descendant    
+        // 5) Check if first hit is the target or its descendant    
         // Check if the first hit is target or a descendant of target
         let hitObj = intersects[0].object;
         // console.log("!!!ENEMY" + e.name + "sees " + hitObj.name);
@@ -269,47 +286,77 @@ export default class AIManager {
         }
     }
 
-    updateDesiredAnimation(e){
+    updateDesiredAnimation(e, previousState){
         const an = e.animator;
         if (!an) return;
         const ai = e.ai;
 
+        const fadeAmount = 0.4;
+
         switch (ai.enemyState) {
 
             case ENEMY_STATES.IDLE:    
-                an.desiredAnimation.set(Constants.ANIM.IDLE,{play:true});
+                an.desiredAnimation.set(Constants.ANIM.WALK,{stop:true, 
+                    fadeOut:fadeAmount
+                });
+                an.desiredAnimation.set(Constants.ANIM.IDLE,{play:true, loop:true, 
+                    fadeIn:fadeAmount
+                });
             break;
 
             case ENEMY_STATES.PATROL :
             case ENEMY_STATES.CHASE : 
             case ENEMY_STATES.SEARCH:
-                an.desiredAnimation.set(Constants.ANIM.WALK,{play:true});
+                an.desiredAnimation.set(Constants.ANIM.IDLE,{stop:true, 
+                    fadeOut:fadeAmount
+                });
+                an.desiredAnimation.set(Constants.ANIM.WALK,{play:true, loop:true,
+                    fadeIn:fadeAmount
+                });
                 break;
 
             case ENEMY_STATES.ATTACK:  
+                //TOFIX //maybe do one switch per anim instead 
+                an.desiredAnimation.set(Constants.ANIM.WALK,{stop:true});
+                
                 an.desiredAnimation.set(Constants.ANIM.ATTACK,{play:true,
                     callback: (() => {
-                        ai.animationFinished = true;
+                        ai.animationFinished.set(ENEMY_STATES.ATTACK,true);
                     }),
                 });
                 break;
 
             case ENEMY_STATES.HURT:    
+                //TOFIX
+                if (previousState === ENEMY_STATES.HURT) return;
+                console.log("PLAY HURT");
+                //TOFIX
+                an.desiredAnimation.set(Constants.ANIM.ATTACK,{stop:true});
+                an.desiredAnimation.set(Constants.ANIM.IDLE,{stop:true}); 
+                an.desiredAnimation.set(Constants.ANIM.WALK,{stop:true});
+
                 an.desiredAnimation.set(Constants.ANIM.HURT,{play:true,
-                    repeat: true,
                     callback: (() => {
-                        ai.animationFinished = true;
+                        ai.animationFinished.set(ENEMY_STATES.HURT,true);
                     }),
                 });
                 break;
 
             case ENEMY_STATES.DEATH:
+                //TOFIX
+                if (previousState === ENEMY_STATES.DEATH) return;//avoid rekicking the death animation
                 // an.stop(e, Constants.ANIM.ATTACK);
+                an.desiredAnimation.set(Constants.ANIM.WALK,{stop:true});
+                an.desiredAnimation.set(Constants.ANIM.ATTACK,{stop:true});
+                an.desiredAnimation.set(Constants.ANIM.HURT,{stop:true});
                 an.desiredAnimation.set(Constants.ANIM.DIE,{play:true,
+                    clampWhenFinished: true,
                     callback: (() => {
-                        this.disableEntity(e); //TOFIX
+                        ai.animationFinished.set(ENEMY_STATES.DEATH,true);
                     }),
                 });                
+                break;
+            case ENEMY_STATES.DESPAWN:
                 break;
         }
     }
@@ -331,11 +378,13 @@ export default class AIManager {
         }
     }
 
-
     disableEntity(e) {
         const col = e.capsuleCol;
-        if (col) col.toremove = true; //schedule body/collider to be removed
-        this.world.setActive(e, false); //remove entity from world queries
+        if (col) col.toRemove = true; //schedule body/collider to be removed
+        const animcol = e.animCol;
+        if (animcol) animcol.toRemove = true;
+        e.toDisable = true;//mark the entity for disabling
+        // this.world.setActive(e, false); //remove entity from world queries
     }
 
 

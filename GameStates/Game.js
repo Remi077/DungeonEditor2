@@ -303,7 +303,7 @@ export default class GameState {
             this.player.gameplay.healthBar = this.healthBar;
 
             const spawnPoints = this.game?.systems?.levelFactory?.enemySpawnGroup;
-            let num = 0;
+            let num = 1;
             for (const spawnPoint of spawnPoints.children){
                 num --;
                 if (num < 0) return;
@@ -424,8 +424,8 @@ export default class GameState {
         this.game.systems.collisionManager.update(dt);//calculate collisions, sync mesh and schedule bodies
         this.game.systems.animatorManager.update(dt); //update animated bone/mesh position, use desired animations
         this.game.systems.collisionManager.updateAnimCollider(dt); //sync the animation driven collider to their respective mesh (schedule) 
-        this.game.systems.collisionManager.updateAttack(dt);//attack component test for collision (attack)
         this.game.systems.collisionManager.step(dt); //step the collision world
+        this.game.systems.collisionManager.updateAttack(dt);//attack component test for collision (attack)
 
         //order not important here
         this.game.systems.healthManager.update(dt); //update health and status (hurt, invincible) of entities
@@ -436,6 +436,9 @@ export default class GameState {
         //misc actions
         if (actions.startEditor) this.game.stateManager.setState(GAMESTATES.EDITOR);
         if (actions.hideCol) {this.game.systems.collisionManager.toggle();};
+
+        //cleanup the entities marked for disabling
+        this.world.cleanup();
 
         //clear the onpress/onrelease actions now that they have been sampled
         //in that loop to avoid resampling

@@ -66,7 +66,7 @@ export default class PlayerControlManager {
                 loop: true,
             })
         } else {
-            anim.desiredAnimation.set(Constants.ANIM.WALK_L,{play: false});
+            anim.desiredAnimation.set(Constants.ANIM.WALK_L,{stop: true});
         }
 
         if (actions.attack && !e.attack.isAttacking) {

@@ -143,9 +143,10 @@ export default class LevelFactory {
 
                 const mixer = new THREE.AnimationMixer(child);
 
-                const animator = new AnimatorComponent(null, mixer);
+                // const animator = new AnimatorComponent(null, mixer);
 
                 // Add relevant clips for this node
+                const animationClips = new Map();
                 for (const clip of this.gltf.animations) {
                     const filtered = clip.clone();
 
@@ -155,18 +156,13 @@ export default class LevelFactory {
                     );
 
                     if (filtered.tracks.length > 0) {
-                        const action = mixer.clipAction(filtered);
-                        action.setLoop(THREE.LoopOnce, 0);
-                        action.clampWhenFinished = true;
-                        animator.animationClips.set(clip.name, filtered);
-                        animator.animationActions.set(
-                            clip.name,
-                            action
-                        );
+                        animationClips.set(clip.name, filtered);
                     }
                 }
+                const animatorManager = this.game.systems.animatorManager;
+                const anim = animatorManager.createAnimatorComponent(null, mixer, animationClips);
+                this.world.addComponent(e, anim);
 
-                this.world.addComponent(e, animator);
             }
             
             //body component

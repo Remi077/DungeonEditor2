@@ -97,4 +97,13 @@ export default class World {
         return this.activeEntities.has(entity);
     }
 
+    cleanup() {
+        for (const e of this.activeEntities) {
+            if (e.toDisable) {
+                this.setActive(e, false);
+                e.toDisable = false;
+            }
+        }
+    }
+
 }

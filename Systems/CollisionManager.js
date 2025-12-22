@@ -51,6 +51,8 @@ export default class CollisionManager {
         this.debugPosAttr = new THREE.BufferAttribute(this.debugPositions, 3);
         this.debugColorAttr = new THREE.BufferAttribute(this.debugColors, 3);
 
+        this.count = 0;
+
     }
 
     async init(scene) {
@@ -496,15 +498,15 @@ export default class CollisionManager {
     cleanupEntity(e){
         if (e.capsuleCol) {
             const col = e.capsuleCol;
-            if (col.toremove) {
-                col.toremove = false;
+            if (col.toRemove) {
+                col.toRemove = false;
                 this.scheduleRemoval(col.body, col.collider);
             }
         }
         if (e.animCol) {
             const animCol = e.animCol;
-            if (animCol.toremove) {
-                animCol.toremove = false;
+            if (animCol.toRemove) {
+                animCol.toRemove = false;
                 this.scheduleRemoval(animCol.body, animCol.collider);
             }
         }
@@ -598,11 +600,17 @@ export default class CollisionManager {
                     callback: ((otherCollider) => {
                         const colentity = otherCollider?.userData?.[Constants.USER_DATA_FIELDS.COLLIDER_ENTITY];
                         if (colentity){
+                            this.count++;
+                            if (this.count % 2 == 0)
+                                console.log("");
                             console.log(e.name, "hit something", colentity.name)
                             const gp = colentity.gameplay;
                             if (gp){
-                                    gp.isHurt = true; //register hurt
-                                    gp.perpetrator = e;
+                                    if (!gp.isHit){//prevent multiple callback that would reset gp.isHit to true at weird moments
+                                        console.log(e.name, "hit", colentity.name)
+                                        gp.isHit = true; //register hit
+                                        gp.perpetrator = e;
+                                    }
                                 }
                         }
                     })

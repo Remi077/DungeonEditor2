@@ -19,9 +19,15 @@ export default class AnimatorManager {
         clips.forEach((clip, name) => {
             anim.animationClips.set(name, clip);
             const action = mixer.clipAction(clip);
-            anim.animationActions.set(name, action);
+            anim.animationActions.set(name, 
+                {
+                    action: action,
+                    isFadingOut: false,
+                }
+            );
         });
-        anim.headBone = skeleton.getBoneByName(Constants.HEAD_BONE_NAME); //TODO: put in constant
+        if (skeleton)
+            anim.headBone = skeleton.getBoneByName(Constants.HEAD_BONE_NAME); //TODO: put in constant
         return anim;
     }
 
@@ -33,6 +39,7 @@ export default class AnimatorManager {
             //update animation
             const desiredAnimations = e.animator?.desiredAnimation;
             if (desiredAnimations) desiredAnimations.forEach((options, clipName) => this.play(e, clipName, options));
+            
             desiredAnimations.clear();
 
             //update head rotation
@@ -41,20 +48,39 @@ export default class AnimatorManager {
         }
     }
 
+
+    //options available
+    //play
+    //stop
+    //fadeIn
+    //fadeOut
+    //callback
+    //reverse
+    //loop
+    //clampWhenFinished
+
     play(e, clipName, options) {
 
-        const anim = e.animator;
-
-        if (!clipName) clipName = anim.animationActions.keys().next().value; //defaults to first action
         const play = options?.play;
+        const stop = options?.stop;
+        
+        //nor play nor stop nothing to do
+        if (!play && !stop) 
+            console.warn("play and stop are both unset for entity", e.name, " and clipName", clipName);
 
-        const action = anim.animationActions.get(clipName);
-        if (!action) console.warn("Animation not found:", clipName);
-        if (!action) return;
+        const anim = e.animator;
+        if (!clipName) clipName = anim.animationActions.keys().next().value; //defaults to first action
+
+        const actionOb = anim.animationActions.get(clipName);
+        if (!actionOb) console.warn("Animation not found:", clipName);
+        if (!actionOb) return;
+
+        const action = actionOb.action;
+        const isFadingOut = actionOb.isFadingOut;
 
         if (
             (play  && action.isRunning() ) || //already running (force replay if reset)
-            (!play && !action.isRunning())    //already stopped
+            (stop  && (!action.isRunning() || isFadingOut))    //already stopped or fading out
         ) return;
 
         if (play) {
@@ -84,7 +110,12 @@ export default class AnimatorManager {
 
             if (!reverse) action.reset();//reset action only if play forward
 
-            action.play(); //play action
+            const fadeIn = options?.fadeIn;
+            if (fadeIn)
+                action.play().fadeIn(fadeIn);//fadeIn is a duration
+            else
+                action.play(); //play action
+            actionOb.isFadingOut = false;
 
             const mixer = action.getMixer()
             const onFinished = (e) => {
@@ -94,8 +125,21 @@ export default class AnimatorManager {
             };
             mixer.addEventListener("finished", onFinished);
 
-        } else {
-            action.stop();
+        } else if (stop) {
+            const fadeOut = options?.fadeOut;
+
+            if (fadeOut) {
+                action.fadeOut(fadeOut);
+                actionOb.isFadingOut = true;
+
+                setTimeout(() => {
+                action.stop();
+                // action.enabled = false;
+                // action.setEffectiveWeight(0);
+                }, fadeOut * 1000);
+            } else {
+                action.stop();
+            }
         }
 
     }
@@ -128,7 +172,8 @@ export default class AnimatorManager {
         this.targetQuat.setFromUnitVectors(this.forward, dir);
 
         // Smooth head motion
-        headBone.quaternion.slerp(this.targetQuat, 0.8);
+        headBone.quaternion.slerp(this.targetQuat, 0.7);
+        // headBone.quaternion.slerp(this.targetQuat, 0.1);
 
         // If you don’t want Exorcist-like twists:
         let c = 0.7;

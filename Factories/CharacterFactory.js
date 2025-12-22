@@ -280,6 +280,7 @@ export default class CharacterFactory {
             //adjust mesh position wrt to the capsule collider here
             vs.offsetRotation.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
             vs.offsetPosition.set(0,0,-0.07);
+            vs.slerpRotation = 1;
         }
 
         // 2. Traverse cloned root to find skeleton
@@ -325,13 +326,6 @@ export default class CharacterFactory {
         //AnimatorComponent
         const animatorManager = this.game.systems.animatorManager;
         const anim = animatorManager.createAnimatorComponent(clonedSkeleton, mixer, prefab.animationClips);
-        // const anim = new AnimatorComponent(clonedSkeleton,mixer);
-        // prefab.animationClips.forEach((clip, name) => {
-        //     anim.animationClips.set(name, clip);
-        //     const action = mixer.clipAction(clip);
-        //     anim.animationActions.set(name, action);
-        // });
-        // anim.headBone = clonedSkeleton.getBoneByName("mixamorigHead"); //TODO: put in constant
 
         /*--------------------*/
         /*--------------------*/
@@ -362,7 +356,7 @@ export default class CharacterFactory {
         //add components
         this.world.addComponent(e, vs);
         this.world.addComponent(e, new TransformComponent());
-        this.world.addComponent(e, new MovementComponent());
+        this.world.addComponent(e, mv);
         this.world.addComponent(e, anim);
         this.world.addComponent(e, col);
         this.world.addComponent(e, gp);
