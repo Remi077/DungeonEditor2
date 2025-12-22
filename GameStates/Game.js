@@ -140,7 +140,7 @@ export default class GameState {
 
     onExit() {
         //hide game UI
-        this.game.uiManager.hideGameUI();
+        this.game.systems.uiManager.hideGameUI();
 
         //input management
         this.game.input.clearAllListeners(); //cleanup
