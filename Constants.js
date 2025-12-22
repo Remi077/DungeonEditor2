@@ -109,6 +109,8 @@ export const GLB_PREFIX = {
 
     TRIGGER : 'Trigger',
 
+    TRIMESH : 'Trimesh',
+
     WEAPON : 'weapon',
 
 }

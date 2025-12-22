@@ -142,6 +142,26 @@ export default class CollisionManager {
         return col;
     }
 
+    createTriMeshColliderFromMesh(mesh, colgroup) {
+        const geom = mesh.geometry.clone();
+        geom.applyMatrix4(mesh.matrixWorld);
+
+        const position = geom.attributes.position.array;
+        const index = geom.index
+            ? geom.index.array
+            : [...Array(position.length / 3).keys()];
+
+        // return { vertices: position, indices: index };  
+        // const trimesh = { vertices: position, indices: index };
+
+
+        const colliderDesc = RAPIER.ColliderDesc.trimesh(position, index);
+        colliderDesc.setCollisionGroups(colgroup);
+
+        this.rapierWorld.createCollider(colliderDesc);
+
+    }
+
     createCollider(options, rigidBody) {
         const col = this.rapierWorld.createCollider(options, rigidBody);
         this.colliders.set(col.handle, col);

@@ -22,6 +22,7 @@ export default class LevelFactory {
         this.enemySpawnGroup = new THREE.Group();
         this.rigGroup = new THREE.Group();
         this.colliderGroup = new THREE.Group();
+        this.trimeshGroup = new THREE.Group();
         this.triggerGroup = new THREE.Group();
 
         this.loaded = false;
@@ -41,6 +42,7 @@ export default class LevelFactory {
         Array.from(gltf.scene.children).forEach(child => {
             if (child.isLight) this.lightGroup.add(child);
             else if (child.name.startsWith(Constants.GLB_PREFIX.COLLIDER)) this.colliderGroup.add(child);
+            else if (child.name.startsWith(Constants.GLB_PREFIX.TRIMESH)) this.trimeshGroup.add(child);
             else if (child.name.startsWith(Constants.GLB_PREFIX.TRIGGER)) this.triggerGroup.add(child);
             else if (child.name.startsWith(Constants.GLB_PREFIX.ACTION)) this.actionnablesGroup.add(child);
             else if (child.name.startsWith(Constants.GLB_PREFIX.ENEMY)) this.enemySpawnGroup.add(child);
@@ -93,6 +95,10 @@ export default class LevelFactory {
             } else {
                 this.collision.createStaticColliderFromMesh(child, Constants.COL_MASKS.SCENERY);
             }
+        });
+
+        Array.from(this.trimeshGroup.children).forEach(child => {
+           this.collision.createTriMeshColliderFromMesh(child, Constants.COL_MASKS.SCENERY)
         });
 
         Array.from(this.triggerGroup.children).forEach(child => {
