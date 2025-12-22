@@ -104,9 +104,9 @@ export default class PathFindingManager {
 
                 // console.log(e.name, "CALCULATE PATH", performance.now());
                 pf.lastKnownPlayerPosition.copy(targetPos);
-                if (1) {
+                if (Debug.SHOWDEBUGSPHERES) {
                     const debugSpheres = pf.debugSpheres;
-                    Debug.drawDebugSpheres(path, debugSpheres, this.game.scene); //TEMP TOFIX
+                    Debug.drawDebugSpheres(path, debugSpheres, this.game.scene);
                 }
             }
 

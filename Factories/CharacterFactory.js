@@ -45,8 +45,8 @@ class CharacterPrefab {
         this.weaponOffsetRootToBody = new THREE.Vector3();
 
         //Collisions template
-        this.capsuleRadius = this.constructor.DEFAULT_CHARACTER_RADIUS; //temp should be calculated from mesh BB or dedicated mesh
-        this.capsuleHeight = this.constructor.DEFAULT_CHARACTER_HEIGHT; // temp see above
+        this.capsuleRadius = this.constructor.DEFAULT_CHARACTER_RADIUS; //temp should be calculated from mesh BB or dedicated mesh TOFIX
+        this.capsuleHeight = this.constructor.DEFAULT_CHARACTER_HEIGHT; // temp see above TOFIX
         this.offsetRootToBody = new THREE.Vector3(0, this.capsuleHeight * 0.5, 0);
         this.offsetRootToCamera =  new THREE.Vector3(0, this.constructor.DEFAULT_CHARACTER_EYE_HEIGHT, 0)
         this.collisionGroup = null;
@@ -86,7 +86,7 @@ export default class CharacterFactory {
         this.prefab = new CharacterPrefab();
         this.prefab.name = characterType;
 
-        const isPlayerPrefab = characterType === 'player';//TOFIX
+        const isPlayerPrefab = characterType === Constants.CHARACTER_TYPES.PLAYER;
 
         // 1. Parse armature / weapon / skeleton
         this.processHierarchy(gltf.scene, this.prefab, isPlayerPrefab);
@@ -116,18 +116,18 @@ export default class CharacterFactory {
 
     processHierarchy(scene, prefab, isPlayerPrefab) {
         scene.traverse(child => {
-            if (child.name.startsWith("Armature")) prefab.root = child;
+            if (child.name.startsWith(Constants.GLB_PREFIX.ARMATURE)) prefab.root = child;
             if (child.isSkinnedMesh) {
                 child.frustumCulled = !isPlayerPrefab;
                 prefab.normalMaterial = child.material;
                 prefab.hurtMaterial = child.material.clone();
                 prefab.hurtMaterial.color?.set(0xff0000);
             };
-            if (child.name.startsWith("weapon")) {
+            if (child.name.startsWith(Constants.GLB_PREFIX.WEAPON)) {
                 child.frustumCulled = !isPlayerPrefab;
                 prefab.weaponMeshName = prefab.weapon?.name;
             }
-            if (child.name.startsWith("Collider_Kine")) prefab.weaponColliderMesh = child;
+            if (child.name.startsWith(Constants.GLB_PREFIX.COLLIDER_KINE)) prefab.weaponColliderMesh = child;
         });
     }
 
@@ -151,10 +151,14 @@ export default class CharacterFactory {
     computeColliderFromMesh(scene, prefab, isPlayerPrefab) {
         scene.traverse((child) => {
             if (!child.isMesh) return;
-            if (!child.name.startsWith("Collider_Kine")) return;
+            const prefix = Constants.GLB_PREFIX.COLLIDER_KINE;
 
-            // Example name: Collider_Kine_weapon
-            const [,relatedName] = child.name.match(/Collider_Kine_(.*)$/);
+            if (!child.name.startsWith(prefix)) return;
+
+            const match = child.name.match(new RegExp(`^${prefix}_(.+)$`));
+            if (!match) return;
+
+            const relatedName = match[1];
             if (!relatedName) return;
 
             // --- 1. LOCAL transforms of collider placeholder object ---
@@ -212,8 +216,8 @@ export default class CharacterFactory {
 
             // --- 8. Store collider info for character capsule ---
             if (!isPlayerPrefab)
-                prefab.capsuleRadius*=0.5; //temp should be calculated from mesh BB or dedicated mesh
-            // prefab.capsuleHeight = ; // temp see above
+                prefab.capsuleRadius*=0.5; //temp should be calculated from mesh BB or dedicated mesh TOFIX
+            // prefab.capsuleHeight = ; // temp see above TOFIX
             prefab.collisionGroup = isPlayerPrefab ? Constants.COL_MASKS.PLAYER : Constants.COL_MASKS.ENEMY;
 
             // optionally:
@@ -298,7 +302,7 @@ export default class CharacterFactory {
             bodyPos || new THREE.Vector3(0, 0, 0), 
             //add rotation
             rootRot,
-            options?.isPlayer ? "Player" : "NPC"
+            e.name,
         );
         const playerCollider = collisionManager.createCapsuleCollider(
              prefab.capsuleRadius,
@@ -321,7 +325,7 @@ export default class CharacterFactory {
 
         //movement
         const mv = new MovementComponent();
-        if (!options?.isPlayer) mv.moveSpeed *= 0.15; //TEMP: to move in constants
+        if (!options?.isPlayer) mv.moveSpeed *= 0.15; //TEMP: to move in constants TOFIX
 
         //AnimatorComponent
         const animatorManager = this.game.systems.animatorManager;

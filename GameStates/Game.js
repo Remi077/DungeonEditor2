@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import Stats from "stats.js";
 
 import { GAMESTATES } from '../Infra/GameStateManager.js';
+import { CHARACTER_TYPES } from '../Constants.js';
 
 export default class GameState {
     constructor(game) {
@@ -294,7 +295,8 @@ export default class GameState {
         if (!this.player){
 
             const playerPos = this.game.yawObject.position.clone();
-            this.player = this.game.systems.characterFactory.spawnPlayer('player',
+            this.player = this.game.systems.characterFactory.spawnPlayer(
+                CHARACTER_TYPES.PLAYER,
                 playerPos,
                 this.world
                 //add rotation
@@ -303,12 +305,12 @@ export default class GameState {
             this.player.gameplay.healthBar = this.healthBar;
 
             const spawnPoints = this.game?.systems?.levelFactory?.enemySpawnGroup;
-            let num = 1;
+            let num = 3;
             for (const spawnPoint of spawnPoints.children){
                 num --;
                 if (num < 0) return;
                 const zombiePos = spawnPoint.position.clone();
-                zombiePos.y -= 0.9;//TEMP
+                zombiePos.y -= 0.9;//TEMP. capsule height not really available yet before spawn
                 const zombieRot = spawnPoint.rotation.clone();
                 // Collect world positions of patrol points
                 const patrolPath = [];
@@ -319,7 +321,7 @@ export default class GameState {
                     }
                 })
                 this.game.systems.characterFactory.spawnCharacter(
-                    'zombie',
+                    CHARACTER_TYPES.ZOMBIE,
                     zombiePos,
                     zombieRot,
                     patrolPath

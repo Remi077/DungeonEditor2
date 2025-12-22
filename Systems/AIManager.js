@@ -118,7 +118,7 @@ export default class AIManager {
                     if (ai.timeSinceLastSeen > 1) {
                         // console.log("SEARCH");
                         ai.enemyState = ENEMY_STATES.SEARCH;
-                        if (1) Debug.drawDebugSpheres(
+                        if (Debug.SHOWDEBUGSPHERES) Debug.drawDebugSpheres(
                             [ai.lastSeenPlayerPosition],
                             ai.debugSpheres,
                             this.game.scene,
@@ -151,7 +151,7 @@ export default class AIManager {
                 moveVector.set(0,0,0);
                 // if (gp.timeSinceLastHit > 1) {
                 if (ai.animationFinished.get(ENEMY_STATES.HURT)) {
-                    gp.isHurt = false;//set by healthmanager, reset here TOFIX
+                    gp.isHurt = false;//set by healthmanager, reset here
                     ai.timeSinceChangedState = 0;
                     ai.animationFinished.set(ENEMY_STATES.HURT,false);
                     ai.enemyState = ENEMY_STATES.CHASE;
@@ -200,7 +200,109 @@ export default class AIManager {
         arr.push(arr.shift());
     }
 
-    ///TOFIX: move this elsewhere
+    updateDesiredAnimation(e, previousState){
+        const an = e.animator;
+        if (!an) return;
+        const ai = e.ai;
+
+        const fadeAmount = 0.4;
+
+        switch (ai.enemyState) {
+
+            case ENEMY_STATES.IDLE:    
+                an.desiredAnimation.set(Constants.ANIM.WALK,{stop:true, 
+                    fadeOut:fadeAmount
+                });
+                an.desiredAnimation.set(Constants.ANIM.IDLE,{play:true, loop:true, 
+                    fadeIn:fadeAmount
+                });
+            break;
+
+            case ENEMY_STATES.PATROL :
+            case ENEMY_STATES.CHASE : 
+            case ENEMY_STATES.SEARCH:
+
+                an.desiredAnimation.set(Constants.ANIM.IDLE,{stop:true, 
+                    fadeOut:fadeAmount
+                });
+                an.desiredAnimation.set(Constants.ANIM.WALK,{play:true, loop:true,
+                    fadeIn:fadeAmount
+                });
+                break;
+
+            case ENEMY_STATES.ATTACK:  
+
+                an.desiredAnimation.set(Constants.ANIM.WALK,{stop:true});
+                
+                an.desiredAnimation.set(Constants.ANIM.ATTACK,{play:true,
+                    callback: (() => {
+                        ai.animationFinished.set(ENEMY_STATES.ATTACK,true);
+                    }),
+                });
+                break;
+
+            case ENEMY_STATES.HURT:    
+
+                if (previousState === ENEMY_STATES.HURT) return; //avoid reckicking hurt animation
+
+                an.desiredAnimation.set(Constants.ANIM.ATTACK,{stop:true});
+                an.desiredAnimation.set(Constants.ANIM.IDLE,{stop:true}); 
+                an.desiredAnimation.set(Constants.ANIM.WALK,{stop:true});
+
+                an.desiredAnimation.set(Constants.ANIM.HURT,{play:true,
+                    callback: (() => {
+                        ai.animationFinished.set(ENEMY_STATES.HURT,true);
+                    }),
+                });
+                break;
+
+            case ENEMY_STATES.DEATH:
+
+                if (previousState === ENEMY_STATES.DEATH) return; //avoid rekicking the death animation
+
+                an.desiredAnimation.set(Constants.ANIM.WALK,{stop:true});
+                an.desiredAnimation.set(Constants.ANIM.ATTACK,{stop:true});
+                an.desiredAnimation.set(Constants.ANIM.HURT,{stop:true});
+
+                an.desiredAnimation.set(Constants.ANIM.DIE,{play:true,
+                    clampWhenFinished: true,
+                    callback: (() => {
+                        ai.animationFinished.set(ENEMY_STATES.DEATH,true);
+                    }),
+                });                
+                break;
+
+            case ENEMY_STATES.DESPAWN:
+                break;
+        }
+    }
+
+    updateHeadTarget(e){
+        const an = e.animator;
+        if (!an) return;
+        const ai = e.ai;
+        switch (ai.enemyState) {
+            case ENEMY_STATES.PATROL:
+                an.headTarget = ai.patrolPath[0];
+                break;
+            case ENEMY_STATES.CHASE:
+                an.headTarget = this.game.yawObject;
+                break;
+            case ENEMY_STATES.SEARCH:
+                an.headTarget = ai.lastSeenPlayerPosition;
+                break;
+        }
+    }
+
+    disableEntity(e) {
+        const col = e.capsuleCol;
+        if (col) col.toRemove = true; //schedule body/collider to be removed
+        const animcol = e.animCol;
+        if (animcol) animcol.toRemove = true;
+        e.toDisable = true;//mark the entity for disabling
+        // this.world.setActive(e, false); //remove entity from world queries
+    }
+
     canEnemySeeTarget(e, targetEntity, sightDistance = 10, fovDegrees = 90) {
 
         //get target middle body and entity eye positions
@@ -246,12 +348,6 @@ export default class AIManager {
     
         if (intersects.length === 0) return false;
 
-        // const start = origin.clone();
-        // const end = origin.clone().add(direction.clone().multiplyScalar(100)); // Extend ray visually
-        // ai.debugLine.geometry.setFromPoints([start, end]);
-        // this.game.scene.add(ai.debugLine);
-
-
         // 5) Check if first hit is the target or its descendant    
         // Check if the first hit is target or a descendant of target
         let hitObj = intersects[0].object;
@@ -263,12 +359,13 @@ export default class AIManager {
                 const start = origin.clone();
                 const end = origin.clone().add(direction.clone().multiplyScalar(100)); // Extend ray visually
     
-                // Update line geometry
-                ai.debugLine.geometry.setFromPoints([start, end]);
-    
-                // Toggle visibility
-                this.game.scene.add(ai.debugLine);//TEMP, TOIMPROVE
-                // ai.debugLine.visible = true;
+                if (Debug.SHOWDEBUGLINE){
+                    // Update line geometry
+                    ai.debugLine.geometry.setFromPoints([start, end]);
+                    // Toggle visibility
+                    this.game.scene.add(ai.debugLine); //perhaps not the best, thatll do for the moment
+                    // ai.debugLine.visible = true;
+                }
     
                 return {
                     playerSeen : true,
@@ -285,107 +382,6 @@ export default class AIManager {
             lastSeenPlayerPosition : null,
         }
     }
-
-    updateDesiredAnimation(e, previousState){
-        const an = e.animator;
-        if (!an) return;
-        const ai = e.ai;
-
-        const fadeAmount = 0.4;
-
-        switch (ai.enemyState) {
-
-            case ENEMY_STATES.IDLE:    
-                an.desiredAnimation.set(Constants.ANIM.WALK,{stop:true, 
-                    fadeOut:fadeAmount
-                });
-                an.desiredAnimation.set(Constants.ANIM.IDLE,{play:true, loop:true, 
-                    fadeIn:fadeAmount
-                });
-            break;
-
-            case ENEMY_STATES.PATROL :
-            case ENEMY_STATES.CHASE : 
-            case ENEMY_STATES.SEARCH:
-                an.desiredAnimation.set(Constants.ANIM.IDLE,{stop:true, 
-                    fadeOut:fadeAmount
-                });
-                an.desiredAnimation.set(Constants.ANIM.WALK,{play:true, loop:true,
-                    fadeIn:fadeAmount
-                });
-                break;
-
-            case ENEMY_STATES.ATTACK:  
-                //TOFIX //maybe do one switch per anim instead 
-                an.desiredAnimation.set(Constants.ANIM.WALK,{stop:true});
-                
-                an.desiredAnimation.set(Constants.ANIM.ATTACK,{play:true,
-                    callback: (() => {
-                        ai.animationFinished.set(ENEMY_STATES.ATTACK,true);
-                    }),
-                });
-                break;
-
-            case ENEMY_STATES.HURT:    
-                //TOFIX
-                if (previousState === ENEMY_STATES.HURT) return;
-                console.log("PLAY HURT");
-                //TOFIX
-                an.desiredAnimation.set(Constants.ANIM.ATTACK,{stop:true});
-                an.desiredAnimation.set(Constants.ANIM.IDLE,{stop:true}); 
-                an.desiredAnimation.set(Constants.ANIM.WALK,{stop:true});
-
-                an.desiredAnimation.set(Constants.ANIM.HURT,{play:true,
-                    callback: (() => {
-                        ai.animationFinished.set(ENEMY_STATES.HURT,true);
-                    }),
-                });
-                break;
-
-            case ENEMY_STATES.DEATH:
-                //TOFIX
-                if (previousState === ENEMY_STATES.DEATH) return;//avoid rekicking the death animation
-                // an.stop(e, Constants.ANIM.ATTACK);
-                an.desiredAnimation.set(Constants.ANIM.WALK,{stop:true});
-                an.desiredAnimation.set(Constants.ANIM.ATTACK,{stop:true});
-                an.desiredAnimation.set(Constants.ANIM.HURT,{stop:true});
-                an.desiredAnimation.set(Constants.ANIM.DIE,{play:true,
-                    clampWhenFinished: true,
-                    callback: (() => {
-                        ai.animationFinished.set(ENEMY_STATES.DEATH,true);
-                    }),
-                });                
-                break;
-            case ENEMY_STATES.DESPAWN:
-                break;
-        }
-    }
-
-    updateHeadTarget(e){
-        const an = e.animator;
-        if (!an) return;
-        const ai = e.ai;
-        switch (ai.enemyState) {
-            case ENEMY_STATES.PATROL:
-                an.headTarget = ai.patrolPath[0];
-                break;
-            case ENEMY_STATES.CHASE:
-                an.headTarget = this.game.yawObject;
-                break;
-            case ENEMY_STATES.SEARCH:
-                an.headTarget = ai.lastSeenPlayerPosition;
-                break;
-        }
-    }
-
-    disableEntity(e) {
-        const col = e.capsuleCol;
-        if (col) col.toRemove = true; //schedule body/collider to be removed
-        const animcol = e.animCol;
-        if (animcol) animcol.toRemove = true;
-        e.toDisable = true;//mark the entity for disabling
-        // this.world.setActive(e, false); //remove entity from world queries
-    }
-
+    
 
 }

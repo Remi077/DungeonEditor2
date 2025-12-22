@@ -5,6 +5,8 @@ export const debugSphereGeometry = new THREE.SphereGeometry(0.1, 8, 8);
 export const debugSphereMaterialRed = new THREE.MeshBasicMaterial({ color: 0xff0000 });
 export const debugSphereMaterialBlue = new THREE.MeshBasicMaterial({ color: 0x0000ff });
 
+export const SHOWDEBUGSPHERES = false;
+
 export function drawDebugSpheres(points, debugSpheres, scene,
     debugMat = debugSphereMaterialRed
 ) {
@@ -26,6 +28,8 @@ export function drawDebugSpheres(points, debugSpheres, scene,
     });
 
 }
+
+export const SHOWDEBUGLINE = false;
 
 // Debug line setup
 const debugLineMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });

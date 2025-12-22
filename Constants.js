@@ -85,3 +85,30 @@ export const USER_DATA_FIELDS = {
     COLLIDER_ENTITY : "colEntity",
     INTERACT_ENTITY : "interactEntity"
 }
+
+// character types
+export const CHARACTER_TYPES = {
+    PLAYER : 'player',
+    ZOMBIE : 'zombie',
+}
+
+export const GLB_PREFIX = {
+
+    ARMATURE : 'Armature',
+
+    ACTION : 'Action_',
+    ACTION_DOOR : 'Action_Door',
+    ACTION_SWITCH : 'Action_Switch',
+    ACTION_CHEST : 'Action_Chest',
+    ACTION_ITEM : 'Action_Item',
+
+    ENEMY : 'Enemy',
+
+    COLLIDER : 'Collider_',
+    COLLIDER_KINE : 'Collider_Kine',
+
+    TRIGGER : 'Trigger',
+
+    WEAPON : 'weapon',
+
+}

@@ -1,4 +1,4 @@
-import { USER_DATA_FIELDS } from "../Constants.js";
+import { GLB_PREFIX, USER_DATA_FIELDS } from "../Constants.js";
 
 export default class InteractableManager {
     constructor(game) {
@@ -48,7 +48,11 @@ export default class InteractableManager {
         const itemMesh = itemEntity.visual?.root;
         if (!inventory || !itemMesh) return;
         itemMesh.visible = false;
-        const itemName = itemEntity.name.replace(/^Action_Item_/, '').replace(/\d+$/, '');
+
+        const itemName = itemEntity.name
+            .replace(new RegExp(`^${GLB_PREFIX.ACTION_ITEM}_?`), '')
+            .replace(/\d+$/, '');
+
         inventory[itemName] = (inventory[itemName] ?? 0) + 1;
         playerEntity.inventory.needsUpdate = true;
         console.log(inventory)

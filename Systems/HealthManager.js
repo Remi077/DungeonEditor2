@@ -48,9 +48,8 @@ export default class HealthManager {
         gp.invincibility = true;
         // gp.health -= 50;
         gp.health -= 10;
-        gp.isHurt = true;
-        console.log("OUCH")
-        console.log(target.name, "was hurt by", source.name)
+        gp.isHurt = true; //set here, reset in AI for enemies (not used by playercontroller)
+        // console.log(target.name, "was hurt by", source.name)
 
         //cancel attack
         const att = target?.attack;

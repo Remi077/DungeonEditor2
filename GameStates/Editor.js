@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import Stats from "stats.js";
 
 import { GAMESTATES } from '../Infra/GameStateManager.js';
+import { CHARACTER_TYPES } from '../Constants.js';
 
 export default class EditorState {
     constructor(game) {
@@ -444,8 +445,8 @@ export default class EditorState {
             const pathFindingManager = this.game.systems.pathFindingManager;
             pathFindingManager.loadNavMesh('./assets/glb/navmesh.glb');
             const characterFactory = this.game.systems.characterFactory;
-            characterFactory.loadCharacter('./assets/glb/player.glb', 'player');
-            characterFactory.loadCharacter('./assets/glb/zombietest.glb', 'zombie');
+            characterFactory.loadCharacter('./assets/glb/player.glb', CHARACTER_TYPES.PLAYER);
+            characterFactory.loadCharacter('./assets/glb/zombietest.glb', CHARACTER_TYPES.ZOMBIE);
         }    
         if (ActionsOnce.resetLevel) this.onReset();
         // if (ActionsOnce.startGame) this.onStart();

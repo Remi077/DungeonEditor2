@@ -40,10 +40,10 @@ export default class LevelFactory {
         //parse into groups
         Array.from(gltf.scene.children).forEach(child => {
             if (child.isLight) this.lightGroup.add(child);
-            else if (child.name.startsWith("Collider_")) this.colliderGroup.add(child);
-            else if (child.name.startsWith("Trigger_")) this.triggerGroup.add(child);
-            else if (child.name.startsWith("Action_")) this.actionnablesGroup.add(child);
-            else if (child.name.startsWith("Enemy")) this.enemySpawnGroup.add(child);
+            else if (child.name.startsWith(Constants.GLB_PREFIX.COLLIDER)) this.colliderGroup.add(child);
+            else if (child.name.startsWith(Constants.GLB_PREFIX.TRIGGER)) this.triggerGroup.add(child);
+            else if (child.name.startsWith(Constants.GLB_PREFIX.ACTION)) this.actionnablesGroup.add(child);
+            else if (child.name.startsWith(Constants.GLB_PREFIX.ENEMY)) this.enemySpawnGroup.add(child);
             else this.staticGroup.add(child);
         });
 
@@ -88,10 +88,8 @@ export default class LevelFactory {
         const physics = this.collision; // reference to your collisionManager
 
         Array.from(this.colliderGroup.children).forEach(child => {
-            if (child.name.startsWith("Collider_Kine")) {
-                const colGroup = (child.name.startsWith("Trigger_")) ?
-                Constants.COL_MASKS.WATER : Constants.COL_MASKS.SCENERY
-                this.collision.createKinematicColliderFromMesh(child, colGroup);
+            if (child.name.startsWith(Constants.GLB_PREFIX.COLLIDER_KINE)) {
+                this.collision.createKinematicColliderFromMesh(child, Constants.COL_MASKS.SCENERY);
             } else {
                 this.collision.createStaticColliderFromMesh(child, Constants.COL_MASKS.SCENERY);
             }
@@ -185,16 +183,16 @@ export default class LevelFactory {
             this.world.addComponent(e, visualComponent);
             e.addComponent(transformComponent);
             if (
-                child.name.startsWith("Action_Door")
-                || child.name.startsWith("Action_Chest")
+                child.name.startsWith(Constants.GLB_PREFIX.ACTION_DOOR)
+                || child.name.startsWith(Constants.GLB_PREFIX.ACTION_CHEST)
             ) {
                 this.world.addComponent(e, new InteractableComponent(() => this.game.systems.interactableManager.doorInteract(e)));
-            } else if (child.name.startsWith("Action_Switch")) {
+            } else if (child.name.startsWith(Constants.GLB_PREFIX.ACTION_SWITCH)) {
                 this.world.addComponent(e, new InteractableComponent(() => this.game.systems.interactableManager.switchInteract(e)));
-            } else if (child.name.startsWith("Action_Item")) {
+            } else if (child.name.startsWith(Constants.GLB_PREFIX.ACTION_ITEM)) {
                 this.world.addComponent(e, new InteractableComponent((callerEntity) => this.game.systems.interactableManager.itemInteract(e, callerEntity)));
             } else {
-                if (child.parent?.name.startsWith("Action_Switch")) {
+                if (child.parent?.name.startsWith(Constants.GLB_PREFIX.ACTION_SWITCH)) {
                     //this current mesh is parented to a switch, get the switch parent and its associated entity
                     const parentEntity = child.parent.userData[Constants.USER_DATA_FIELDS.INTERACT_ENTITY];
                     //add this current mesh to the list of dependables for the parent switch entity
