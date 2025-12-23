@@ -8,6 +8,7 @@ import VisualComponent from '../Entities/Components/VisualComponent.js';
 import TransformComponent from '../Entities/Components/TransformComponent.js';
 import AnimatorComponent from '../Entities/Components/AnimatorComponent.js';
 import InteractableComponent from '../Entities/Components/InteractableComponent.js';
+import LightComponent from '../Entities/Components/LightComponent.js';
 
 export default class LevelFactory {
     constructor(game) {
@@ -53,6 +54,8 @@ export default class LevelFactory {
         this.processColliders();
 
         this.processActionnables();
+
+        this.processLights();
 
         this.loaded = true;
     }
@@ -210,6 +213,16 @@ export default class LevelFactory {
             child.userData[Constants.USER_DATA_FIELDS.INTERACT_ENTITY] = e;
 
         });
+    }
+
+    processLights() {
+        Array.from(this.lightGroup.children).forEach(child => {
+
+            const e = new Entity(child.name);
+            this.world.addComponent(e, new LightComponent(child));
+            this.world.setActive(e, true);
+
+        })
     }
 
     getRaycastTargets(

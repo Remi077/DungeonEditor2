@@ -233,6 +233,7 @@ export default class GameState {
         this.game.systems.cameraManager.update(dt); //sync camera
         this.game.systems.materialManager.update(dt); //update materials
         this.game.systems.uiManager.update(dt,actions); //update UI
+        this.game.systems.lightManager.update(dt); //update lights
 
         //misc actions
         if (actions.startEditor) this.game.stateManager.setState(GAMESTATES.EDITOR);

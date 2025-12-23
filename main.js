@@ -19,6 +19,7 @@ import CameraManager from './Systems/CameraManager.js';
 import CollisionManager from './Systems/CollisionManager.js';
 import HealthManager from './Systems/HealthManager.js';
 import InteractableManager from './Systems/InteractableManager.js';
+import LightManager from './Systems/LightManager.js';
 import MaterialManager from './Systems/MaterialManager.js';
 import MovementManager from './Systems/MovementManager.js';
 import PathFindingManager from './Systems/PathFindingManager.js';
@@ -72,6 +73,7 @@ if (isMobile()) {
 //  │     ├── CollisionManager.js
 //  │     ├── HealthManager.js
 //  │     ├── InteractableManager.js
+//  │     ├── LightManager.js
 //  │     ├── MaterialManager.js
 //  │     ├── MovementManager.js
 //  │     ├── PathFindingManager.js
@@ -90,6 +92,7 @@ if (isMobile()) {
 //  │           ├── GameplayComponent.js
 //  │           ├── InteractableComponent.js
 //  │           ├── InventoryComponent.js
+//  │           ├── LightComponent.js
 //  │           ├── MovementComponent.js
 //  │           ├── PathFindingComponent.js
 //  │           ├── PlayerControlComponent.js
@@ -144,6 +147,7 @@ game.systems.interactableManager = new InteractableManager(game);
 game.systems.levelFactory = new LevelFactory(game);
 game.systems.pathFindingManager = new PathFindingManager(game);
 game.systems.playerCtrlManager = new PlayerControlManager(game);
+game.systems.lightManager = new LightManager(game);
 game.systems.materialManager = new MaterialManager(game);
 game.systems.movementManager = new MovementManager(game);
 game.systems.uiManager = new UIManager(game);
