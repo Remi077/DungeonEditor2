@@ -267,13 +267,6 @@ export default class UIManager {
 
         if (!actions) return;
         if (actions.toggleInventory) this.toggleInventory();
-        if (actions.Item1) this.highlightSelectedSlot(1);
-        if (actions.Item2) this.highlightSelectedSlot(2);
-        if (actions.Item3) this.highlightSelectedSlot(3);
-        if (actions.Item4) this.highlightSelectedSlot(4);
-        if (actions.Item5) this.highlightSelectedSlot(5);
-        if (actions.Item6) this.highlightSelectedSlot(6);
-        if (actions.Item7) this.highlightSelectedSlot(7);
     }
 
     toggleInventory(){
@@ -297,43 +290,45 @@ export default class UIManager {
         inventory.needsUpdate = false;
 
         // Convert object to array of [itemId, data] pairs
-        const inventoryEntries = Object.entries(inventoryObj);
+        // const inventoryEntries = Object.entries(inventoryObj);
 
-        // Take first 7 items for hotbar
-        const hotbarItems = inventoryEntries.slice(0, 7);
+        // // Take first 7 items for hotbar
+        // const hotbarItems = inventoryEntries.slice(0, 7);
+
+        const hotbarItems = inventory.hotbar;
 
         this.updateHotbarUI(e, hotbarItems);
+
+        // this.highlightSelectedSlot(inventoryObj.selectedSlot);
     }
 
     updateHotbarUI(e, hotbarItems) {
+        const inventory = e.inventory;
         const hotbar = document.getElementById("hotbar");
 
-        for (let i = 0; i < 7; i++) {
+        for (let i = 0; i < hotbarItems.length; i++) {
             const uiSlot = hotbar.children[i];
-            const entry = hotbarItems[i];
+            const item = inventory.hotbar[i];
 
-            if (!entry) {
-                // Empty slot
+            if (!item) {
                 uiSlot.style.backgroundImage = "none";
                 uiSlot.innerHTML = "";
                 continue;
             }
 
-            const [itemId, data] = entry;
-
-            // data.count is the number of items
-            this.setSlotIcon(uiSlot, itemId, data);
+            this.setSlotIcon(uiSlot, item.itemId, item.count);
+            uiSlot.classList.toggle("selected", i === inventory.selectedSlot);
         }
     }
 
-    highlightSelectedSlot(selectedIndex) {
-        const hotbar = document.getElementById("hotbar");
+    // highlightSelectedSlot(selectedIndex) {
+    //     const hotbar = document.getElementById("hotbar");
 
-        for (let i = 0; i < 7; i++) {   
-            hotbar.children[i].classList.toggle("selected", i === (selectedIndex-1));
-            // hotbar.children[i].classList.toggle("selected", i === selectedIndex);
-        }
-    }
+    //     for (let i = 0; i < 7; i++) {   
+    //         hotbar.children[i].classList.toggle("selected", i === (selectedIndex-1));
+    //         // hotbar.children[i].classList.toggle("selected", i === selectedIndex);
+    //     }
+    // }
 
     setSlotIcon(slotElement, itemName, count) {
         const data = this.itemAtlas.IMAGES[itemName];

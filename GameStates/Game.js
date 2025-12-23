@@ -21,6 +21,7 @@ export default class GameState {
             "KeyE": "interact",
             "KeyH": "hideCol",
             "KeyI": "toggleInventory",
+            "KeyQ": "useItem",
             "Digit1": "Item1",
             "Digit2": "Item2",
             "Digit3": "Item3",

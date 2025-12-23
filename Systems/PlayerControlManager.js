@@ -49,6 +49,21 @@ export default class PlayerControlManager {
         if (actions.interact) this.interact(e);
         if (actions.attack) this.attack(e);
 
+        if (actions.useItem) this.useItem(e);
+
+        //inventory selection
+        const iv = e.inventory;
+        if (iv){
+            if (actions.Item1) iv.selectSlot(0);
+            if (actions.Item2) iv.selectSlot(1);
+            if (actions.Item3) iv.selectSlot(2);
+            if (actions.Item4) iv.selectSlot(3);
+            if (actions.Item5) iv.selectSlot(4);
+            if (actions.Item6) iv.selectSlot(5);
+            if (actions.Item7) iv.selectSlot(6);
+        }
+
+
     }
 
     updateDesiredAnimation(e, actions){
@@ -136,6 +151,12 @@ export default class PlayerControlManager {
         if (wpn.isAttacking) return;
         wpn.isAttacking = true;
         wpn.timeSinceStartAttack = 0;
+    }
+
+
+    useItem(e){
+        const item = e.inventory.selectedItem;
+        console.log("useitem",item.itemId, item.count);
     }
 
 

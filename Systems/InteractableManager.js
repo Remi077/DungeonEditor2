@@ -44,18 +44,20 @@ export default class InteractableManager {
 
     itemInteract(itemEntity) {
         const playerEntity = this.world.player;
-        const inventory = playerEntity.inventory?.inventory;
+        // const inventory = playerEntity.inventory?.inventory;
+        const inventory = playerEntity.inventory;
         const itemMesh = itemEntity.visual?.root;
         if (!inventory || !itemMesh) return;
         itemMesh.visible = false;
 
-        const itemName = itemEntity.name
+        const itemId = itemEntity.name
             .replace(new RegExp(`^${GLB_PREFIX.ACTION_ITEM}_?`), '')
             .replace(/\d+$/, '');
 
-        inventory[itemName] = (inventory[itemName] ?? 0) + 1;
-        playerEntity.inventory.needsUpdate = true;
-        console.log(inventory)
+        inventory.addItem(itemId, 1);
+        // inventory[itemName] = (inventory[itemName] ?? 0) + 1;
+        // playerEntity.inventory.needsUpdate = true;
+        // console.log(inventory)
     }    
 
 
