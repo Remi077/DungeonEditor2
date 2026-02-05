@@ -174,8 +174,9 @@ export default class EditorState {
         const scene = this.game.scene;
 
         //ambient light
+            // new THREE.Color(1,1,1).multiplyScalar(0.45)
         this.ambientLight = new THREE.AmbientLight(
-            new THREE.Color(1,1,1).multiplyScalar(0.45)
+            new THREE.Color(1,1,1).multiplyScalar(10)
         ); // Soft light
         scene.add(this.ambientLight);
 
@@ -441,7 +442,8 @@ export default class EditorState {
         if (ActionsOnce.loadLevel) this.onLoad();
         if (ActionsOnce.loadTest){
             const levelFactory = this.game.systems.levelFactory;
-            levelFactory.loadLevel('./assets/glb/Level1.glb').then(() => levelFactory.addToScene());
+            // levelFactory.loadLevel('./assets/glb/Level1.glb').then(() => levelFactory.addToScene());
+            levelFactory.loadLevel('./assets/glb/Level2.glb').then(() => levelFactory.addToScene());
             const pathFindingManager = this.game.systems.pathFindingManager;
             pathFindingManager.loadNavMesh('./assets/glb/navmesh.glb');
             const characterFactory = this.game.systems.characterFactory;

@@ -111,6 +111,8 @@ export const GLB_PREFIX = {
 
     TRIMESH : 'Trimesh',
 
+    UVANIM : 'UVAnim',
+
     WEAPON : 'weapon',
 
 }

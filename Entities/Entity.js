@@ -12,6 +12,7 @@ export const ECT = {
     VISUAL: 'Visual',
     INVENTORY: 'Inventory',
     MOVEMENT: 'Movement',
+    UVANIM: 'UVAnim',
 }
 
 export default class Entity {

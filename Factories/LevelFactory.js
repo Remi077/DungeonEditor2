@@ -6,7 +6,7 @@ import Entity from '../Entities/Entity.js';
 import AnimColliderComponent from '../Entities/Components/AnimColliderComponent.js';
 import VisualComponent from '../Entities/Components/VisualComponent.js';
 import TransformComponent from '../Entities/Components/TransformComponent.js';
-import AnimatorComponent from '../Entities/Components/AnimatorComponent.js';
+import UVAnimComponent from '../Entities/Components/UVAnimComponent.js';
 import InteractableComponent from '../Entities/Components/InteractableComponent.js';
 import LightComponent from '../Entities/Components/LightComponent.js';
 
@@ -25,6 +25,7 @@ export default class LevelFactory {
         this.colliderGroup = new THREE.Group();
         this.trimeshGroup = new THREE.Group();
         this.triggerGroup = new THREE.Group();
+        this.uvAnimGroup = new THREE.Group();
 
         this.loaded = false;
         this.animatedNodes = [];
@@ -47,6 +48,7 @@ export default class LevelFactory {
             else if (child.name.startsWith(Constants.GLB_PREFIX.TRIGGER)) this.triggerGroup.add(child);
             else if (child.name.startsWith(Constants.GLB_PREFIX.ACTION)) this.actionnablesGroup.add(child);
             else if (child.name.startsWith(Constants.GLB_PREFIX.ENEMY)) this.enemySpawnGroup.add(child);
+            else if (child.name.startsWith(Constants.GLB_PREFIX.UVANIM)) this.uvAnimGroup.add(child);
             else this.staticGroup.add(child);
         });
 
@@ -56,6 +58,8 @@ export default class LevelFactory {
         this.processActionnables();
 
         this.processLights();
+
+        this.processUVAnims();
 
         this.loaded = true;
     }
@@ -222,6 +226,15 @@ export default class LevelFactory {
             this.world.addComponent(e, new LightComponent(child));
             this.world.setActive(e, true);
 
+        })
+    }
+
+    processUVAnims() {
+        Array.from(this.uvAnimGroup.children).forEach(child => {
+            const e = new Entity(child.name);
+            this.world.addComponent(e, new VisualComponent(child));
+            this.world.addComponent(e, new UVAnimComponent());
+            this.world.setActive(e, true);
         })
     }
 
