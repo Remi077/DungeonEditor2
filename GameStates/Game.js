@@ -235,6 +235,7 @@ export default class GameState {
         this.game.systems.materialManager.update(dt); //update materials
         this.game.systems.uiManager.update(dt,actions); //update UI
         this.game.systems.lightManager.update(dt); //update lights
+        this.game.systems.uvAnimManager.update(dt); //update moving texture (UV) animations
 
         //misc actions
         if (actions.startEditor) this.game.stateManager.setState(GAMESTATES.EDITOR);

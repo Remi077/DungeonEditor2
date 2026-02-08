@@ -25,7 +25,7 @@ export default class LevelFactory {
         this.colliderGroup = new THREE.Group();
         this.trimeshGroup = new THREE.Group();
         this.triggerGroup = new THREE.Group();
-        this.uvAnimGroup = new THREE.Group();
+        this.uvAnimMaterials = new Set();
 
         this.loaded = false;
         this.animatedNodes = [];
@@ -42,13 +42,31 @@ export default class LevelFactory {
 
         //parse into groups
         Array.from(gltf.scene.children).forEach(child => {
+
+            // ---- 1. UVANIM MATERIAL PARSING (BEFORE RE-PARENTING) ----
+            child.traverse(obj => {
+                if (!obj.isMesh) return;
+
+                const materials = Array.isArray(obj.material)
+                    ? obj.material
+                    : [obj.material];
+
+                for (const mat of materials) {
+                    if (!mat || !mat.map) continue;
+
+                    if (mat.name.startsWith(Constants.GLB_PREFIX.UVANIM)) {
+                        this.uvAnimMaterials.add(mat);
+                    }
+                }
+            });
+
+            // ---- 2. GROUP ASSIGNMENT (THIS REMOVES FROM gltf.scene) ----
             if (child.isLight) this.lightGroup.add(child);
             else if (child.name.startsWith(Constants.GLB_PREFIX.COLLIDER)) this.colliderGroup.add(child);
             else if (child.name.startsWith(Constants.GLB_PREFIX.TRIMESH)) this.trimeshGroup.add(child);
             else if (child.name.startsWith(Constants.GLB_PREFIX.TRIGGER)) this.triggerGroup.add(child);
             else if (child.name.startsWith(Constants.GLB_PREFIX.ACTION)) this.actionnablesGroup.add(child);
             else if (child.name.startsWith(Constants.GLB_PREFIX.ENEMY)) this.enemySpawnGroup.add(child);
-            else if (child.name.startsWith(Constants.GLB_PREFIX.UVANIM)) this.uvAnimGroup.add(child);
             else this.staticGroup.add(child);
         });
 
@@ -59,7 +77,7 @@ export default class LevelFactory {
 
         this.processLights();
 
-        this.processUVAnims();
+        this.processUVAnims(this.uvAnimMaterials);
 
         this.loaded = true;
     }
@@ -229,13 +247,22 @@ export default class LevelFactory {
         })
     }
 
-    processUVAnims() {
-        Array.from(this.uvAnimGroup.children).forEach(child => {
-            const e = new Entity(child.name);
-            this.world.addComponent(e, new VisualComponent(child));
-            this.world.addComponent(e, new UVAnimComponent());
+    processUVAnims(uvAnimMaterials) {
+        for (const mat of uvAnimMaterials) {
+            const e = new Entity(mat.name);
+
+            this.world.addComponent(
+                e,
+                new UVAnimComponent(mat.map)
+            );
+
             this.world.setActive(e, true);
-        })
+
+            // One-time setup
+            mat.map.wrapS = THREE.RepeatWrapping;
+            mat.map.wrapT = THREE.RepeatWrapping;
+            mat.map.needsUpdate = true;
+        }
     }
 
     getRaycastTargets(

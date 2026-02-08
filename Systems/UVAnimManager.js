@@ -8,18 +8,20 @@ export default class UVAnimManager {
     }
 
     update(dt) {
-        for (const e of this.world.query(ECT.UVANIM, ECT.VISUAL)) {
+        for (const e of this.world.query(ECT.UVANIM)) {
             const uv = e.get(ECT.UVANIM);
-            const mesh = e.get(ECT.VISUAL).mesh;
+            const tex = uv.texture;
 
-            uv.offset.addScaledVector(uv.speed, dt);
+            if (!tex) continue;
+
+            uv.offsetUV.addScaledVector(uv.speedUV, dt);
 
             if (uv.loop) {
-                uv.offset.x = uv.offset.x % 1;
-                uv.offset.y = uv.offset.y % 1;
+                uv.offsetUV.x %= 1;
+                uv.offsetUV.y %= 1;
             }
 
-            mesh.material.map.offset.copy(uv.offset);
+            tex.offset.copy(uv.offsetUV);
         }
     }
     

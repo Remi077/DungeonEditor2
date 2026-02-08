@@ -25,6 +25,7 @@ import MovementManager from './Systems/MovementManager.js';
 import PathFindingManager from './Systems/PathFindingManager.js';
 import PlayerControlManager from './Systems/PlayerControlManager.js';
 import UIManager from './Systems/UIManager.js';
+import UVAnimManager from './Systems/UVAnimManager.js';
 
 /*-----------------------------------------------------*/
 // REVISION NUMBER
@@ -79,6 +80,7 @@ if (isMobile()) {
 //  │     ├── PathFindingManager.js
 //  │     ├── PlayerControlManager.js
 //  │     └── UIManager.js
+//  │     └── UVAnimManager.js
 //  │
 //  ├── Entities/
 //  │     ├── Entity.js
@@ -97,6 +99,7 @@ if (isMobile()) {
 //  │           ├── PathFindingComponent.js
 //  │           ├── PlayerControlComponent.js
 //  │           ├── TransformComponent.js
+//  │           ├── UVAnimComponent.js
 //  │           └── VisualComponent.js
 //  │
 //  └── GameStates/
@@ -151,6 +154,7 @@ game.systems.lightManager = new LightManager(game);
 game.systems.materialManager = new MaterialManager(game);
 game.systems.movementManager = new MovementManager(game);
 game.systems.uiManager = new UIManager(game);
+game.systems.uvAnimManager = new UVAnimManager(game);
 await game.systems.uiManager.loadItems(); // ensure atlas is loaded before using it
 
 //tweaks
