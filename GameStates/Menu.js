@@ -1,4 +1,5 @@
 import { GAMESTATES } from "../Infra/GameStateManager.js";
+import { CHARACTER_TYPES } from '../Constants.js';
 
 export default class MenuState {
     constructor(game) {
@@ -66,7 +67,7 @@ export default class MenuState {
         this.menuOverlay.appendChild(title);
 
         // --- Create buttons ---
-        this.startButton = this.createButton('Start Game', () => this.game.stateManager.setState(GAMESTATES.GAME));
+        this.startButton = this.createButton('Start Game', () => this.onStartGame());
         this.loadButton = this.createButton('Load', () => console.log("Load clicked"));
         this.editorButton = this.createButton('Editor', () => this.game.stateManager.setState(GAMESTATES.EDITOR));
         // this.editorButton = this.createButton('Editor', () => this.game.stateManager.setState(GAMESTATES.GAMEOVER));
@@ -84,6 +85,26 @@ export default class MenuState {
         btn.textContent = label;
         btn.addEventListener('click', onClick);
         return btn;
+    }
+
+    async onStartGame() {
+        console.log('Loading level and starting game...');
+
+        const levelFactory = this.game.systems.levelFactory;
+        const pathFindingManager = this.game.systems.pathFindingManager;
+        const characterFactory = this.game.systems.characterFactory;
+
+        // Load level, navmesh, and character models
+        await levelFactory.loadLevel('./assets/glb/Level2.glb');
+        levelFactory.addToScene();
+
+        await pathFindingManager.loadNavMesh('./assets/glb/navmesh.glb');
+
+        await characterFactory.loadCharacter('./assets/glb/player.glb', CHARACTER_TYPES.PLAYER);
+        await characterFactory.loadCharacter('./assets/glb/zombietest.glb', CHARACTER_TYPES.ZOMBIE);
+
+        // Switch to game state
+        this.game.stateManager.setState(GAMESTATES.GAME);
     }
 
     onExit() {

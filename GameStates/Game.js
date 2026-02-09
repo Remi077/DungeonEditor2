@@ -56,6 +56,9 @@ export default class GameState {
         // show game UI
         this.game.systems.uiManager.showGameUI();
 
+        // hide collision debug by default
+        this.game.systems.collisionManager.hide();
+
         //clear all game actions
         this.actions = {};
         this.actionsOnce = {};
@@ -91,7 +94,7 @@ export default class GameState {
             yawObject.add(pitchObject);
             const pointLight = new THREE.PointLight(new THREE.Vector3(0, 0, 0), 1, 100);
             yawObject.add(pointLight);
-            scene.add(yawObject);
+            this.game.scene.add(yawObject);
 
             pitchObject.rotation.set(0, 0, 0);
             yawObject.position.copy(this.initialCameraPos);
@@ -109,7 +112,8 @@ export default class GameState {
                 //add rotation
             );
             //player health bar
-            this.player.gameplay.healthBar = this.healthBar;
+            // this.player.gameplay.healthBar = this.healthBar;
+            this.player.gameplay.healthBar = this.game.systems.uiManager.healthBar;
 
             const spawnPoints = this.game?.systems?.levelFactory?.enemySpawnGroup;
             let num = 3;
