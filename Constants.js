@@ -101,6 +101,7 @@ export const GLB_PREFIX = {
     ACTION_SWITCH : 'Action_Switch',
     ACTION_CHEST : 'Action_Chest',
     ACTION_ITEM : 'Action_Item',
+    ACTION_NPC : 'Action_NPC',
 
     ENEMY : 'Enemy',
 

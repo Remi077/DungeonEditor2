@@ -4,6 +4,7 @@ export const ECT = {
     ANIMCOLLIDER: 'AnimCollider',
     ATTACK: 'Attack',
     CAPSULECOLLIDER: 'CapsuleCollider',
+    DIALOG: 'Dialog',
     GAMEPLAY: 'Gameplay',
     INTERACTABLE: 'Interactable',
     PATHFINDING: 'PathFinding',
@@ -31,6 +32,7 @@ export default class Entity {
     get animator() { return this.get(ECT.ANIMATOR); }
     get animCol() { return this.get(ECT.ANIMCOLLIDER); }
     get attack() { return this.get(ECT.ATTACK); }
+    get dialog() { return this.get(ECT.DIALOG); }
     get gameplay() { return this.get(ECT.GAMEPLAY); }
     get interactable() { return this.get(ECT.INTERACTABLE); }
     get pathfinding() { return this.get(ECT.PATHFINDING); }

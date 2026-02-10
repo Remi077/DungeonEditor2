@@ -219,7 +219,7 @@ export default class GameState {
 
         const actions = { ...this.actions, ...this.actionsOnce, ...this.mouseActions };
         const uiState = this.game.systems.uiManager.uiState;
-        const enableMovement = !uiState.isInventoryOpen
+        const enableMovement = !uiState.isInventoryOpen && !uiState.isDialogActive
         
         //update every system
         //the order is important here, because some colliders are animation driven (weapons, doors...)
@@ -236,6 +236,7 @@ export default class GameState {
         //order not important here
         this.game.systems.healthManager.update(dt); //update health and status (hurt, invincible) of entities
         this.game.systems.cameraManager.update(dt); //sync camera
+        this.game.systems.dialogManager.update(dt, actions); //update dialog system
         this.game.systems.materialManager.update(dt); //update materials
         this.game.systems.uiManager.update(dt,actions); //update UI
         this.game.systems.lightManager.update(dt); //update lights

@@ -22,6 +22,7 @@ export default class UIManager {
         this.uiState = {
             isInventoryOpen : false,
             isPointerLocked : true,
+            isDialogActive : false,
         }
     }
 

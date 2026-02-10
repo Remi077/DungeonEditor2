@@ -58,7 +58,15 @@ export default class InteractableManager {
         // inventory[itemName] = (inventory[itemName] ?? 0) + 1;
         // playerEntity.inventory.needsUpdate = true;
         // console.log(inventory)
-    }    
+    }
+
+    dialogInteract(dialogEntity) {
+        const dialog = dialogEntity.dialog;
+        if (!dialog) return;
+
+        // Activate the entity - DialogManager will pick it up in its update loop
+        this.world.setActive(dialogEntity, true);
+    }
 
 
 }

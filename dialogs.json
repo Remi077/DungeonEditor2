@@ -1,0 +1,83 @@
+{
+  "npc_guard_01": {
+    "lines": [
+      {
+        "speaker": "Guard",
+        "text": "Halt! What's your business here?"
+      },
+      {
+        "speaker": "Guard",
+        "text": "These streets aren't safe at night. Watch yourself."
+      }
+    ]
+  },
+  "npc_merchant": {
+    "lines": [
+      {
+        "speaker": "Merchant",
+        "text": "Welcome, traveler! Care to see my wares?"
+      },
+      {
+        "speaker": "Merchant",
+        "text": "I have the finest goods in all the land!"
+      }
+    ]
+  },
+  "sign_town_entrance": {
+    "lines": [
+      {
+        "speaker": "Sign",
+        "text": "Welcome to Darkwood Village. Population: Dwindling."
+      }
+    ]
+  },
+  "chest_locked": {
+    "lines": [
+      {
+        "speaker": "System",
+        "text": "The chest is locked. You need a key."
+      }
+    ]
+  },
+  "item_health_potion": {
+    "lines": [
+      {
+        "speaker": "System",
+        "text": "You found a Health Potion! Press Q to use it."
+      }
+    ]
+  },
+  "npc_elder": {
+    "lines": [
+      {
+        "speaker": "Elder",
+        "text": "Ah, a new face. We don't get many visitors these days."
+      },
+      {
+        "speaker": "Elder",
+        "text": "The undead have been growing bolder. Be careful out there."
+      },
+      {
+        "speaker": "Elder",
+        "text": "If you're brave enough, we could use your help clearing them out."
+      }
+    ]
+  },
+  "tutorial_movement": {
+    "lines": [
+      {
+        "speaker": "Tutorial",
+        "text": "Use WASD to move around. Press SPACE to jump."
+      }
+    ]
+  },
+  "tutorial_combat": {
+    "lines": [
+      {
+        "speaker": "Tutorial",
+        "text": "Left click to attack. Press H to toggle collision debug view."
+      }
+    ]
+  }
+}
+

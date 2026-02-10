@@ -18,6 +18,7 @@ import AIManager from './Systems/AIManager.js';
 import AnimatorManager from './Systems/AnimatorManager.js';
 import CameraManager from './Systems/CameraManager.js';
 import CollisionManager from './Systems/CollisionManager.js';
+import DialogManager from './Systems/DialogManager.js';
 import HealthManager from './Systems/HealthManager.js';
 import InteractableManager from './Systems/InteractableManager.js';
 import LightManager from './Systems/LightManager.js';
@@ -146,6 +147,7 @@ game.systems.animatorManager = new AnimatorManager(game);
 game.systems.cameraManager = new CameraManager(game);
 game.systems.characterFactory = new CharacterFactory(game);
 game.systems.collisionManager = new CollisionManager(game);
+game.systems.dialogManager = new DialogManager(game);
 game.systems.healthManager = new HealthManager(game);
 game.systems.interactableManager = new InteractableManager(game);
 game.systems.levelFactory = new LevelFactory(game);
@@ -157,6 +159,7 @@ game.systems.movementManager = new MovementManager(game);
 game.systems.uiManager = new UIManager(game);
 game.systems.uvAnimManager = new UVAnimManager(game);
 await game.systems.uiManager.loadItems(); // ensure atlas is loaded before using it
+await game.systems.dialogManager.loadDialogData('./dialogs.json'); // load dialog data
 
 //tweaks
 //tweak global renderer

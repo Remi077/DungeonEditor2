@@ -8,6 +8,7 @@ import VisualComponent from '../Entities/Components/VisualComponent.js';
 import TransformComponent from '../Entities/Components/TransformComponent.js';
 import UVAnimComponent from '../Entities/Components/UVAnimComponent.js';
 import InteractableComponent from '../Entities/Components/InteractableComponent.js';
+import DialogComponent from '../Entities/Components/DialogComponent.js';
 import LightComponent from '../Entities/Components/LightComponent.js';
 
 export default class LevelFactory {
@@ -222,6 +223,24 @@ export default class LevelFactory {
                 this.world.addComponent(e, new InteractableComponent(() => this.game.systems.interactableManager.switchInteract(e)));
             } else if (child.name.startsWith(Constants.GLB_PREFIX.ACTION_ITEM)) {
                 this.world.addComponent(e, new InteractableComponent((callerEntity) => this.game.systems.interactableManager.itemInteract(e, callerEntity)));
+            } else if (child.name.startsWith(Constants.GLB_PREFIX.ACTION_NPC)) {
+                // Extract dialogId from object name: Action_NPC_npc_guard_01 -> npc_guard_01
+                // Or check for custom property 'dialogId' in Blender
+                let dialogId = child.userData?.dialogId; // Check custom property first
+
+                if (!dialogId) {
+                    // Extract from name: Action_NPC_npc_guard_01 -> npc_guard_01
+                    dialogId = child.name
+                        .replace(new RegExp(`^${Constants.GLB_PREFIX.ACTION_NPC}_?`), '')
+                        .replace(/\d+$/, ''); // Remove trailing numbers like _01
+                }
+
+                if (dialogId) {
+                    this.world.addComponent(e, new DialogComponent(dialogId));
+                    this.world.addComponent(e, new InteractableComponent(() => this.game.systems.interactableManager.dialogInteract(e)));
+                } else {
+                    console.warn(`NPC entity ${child.name} has no dialogId specified`);
+                }
             } else {
                 if (child.parent?.name.startsWith(Constants.GLB_PREFIX.ACTION_SWITCH)) {
                     //this current mesh is parented to a switch, get the switch parent and its associated entity
