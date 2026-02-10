@@ -1,5 +1,6 @@
 export const GAMESTATES = {
     MENU : "menu",
+    LOADINGSCREEN : "loadingscreen",
     GAME : "game",
     EDITOR : "editor",
     GAMEOVER : "gameover",

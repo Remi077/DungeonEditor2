@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 
 import MenuState from './GameStates/Menu.js';
+import LoadingScreenState from './GameStates/LoadingScreen.js';
 import GameState from './GameStates/Game.js';
 import EditorState from './GameStates/Editor.js';
 import GameOverState from './GameStates/GameOver.js';
@@ -173,6 +174,7 @@ game.systems.collisionManager.init(game.scene);
 
 // --- Register states ---
 stateManager.add(GAMESTATES.MENU, new MenuState(game));
+stateManager.add(GAMESTATES.LOADINGSCREEN, new LoadingScreenState(game));
 stateManager.add(GAMESTATES.GAME, new GameState(game));
 stateManager.add(GAMESTATES.EDITOR, new EditorState(game));
 stateManager.add(GAMESTATES.GAMEOVER, new GameOverState(game));

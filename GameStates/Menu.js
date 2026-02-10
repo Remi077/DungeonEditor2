@@ -1,5 +1,4 @@
 import { GAMESTATES } from "../Infra/GameStateManager.js";
-import { CHARACTER_TYPES } from '../Constants.js';
 
 export default class MenuState {
     constructor(game) {
@@ -87,24 +86,9 @@ export default class MenuState {
         return btn;
     }
 
-    async onStartGame() {
-        console.log('Loading level and starting game...');
-
-        const levelFactory = this.game.systems.levelFactory;
-        const pathFindingManager = this.game.systems.pathFindingManager;
-        const characterFactory = this.game.systems.characterFactory;
-
-        // Load level, navmesh, and character models
-        await levelFactory.loadLevel('./assets/glb/Level2.glb');
-        levelFactory.addToScene();
-
-        await pathFindingManager.loadNavMesh('./assets/glb/navmesh.glb');
-
-        await characterFactory.loadCharacter('./assets/glb/player.glb', CHARACTER_TYPES.PLAYER);
-        await characterFactory.loadCharacter('./assets/glb/zombietest.glb', CHARACTER_TYPES.ZOMBIE);
-
-        // Switch to game state
-        this.game.stateManager.setState(GAMESTATES.GAME);
+    onStartGame() {
+        // Transition to loading screen which will handle asset loading
+        this.game.stateManager.setState(GAMESTATES.LOADINGSCREEN);
     }
 
     onExit() {
