@@ -59,21 +59,32 @@ if (isMobile()) {
 //  ├── Constants.js
 //  ├── Debug.js
 //  ├── index.html
-//  |
+//  ├── main.js
+//  │
 //  ├── assets/
-//  |
+//  │     ├── blender/
+//  │     ├── glb/
+//  │     ├── metadata/
+//  │     │     ├── dialogs.json
+//  │     │     ├── Level1_metadata.json
+//  │     │     └── Level2_metadata.json
+//  │     ├── mixamo/
+//  │     └── textures/
+//  │
 //  ├── Infra/
 //  │     ├── GameStateManager.js
 //  │     └── InputManager.js
-//  |
-//  ├── Infra/
-//  │     ├── CharacterFactory.js //tomove in factories
-//  │     └── LevelFactory.js //tomove in factories
-//  |
+//  │
+//  ├── Factories/
+//  │     ├── CharacterFactory.js
+//  │     └── LevelFactory.js
+//  │
 //  ├── Systems/
 //  │     ├── AIManager.js
 //  │     ├── AnimatorManager.js
+//  │     ├── CameraManager.js
 //  │     ├── CollisionManager.js
+//  │     ├── DialogManager.js
 //  │     ├── HealthManager.js
 //  │     ├── InteractableManager.js
 //  │     ├── LightManager.js
@@ -81,7 +92,7 @@ if (isMobile()) {
 //  │     ├── MovementManager.js
 //  │     ├── PathFindingManager.js
 //  │     ├── PlayerControlManager.js
-//  │     └── UIManager.js
+//  │     ├── UIManager.js
 //  │     └── UVAnimManager.js
 //  │
 //  ├── Entities/
@@ -93,7 +104,9 @@ if (isMobile()) {
 //  │           ├── AnimColliderComponent.js
 //  │           ├── AttackComponent.js
 //  │           ├── CapsuleColliderComponent.js
+//  │           ├── DialogComponent.js
 //  │           ├── GameplayComponent.js
+//  │           ├── HealthComponent.js
 //  │           ├── InteractableComponent.js
 //  │           ├── InventoryComponent.js
 //  │           ├── LightComponent.js
@@ -107,8 +120,9 @@ if (isMobile()) {
 //  └── GameStates/
 //        ├── Editor.js
 //        ├── Game.js
-//        ├── Menu.js
-//        └── GameOver.js
+//        ├── GameOver.js
+//        ├── LoadingScreen.js
+//        └── Menu.js
 
 
 // --- Create the state manager ---
@@ -159,7 +173,7 @@ game.systems.movementManager = new MovementManager(game);
 game.systems.uiManager = new UIManager(game);
 game.systems.uvAnimManager = new UVAnimManager(game);
 await game.systems.uiManager.loadItems(); // ensure atlas is loaded before using it
-await game.systems.dialogManager.loadDialogData('./dialogs.json'); // load dialog data
+await game.systems.dialogManager.loadDialogData('./assets/metadata/dialogs.json'); // load dialog data
 
 //tweaks
 //tweak global renderer
