@@ -22,7 +22,7 @@ export default class DialogComponent {
         // so state can be copied back after dialog closes
         this.sourceDialog = null;
 
-        console.log("created dialog for dialogId ", dialogId);
+        // console.log("created dialog for dialogId ", dialogId);
     }
 
     reset() {

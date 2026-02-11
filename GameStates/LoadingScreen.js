@@ -99,8 +99,8 @@ export default class LoadingScreenState {
         try {
             // Load level (0-40%)
             this.updateProgress(0, 'Loading level...');
-            // await levelFactory.loadLevel('./assets/glb/Level2.glb', './levels/Level2_metadata.json');
-            await levelFactory.loadLevel('./assets/glb/Level1.glb', './levels/Level1_metadata.json');
+            await levelFactory.loadLevel('./assets/glb/Level2.glb', './assets/metadata/Level2_metadata.json');
+            // await levelFactory.loadLevel('./assets/glb/Level1.glb', './assets/metadata/Level1_metadata.json');
             levelFactory.addToScene();
             this.updateProgress(40, 'Level loaded');
 
