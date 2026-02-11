@@ -11,6 +11,21 @@ export default class InteractableManager {
         const it = doorEntity.interactable;
         if (!anim || !it) return;
 
+        // Check if door is locked
+        if (it.locked) {
+            // Load singleton dialog entity with locked message
+            const dialogEntity = this.world.dialogSingletonEntity;
+            const dialogId = doorEntity.name.startsWith(GLB_PREFIX.ACTION_DOOR)
+                ? 'door_locked'
+                : 'chest_locked';
+
+            dialogEntity.dialog.dialogId = dialogId;
+            dialogEntity.dialog.currentLineIndex = 0;
+            dialogEntity.dialog.sourceDialog = null; // No source (stateless)
+            this.world.setActive(dialogEntity, true);
+            return;
+        }
+
         it.open = !it.open;
         anim.desiredAnimation.set(null, // null: pick first action
         {
@@ -60,11 +75,21 @@ export default class InteractableManager {
         // console.log(inventory)
     }
 
-    dialogInteract(dialogEntity) {
-        const dialog = dialogEntity.dialog;
-        if (!dialog) return;
+    dialogInteract(npcEntity) {
+        const npcDialog = npcEntity.dialog;
+        if (!npcDialog) return;
 
-        // Activate the entity - DialogManager will pick it up in its update loop
+        // Copy NPC dialog state to singleton dialog entity
+        const dialogEntity = this.world.dialogSingletonEntity;
+        const singletonDialog = dialogEntity.dialog;
+
+        singletonDialog.dialogId = npcDialog.dialogId;
+        singletonDialog.currentLineIndex = npcDialog.currentLineIndex;
+        singletonDialog.hasBeenRead = npcDialog.hasBeenRead;
+        singletonDialog.loops = npcDialog.loops;
+        singletonDialog.sourceDialog = npcDialog; // Store component reference for state copy-back
+
+        // Activate the singleton dialog entity
         this.world.setActive(dialogEntity, true);
     }
 

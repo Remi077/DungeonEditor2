@@ -31,9 +31,26 @@ export default class LevelFactory {
         this.loaded = false;
         this.animatedNodes = [];
         this.gltf = null;
+        this.metadata = null; // Level metadata (lights, uvAnims, interactables)
     }
 
-    async loadLevel(path) {
+    async loadMetadata(path) {
+        try {
+            const response = await fetch(path);
+            this.metadata = await response.json();
+            console.log('Level metadata loaded:', path);
+        } catch (error) {
+            console.warn('No metadata found for level:', path, error);
+            this.metadata = null;
+        }
+    }
+
+    async loadLevel(path, metadataPath = null) {
+        // Load metadata if provided
+        if (metadataPath) {
+            await this.loadMetadata(metadataPath);
+        }
+
         const arrayBuffer = await (await fetch(path)).arrayBuffer();
         const gltf = await this.loadLevelGlb(arrayBuffer);
         this.gltf = gltf;
@@ -214,19 +231,39 @@ export default class LevelFactory {
             // add visual and transform components
             this.world.addComponent(e, visualComponent);
             e.addComponent(transformComponent);
+
+            // Get interactable metadata (locked, keyRequired)
+            const interactableConfig = this.metadata?.interactables?.[child.name];
+            const locked = interactableConfig?.locked || false;
+            const keyRequired = interactableConfig?.keyRequired || null;
+
             if (
                 child.name.startsWith(Constants.GLB_PREFIX.ACTION_DOOR)
                 || child.name.startsWith(Constants.GLB_PREFIX.ACTION_CHEST)
             ) {
-                this.world.addComponent(e, new InteractableComponent(() => this.game.systems.interactableManager.doorInteract(e)));
+                this.world.addComponent(e, new InteractableComponent(
+                    () => this.game.systems.interactableManager.doorInteract(e),
+                    false, // open
+                    [], // dependentEntities
+                    locked,
+                    keyRequired
+                ));
+                // No DialogComponent needed - uses singleton for locked messages
             } else if (child.name.startsWith(Constants.GLB_PREFIX.ACTION_SWITCH)) {
-                this.world.addComponent(e, new InteractableComponent(() => this.game.systems.interactableManager.switchInteract(e)));
+                this.world.addComponent(e, new InteractableComponent(
+                    () => this.game.systems.interactableManager.switchInteract(e),
+                    false, // open
+                    [], // dependentEntities
+                    locked,
+                    keyRequired
+                ));
             } else if (child.name.startsWith(Constants.GLB_PREFIX.ACTION_ITEM)) {
                 this.world.addComponent(e, new InteractableComponent((callerEntity) => this.game.systems.interactableManager.itemInteract(e, callerEntity)));
             } else if (child.name.startsWith(Constants.GLB_PREFIX.ACTION_NPC)) {
                 // Extract dialogId from object name: Action_NPC_npc_guard_01 -> npc_guard_01
                 // Or check for custom property 'dialogId' in Blender
-                let dialogId = child.userData?.dialogId; // Check custom property first
+                // let dialogId = child.userData?.dialogId; // Check custom property first
+                let dialogId = null; // Check custom property first
 
                 if (!dialogId) {
                     // Extract from name: Action_NPC_npc_guard_01 -> npc_guard_01
@@ -260,7 +297,17 @@ export default class LevelFactory {
         Array.from(this.lightGroup.children).forEach(child => {
 
             const e = new Entity(child.name);
-            this.world.addComponent(e, new LightComponent(child));
+
+            // Get template from metadata
+            const templateName = this.metadata?.lights?.[child.name];
+            const template = this.metadata?.lightTemplates?.[templateName];
+
+            // Create component with template parameters or defaults
+            const lightComp = template
+                ? new LightComponent(child, template)
+                : new LightComponent(child);
+
+            this.world.addComponent(e, lightComp);
             this.world.setActive(e, true);
 
         })
@@ -270,11 +317,20 @@ export default class LevelFactory {
         for (const mat of uvAnimMaterials) {
             const e = new Entity(mat.name);
 
-            this.world.addComponent(
-                e,
-                new UVAnimComponent(mat.map)
-            );
+            const uvComp = new UVAnimComponent(mat.map);
 
+            // Get template from metadata
+            const templateName = this.metadata?.uvAnims?.[mat.name];
+            const template = this.metadata?.uvAnimTemplates?.[templateName];
+
+            // Apply template parameters if available
+            if (template) {
+                uvComp.speedUV.set(template.speedUV[0], template.speedUV[1]);
+                uvComp.offsetUV.set(template.offsetUV[0], template.offsetUV[1]);
+                uvComp.loop = template.loop;
+            }
+
+            this.world.addComponent(e, uvComp);
             this.world.setActive(e, true);
 
             // One-time setup

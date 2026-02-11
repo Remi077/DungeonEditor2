@@ -15,7 +15,14 @@ export default class DialogComponent {
         this.hasBeenRead = false;
 
         // Whether this dialog should loop back to start
-        this.loops = false;
+        this.loops = true;
+
+        // Reference to source DialogComponent (for singleton pattern)
+        // When singleton dialog is used, this stores the original NPC's DialogComponent
+        // so state can be copied back after dialog closes
+        this.sourceDialog = null;
+
+        console.log("created dialog for dialogId ", dialogId);
     }
 
     reset() {

@@ -1,0 +1,88 @@
+{
+  "lightTemplates": {
+    "torch": {
+      "frequency": 2.0,
+      "jitter": 0.3,
+      "phase": 0.0,
+      "intensityAmp": 0.4
+    },
+    "candle": {
+      "frequency": 3.0,
+      "jitter": 0.5,
+      "phase": 0.0,
+      "intensityAmp": 0.3
+    },
+    "static": {
+      "frequency": 0.0,
+      "jitter": 0.0,
+      "phase": 0.0,
+      "intensityAmp": 0.0
+    },
+    "flicker": {
+      "frequency": 5.0,
+      "jitter": 0.8,
+      "phase": 0.0,
+      "intensityAmp": 0.6
+    }
+  },
+  
+  "lights": {
+    "Light_Torch_01": "torch",
+    "Light_Torch_02": "torch",
+    "Light_Candle_01": "candle",
+    "Light_Main": "static"
+  },
+  
+  "uvAnimTemplates": {
+    "water": {
+      "speedUV": [0.1, 0.05],
+      "offsetUV": [0, 0],
+      "loop": true
+    },
+    "lava": {
+      "speedUV": [0.2, 0.1],
+      "offsetUV": [0, 0],
+      "loop": true
+    },
+    "conveyor": {
+      "speedUV": [0.5, 0],
+      "offsetUV": [0, 0],
+      "loop": true
+    },
+    "slow_scroll": {
+      "speedUV": [0.05, 0],
+      "offsetUV": [0, 0],
+      "loop": true
+    }
+  },
+  
+  "uvAnims": {
+    "UVAnim_Water": "water",
+    "UVAnim_Lava_01": "lava",
+    "UVAnim_Conveyor": "conveyor"
+  },
+  
+  "interactables": {
+    "Action_Door": {
+      "locked": true,
+      "keyRequired": null
+    },
+    "Action_Door_Treasury": {
+      "locked": true,
+      "keyRequired": "key_treasury"
+    },
+    "Action_Chest_01": {
+      "locked": true,
+      "keyRequired": "key_small"
+    },
+    "Action_Chest_02": {
+      "locked": false,
+      "keyRequired": null
+    },
+    "Action_Switch_01": {
+      "locked": false,
+      "keyRequired": null
+    }
+  }
+}
+

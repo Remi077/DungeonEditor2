@@ -1,4 +1,5 @@
-import { ECT } from '../Entities/Entity.js';
+import Entity from '../Entities/Entity.js';
+import DialogComponent from '../Entities/Components/DialogComponent.js';
 
 export default class DialogManager {
     constructor(game) {
@@ -6,7 +7,16 @@ export default class DialogManager {
         this.world = game.world;
         this.dialogData = null;
         this.activeEntity = null;
-        
+        this.dialogJustOpened = false; // Frame skip hack to prevent first line skip
+
+        // Create singleton dialog entity
+        this.dialogEntity = new Entity("DialogUI");
+        this.dialogEntity.addComponent(new DialogComponent(null)); // dialogId set dynamically
+        this.world.addEntity(this.dialogEntity); // Add to world but keep inactive
+
+        // Store convenient reference in world (like world.player)
+        this.world.dialogSingletonEntity = this.dialogEntity;
+
         // UI elements
         this.dialogBox = null;
         this.speakerName = null;
@@ -26,14 +36,19 @@ export default class DialogManager {
     }
     
     update(dt, actions) {
-        // Query entities with DIALOG component that are active
-        // Using world.query automatically filters for active entities
-        for (const entity of this.world.query(ECT.DIALOG)) {
-            if (!this.activeEntity) {
-                // New dialog activated
-                this.activeEntity = entity;
-                this.showDialog(entity);
-            }
+        // Check if our singleton dialog entity is active
+        if (this.world.isActive(this.dialogEntity) && !this.activeEntity) {
+            // New dialog activated - set frame skip flag
+            this.activeEntity = this.dialogEntity;
+            this.dialogJustOpened = true;
+            this.showDialog(this.dialogEntity);
+            return; // Skip this frame's interact action
+        }
+
+        // Frame skip hack: if dialog just opened, skip this frame's interact action
+        if (this.dialogJustOpened) {
+            this.dialogJustOpened = false;
+            return;
         }
 
         // Handle dialog progression
@@ -45,31 +60,39 @@ export default class DialogManager {
     showDialog(entity) {
         const dialog = entity.dialog;
         const dialogId = dialog.dialogId;
-        
+
         if (!this.dialogData || !this.dialogData[dialogId]) {
             console.error('Dialog not found:', dialogId);
             return;
         }
-        
+
         // Create UI if it doesn't exist
         if (!this.dialogBox) {
             this.createDialogUI();
         }
-        
+
         // Get current line
         const dialogContent = this.dialogData[dialogId];
+
+        // Guard: if currentLineIndex is out of bounds, reset to 0
+        if (dialog.currentLineIndex >= dialogContent.lines.length) {
+            dialog.currentLineIndex = 0;
+        }
+
         const line = dialogContent.lines[dialog.currentLineIndex];
-        
+
         // Update UI
         this.dialogBox.style.display = 'flex';
         this.speakerName.textContent = line.speaker;
         this.dialogText.textContent = line.text;
-        
+
         // Mark as read
         dialog.hasBeenRead = true;
-        
+
         // Tell UIManager dialog is active (for input blocking)
         this.game.systems.uiManager.uiState.isDialogActive = true;
+
+        // console.log("SHOWDIALOG")
     }
     
     nextLine() {
@@ -98,14 +121,18 @@ export default class DialogManager {
 
         const dialog = this.activeEntity.dialog;
 
-        // Reset dialog state
-        if (dialog.loops) {
-            dialog.currentLineIndex = 0;
-        } else {
-            dialog.currentLineIndex = 0;
+        // If this was an NPC dialog, copy state back to the source component
+        if (dialog.sourceDialog) {
+            dialog.sourceDialog.hasBeenRead = dialog.hasBeenRead;
+            dialog.sourceDialog.currentLineIndex = dialog.loops ? 0 : dialog.currentLineIndex;
         }
 
-        // Deactivate the entity using world.setActive pattern
+        // Reset singleton dialog state
+        dialog.currentLineIndex = 0;
+        dialog.dialogId = null;
+        dialog.sourceDialog = null;
+
+        // Deactivate the singleton dialog entity
         this.world.setActive(this.activeEntity, false);
 
         // Hide UI
@@ -117,6 +144,8 @@ export default class DialogManager {
         this.game.systems.uiManager.uiState.isDialogActive = false;
 
         this.activeEntity = null;
+        // console.log("HIDEDIALOG")
+
     }
     
     createDialogUI() {

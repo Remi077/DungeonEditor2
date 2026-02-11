@@ -1,5 +1,5 @@
 {
-  "npc_guard_01": {
+  "npc_guard": {
     "lines": [
       {
         "speaker": "Guard",
@@ -76,6 +76,14 @@
       {
         "speaker": "Tutorial",
         "text": "Left click to attack. Press H to toggle collision debug view."
+      }
+    ]
+  },
+  "door_locked": {
+    "lines": [
+      {
+        "speaker": "System",
+        "text": "The door is locked."
       }
     ]
   }
