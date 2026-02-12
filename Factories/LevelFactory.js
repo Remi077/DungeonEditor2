@@ -325,9 +325,21 @@ export default class LevelFactory {
 
             // Apply template parameters if available
             if (template) {
-                uvComp.speedUV.set(template.speedUV[0], template.speedUV[1]);
-                uvComp.offsetUV.set(template.offsetUV[0], template.offsetUV[1]);
-                uvComp.loop = template.loop;
+                if (template.isFrameAnimation) {
+                    // Frame-by-frame animation mode
+                    uvComp.isFrameAnimation = true;
+                    uvComp.atlasSize.set(template.atlasSize[0], template.atlasSize[1]);
+                    uvComp.frameCount = template.frameCount;
+                    uvComp.frameRate = template.frameRate;
+                    uvComp.frameLoop = template.frameLoop !== undefined ? template.frameLoop : true;
+                    uvComp.currentFrame = 0;
+                    uvComp.frameTime = 0;
+                } else {
+                    // Continuous scrolling mode
+                    uvComp.speedUV.set(template.speedUV[0], template.speedUV[1]);
+                    uvComp.offsetUV.set(template.offsetUV[0], template.offsetUV[1]);
+                    uvComp.loop = template.loop;
+                }
             }
 
             this.world.addComponent(e, uvComp);
