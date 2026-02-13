@@ -53,13 +53,21 @@
       "speedUV": [0.05, 0],
       "offsetUV": [0, 0],
       "loop": true
+    },
+    "fire": {
+      "isFrameAnimation": true,
+      "atlasSize": [4, 4],
+      "frameCount": 12,
+      "frameRate": 10,
+      "frameLoop": true
     }
   },
-  
+
   "uvAnims": {
     "UVAnim_Water": "water",
     "UVAnim_Lava_01": "lava",
-    "UVAnim_Conveyor": "conveyor"
+    "UVAnim_Conveyor": "conveyor",
+    "UVAnim_Fire": "fire"
   },
   
   "interactables": {
