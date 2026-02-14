@@ -51,6 +51,9 @@ class CharacterPrefab {
         this.offsetRootToCamera =  new THREE.Vector3(0, this.constructor.DEFAULT_CHARACTER_EYE_HEIGHT, 0)
         this.collisionGroup = null;
 
+        // Flag to track if capsule dimensions were found in mesh
+        this.useMeshCapsule = false;
+
         this.isLoaded = false;
     }
 }
@@ -64,17 +67,21 @@ export default class CharacterFactory {
 
         this.charaPrefabMap = new Map(); // multiple character types
 
+        // DEBUG: Toggle mesh-based capsule collider per character type
+        this.USE_MESH_CAPSULE_PLAYER = true;  // Set to true to use mesh-based capsule for player
+        this.USE_MESH_CAPSULE_ZOMBIE = true;   // Set to true to use mesh-based capsule for zombie
+
         //floating health bar
         this.floatingHPWidth = 0.5;
         this.floatingHPHeight = 0.05;
         this.floatingHPGeom = new THREE.PlaneGeometry(this.floatingHPWidth, this.floatingHPHeight);
         this.floatingHPBackgroundColor = 0x550000;
         this.floatingHPBgMat = new THREE.MeshBasicMaterial({ color: this.floatingHPBackgroundColor });
-        this.floatingHPBgMesh = new THREE.Mesh(this.floatingHPGeom, this.floatingHPBgMat);        
+        this.floatingHPBgMesh = new THREE.Mesh(this.floatingHPGeom, this.floatingHPBgMat);
         this.floatingHPBgMesh.name= "hp_bg";
         this.floatingHPForegroundColor = 0x00ff00;
         this.floatingHPFgMat = new THREE.MeshBasicMaterial({ color: this.floatingHPForegroundColor });
-        this.floatingHPFgMesh = new THREE.Mesh(this.floatingHPGeom, this.floatingHPFgMat);        
+        this.floatingHPFgMesh = new THREE.Mesh(this.floatingHPGeom, this.floatingHPFgMat);
         this.floatingHPFgMesh.name= "hp_fg";
     }
 
@@ -127,7 +134,7 @@ export default class CharacterFactory {
                 child.frustumCulled = !isPlayerPrefab;
                 prefab.weaponMeshName = prefab.weapon?.name;
             }
-            if (child.name.startsWith(Constants.GLB_PREFIX.COLLIDER_KINE)) prefab.weaponColliderMesh = child;
+            if (child.name.startsWith(Constants.GLB_PREFIX.COLLIDER_KINE_WEAPON)) prefab.weaponColliderMesh = child;
         });
     }
 
@@ -161,68 +168,127 @@ export default class CharacterFactory {
             const relatedName = match[1];
             if (!relatedName) return;
 
-            // --- 1. LOCAL transforms of collider placeholder object ---
-            const childRot = child.quaternion.clone();
-            const childPos = child.position.clone();
-            const childScale = child.scale.clone();
+            // --- WEAPON COLLIDER ---
+            if (relatedName.startsWith(Constants.GLB_PREFIX.WEAPON)) {
+                // --- 1. LOCAL transforms of collider placeholder object ---
+                const childRot = child.quaternion.clone();
+                const childPos = child.position.clone();
+                const childScale = child.scale.clone();
 
-            // --- 2. Compute bounding box ---
-            child.geometry.computeBoundingBox();
-            const bbox = child.geometry.boundingBox.clone();
+                // --- 2. Compute bounding box ---
+                child.geometry.computeBoundingBox();
+                const bbox = child.geometry.boundingBox.clone();
 
-            const size = new THREE.Vector3();
-            bbox.getSize(size);
+                const size = new THREE.Vector3();
+                bbox.getSize(size);
 
-            const center = new THREE.Vector3();
-            bbox.getCenter(center);
+                const center = new THREE.Vector3();
+                bbox.getCenter(center);
 
-            // Apply object scale
-            size.multiply(childScale);
+                // Apply object scale
+                size.multiply(childScale);
 
-            // --- 3. Compute final center position (apply rotation to bbox center) ---
-            const rotatedCenter = center.clone().applyQuaternion(childRot);
-            const worldCenter = childPos.clone().add(rotatedCenter);
+                // --- 3. Compute final center position (apply rotation to bbox center) ---
+                const rotatedCenter = center.clone().applyQuaternion(childRot);
+                const worldCenter = childPos.clone().add(rotatedCenter);
 
-            // --- 4. Find the corresponding mesh the collider belongs to ---
-            const relatedMesh = scene.getObjectByName(relatedName);
-            if (!relatedMesh)
-                throw new Error(`Collider '${child.name}' references missing mesh '${relatedName}'`);
+                // --- 4. Find the corresponding mesh the collider belongs to ---
+                const relatedMesh = scene.getObjectByName(relatedName);
+                if (!relatedMesh)
+                    throw new Error(`Collider '${child.name}' references missing mesh '${relatedName}'`);
 
-            const meshWorldPos = relatedMesh.getWorldPosition(new THREE.Vector3());
-            const offsetRootToBody = worldCenter.clone().sub(meshWorldPos);
+                const meshWorldPos = relatedMesh.getWorldPosition(new THREE.Vector3());
+                const offsetRootToBody = worldCenter.clone().sub(meshWorldPos);
 
-            // --- 5. Create reusable body and collider descriptors ---
-            const weaponBodyDesc = {
-                translation: worldCenter,
-                rotation: childRot,
-            };
+                // --- 5. Create reusable body and collider descriptors ---
+                const weaponBodyDesc = {
+                    translation: worldCenter,
+                    rotation: childRot,
+                };
 
-            // --- 6. Collision groups ---
-            let weaponCollisionGroups = Constants.COL_MASKS.ENEMYWPN;
-            if(isPlayerPrefab)
-                weaponCollisionGroups = Constants.COL_MASKS.PLAYERWPN;
+                // --- 6. Collision groups ---
+                let weaponCollisionGroups = Constants.COL_MASKS.ENEMYWPN;
+                if(isPlayerPrefab)
+                    weaponCollisionGroups = Constants.COL_MASKS.PLAYERWPN;
 
-            // --- 7. Store inside prefab ---
-            prefab.weaponBodyDesc = weaponBodyDesc;
-            prefab.weaponCollisionGroups = weaponCollisionGroups;
-            prefab.weaponOffsetRootToBody.copy(offsetRootToBody);
-            if(isPlayerPrefab){
-                prefab.attackDamageStart = 0.2;
-                prefab.attackDamageEnd = null; //end of animation
-            } else {
-                prefab.attackDamageStart = 0.5;
-                prefab.attackDamageEnd = 0.5+0.3;
+                // --- 7. Store inside prefab ---
+                prefab.weaponBodyDesc = weaponBodyDesc;
+                prefab.weaponCollisionGroups = weaponCollisionGroups;
+                prefab.weaponOffsetRootToBody.copy(offsetRootToBody);
+                if(isPlayerPrefab){
+                    prefab.attackDamageStart = 0.2;
+                    prefab.attackDamageEnd = null; //end of animation
+                } else {
+                    prefab.attackDamageStart = 0.5;
+                    prefab.attackDamageEnd = 0.5+0.3;
+                }
+
+                prefab.weaponName = relatedName;
             }
+            // --- CHARACTER CAPSULE COLLIDER ---
+            else if (relatedName === Constants.GLB_PREFIX.CAPSULE) {
+                // Check if we should use mesh-based capsule for this character type
+                const useMeshCapsule = isPlayerPrefab
+                    ? this.USE_MESH_CAPSULE_PLAYER
+                    : this.USE_MESH_CAPSULE_ZOMBIE;
 
-            // --- 8. Store collider info for character capsule ---
-            if (!isPlayerPrefab)
-                prefab.capsuleRadius*=0.5; //temp should be calculated from mesh BB or dedicated mesh TOFIX
-            // prefab.capsuleHeight = ; // temp see above TOFIX
-            prefab.collisionGroup = isPlayerPrefab ? Constants.COL_MASKS.PLAYER : Constants.COL_MASKS.ENEMY;
+                if (!useMeshCapsule) {
+                    console.log(`[CharacterFactory] Mesh capsule found for ${prefab.name} but USE_MESH_CAPSULE is disabled, using defaults`);
+                    return;
+                }
 
-            // optionally:
-            prefab.weaponName = relatedName;
-        })
+                // --- 1. LOCAL transforms of collider placeholder object ---
+                const childPos = child.position.clone();
+                const childScale = child.scale.clone();
+
+                // --- 2. Compute bounding box ---
+                child.geometry.computeBoundingBox();
+                const bbox = child.geometry.boundingBox.clone();
+
+                const size = new THREE.Vector3();
+                bbox.getSize(size);
+
+                const center = new THREE.Vector3();
+                bbox.getCenter(center);
+
+                // Apply object scale
+                size.multiply(childScale);
+
+                // --- 3. Extract capsule dimensions from bounding box ---
+                // Capsule height is the Y dimension
+                // Capsule radius is the max of X and Z dimensions divided by 2
+                prefab.capsuleHeight = size.y;
+                prefab.capsuleRadius = Math.max(size.x, size.z) / 2;
+
+                // --- 4. Compute offset from root to body center ---
+                const worldCenter = childPos.clone().add(center);
+                prefab.offsetRootToBody.copy(worldCenter);
+
+                // --- 5. Compute offset from root to camera (eye height) ---
+                // Assume camera is at 85% of capsule height
+                const eyeHeight = prefab.capsuleHeight * 0.85;
+                prefab.offsetRootToCamera.set(0, eyeHeight, 0);
+
+                // Mark that we're using mesh-based capsule
+                prefab.useMeshCapsule = true;
+
+                console.log(`[CharacterFactory] Mesh-based capsule collider for ${prefab.name}:`, {
+                    height: prefab.capsuleHeight,
+                    radius: prefab.capsuleRadius,
+                    offsetRootToBody: prefab.offsetRootToBody
+                });
+            }
+        });
+
+        // --- 8. Apply old system fallback if mesh capsule not used ---
+        if (!prefab.useMeshCapsule && !isPlayerPrefab) {
+            // Old zombie-specific scaling
+            prefab.capsuleRadius *= 0.5;
+            console.log(`[CharacterFactory] Using default capsule for ${prefab.name} with old zombie scaling (radius *= 0.5)`);
+        }
+
+        // --- 9. Set collision group ---
+        prefab.collisionGroup = isPlayerPrefab ? Constants.COL_MASKS.PLAYER : Constants.COL_MASKS.ENEMY;
     }
 
     spawnPlayer(characterType, spawnPosition) {

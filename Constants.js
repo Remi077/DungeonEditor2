@@ -105,8 +105,10 @@ export const GLB_PREFIX = {
 
     ENEMY : 'Enemy',
 
+    CAPSULE : 'Capsule',
     COLLIDER : 'Collider_',
     COLLIDER_KINE : 'Collider_Kine',
+    COLLIDER_KINE_WEAPON : 'Collider_Kine_weapon',
 
     TRIGGER : 'Trigger',
 

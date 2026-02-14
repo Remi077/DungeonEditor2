@@ -91,32 +91,34 @@ export default class LoadingScreenState {
         this.loadAssets();
     }
 
+    // Shared loading function that can be called from Editor or LoadingScreen
+    static async loadGameAssets(game) {
+        const levelFactory = game.systems.levelFactory;
+        const pathFindingManager = game.systems.pathFindingManager;
+        const characterFactory = game.systems.characterFactory;
+
+        // Load level
+        // await levelFactory.loadLevel('./assets/glb/Level2.glb', './assets/metadata/Level2_metadata.json');
+        await levelFactory.loadLevel('./assets/glb/Level1.glb', './assets/metadata/Level1_metadata.json');
+        levelFactory.addToScene();
+
+        // Load navmesh
+        await pathFindingManager.loadNavMesh('./assets/glb/navmesh.glb');
+
+        // Load player character
+        await characterFactory.loadCharacter('./assets/glb/player.glb', CHARACTER_TYPES.PLAYER);
+
+        // Load zombie character
+        await characterFactory.loadCharacter('./assets/glb/zombie.glb', CHARACTER_TYPES.ZOMBIE);
+    }
+
     async loadAssets() {
-        const levelFactory = this.game.systems.levelFactory;
-        const pathFindingManager = this.game.systems.pathFindingManager;
-        const characterFactory = this.game.systems.characterFactory;
-
         try {
-            // Load level (0-40%)
-            this.updateProgress(0, 'Loading level...');
-            // await levelFactory.loadLevel('./assets/glb/Level2.glb', './assets/metadata/Level2_metadata.json');
-            await levelFactory.loadLevel('./assets/glb/Level1.glb', './assets/metadata/Level1_metadata.json');
-            levelFactory.addToScene();
-            this.updateProgress(40, 'Level loaded');
+            this.updateProgress(0, 'Loading assets...');
 
-            // Load navmesh (40-60%)
-            this.updateProgress(40, 'Loading navigation mesh...');
-            await pathFindingManager.loadNavMesh('./assets/glb/navmesh.glb');
-            this.updateProgress(60, 'Navigation mesh loaded');
+            // Call the shared loading function
+            await LoadingScreenState.loadGameAssets(this.game);
 
-            // Load player character (60-80%)
-            this.updateProgress(60, 'Loading player character...');
-            await characterFactory.loadCharacter('./assets/glb/player.glb', CHARACTER_TYPES.PLAYER);
-            this.updateProgress(80, 'Player character loaded');
-
-            // Load zombie character (80-100%)
-            this.updateProgress(80, 'Loading enemies...');
-            await characterFactory.loadCharacter('./assets/glb/zombietest.glb', CHARACTER_TYPES.ZOMBIE);
             this.updateProgress(100, 'Complete!');
 
             // Wait a moment to show completion, then transition to game

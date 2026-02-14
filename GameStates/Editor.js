@@ -3,6 +3,7 @@ import Stats from "stats.js";
 
 import { GAMESTATES } from '../Infra/GameStateManager.js';
 import { CHARACTER_TYPES } from '../Constants.js';
+import LoadingScreenState from './LoadingScreen.js';
 
 export default class EditorState {
     constructor(game) {
@@ -441,15 +442,8 @@ export default class EditorState {
         if (ActionsOnce.saveLevel) this.onSave();
         if (ActionsOnce.loadLevel) this.onLoad();
         if (ActionsOnce.loadTest){
-            const levelFactory = this.game.systems.levelFactory;
-            // levelFactory.loadLevel('./assets/glb/Level1.glb').then(() => levelFactory.addToScene());
-            levelFactory.loadLevel('./assets/glb/Level2.glb').then(() => levelFactory.addToScene());
-            const pathFindingManager = this.game.systems.pathFindingManager;
-            pathFindingManager.loadNavMesh('./assets/glb/navmesh.glb');
-            const characterFactory = this.game.systems.characterFactory;
-            characterFactory.loadCharacter('./assets/glb/player.glb', CHARACTER_TYPES.PLAYER);
-            characterFactory.loadCharacter('./assets/glb/zombietest.glb', CHARACTER_TYPES.ZOMBIE);
-        }    
+            LoadingScreenState.loadGameAssets(this.game);
+        }
         if (ActionsOnce.resetLevel) this.onReset();
         // if (ActionsOnce.startGame) this.onStart();
 
