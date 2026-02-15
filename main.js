@@ -11,6 +11,7 @@ import CharacterFactory from './Factories/CharacterFactory.js';
 
 import GameStateManager, { GAMESTATES } from './Infra/GameStateManager.js';
 import InputManager from './Infra/InputManager.js';
+import { configManager } from './Infra/ConfigManager.js';
 
 import World from './Entities/World.js';
 
@@ -66,12 +67,14 @@ if (isMobile()) {
 //  │     ├── glb/
 //  │     ├── metadata/
 //  │     │     ├── dialogs.json
+//  │     │     ├── game_config.json
 //  │     │     ├── Level1_metadata.json
 //  │     │     └── Level2_metadata.json
 //  │     ├── mixamo/
 //  │     └── textures/
 //  │
 //  ├── Infra/
+//  │     ├── ConfigManager.js
 //  │     ├── GameStateManager.js
 //  │     └── InputManager.js
 //  │
@@ -156,6 +159,10 @@ const game = {
     world: new World(),
 }
 
+// Load game configuration BEFORE creating systems (they need config in constructors)
+await configManager.loadConfig('./assets/metadata/game_config.json');
+game.config = configManager; // Make config accessible from game object
+
 game.systems.aiManager = new AIManager(game);
 game.systems.animatorManager = new AnimatorManager(game);
 game.systems.cameraManager = new CameraManager(game);
@@ -172,6 +179,7 @@ game.systems.materialManager = new MaterialManager(game);
 game.systems.movementManager = new MovementManager(game);
 game.systems.uiManager = new UIManager(game);
 game.systems.uvAnimManager = new UVAnimManager(game);
+
 await game.systems.uiManager.loadItems(); // ensure atlas is loaded before using it
 await game.systems.dialogManager.loadDialogData('./assets/metadata/dialogs.json'); // load dialog data
 

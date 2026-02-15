@@ -71,9 +71,10 @@ export default class CharacterFactory {
         this.USE_MESH_CAPSULE_PLAYER = true;  // Set to true to use mesh-based capsule for player
         this.USE_MESH_CAPSULE_ZOMBIE = true;   // Set to true to use mesh-based capsule for zombie
 
-        //floating health bar
-        this.floatingHPWidth = 0.5;
-        this.floatingHPHeight = 0.05;
+        //floating health bar (using config values)
+        const healthBarConfig = this.game.config.get('player.healthBar', { width: 0.5, height: 0.05 });
+        this.floatingHPWidth = healthBarConfig.width;
+        this.floatingHPHeight = healthBarConfig.height;
         this.floatingHPGeom = new THREE.PlaneGeometry(this.floatingHPWidth, this.floatingHPHeight);
         this.floatingHPBackgroundColor = 0x550000;
         this.floatingHPBgMat = new THREE.MeshBasicMaterial({ color: this.floatingHPBackgroundColor });
@@ -215,13 +216,11 @@ export default class CharacterFactory {
                 prefab.weaponBodyDesc = weaponBodyDesc;
                 prefab.weaponCollisionGroups = weaponCollisionGroups;
                 prefab.weaponOffsetRootToBody.copy(offsetRootToBody);
-                if(isPlayerPrefab){
-                    prefab.attackDamageStart = 0.2;
-                    prefab.attackDamageEnd = null; //end of animation
-                } else {
-                    prefab.attackDamageStart = 0.5;
-                    prefab.attackDamageEnd = 0.5+0.3;
-                }
+
+                // Get attack timing from config
+                const characterConfig = this.game.config.getCharacter(isPlayerPrefab ? 'player' : 'zombie');
+                prefab.attackDamageStart = characterConfig.combat?.attackDamageStart || 0.2;
+                prefab.attackDamageEnd = characterConfig.combat?.attackDamageEnd || null;
 
                 prefab.weaponName = relatedName;
             }
@@ -389,9 +388,14 @@ export default class CharacterFactory {
         // Prepare animations
         const mixer = new THREE.AnimationMixer(root);
 
-        //movement
-        const mv = new MovementComponent();
-        if (!options?.isPlayer) mv.moveSpeed *= 0.15; //TEMP: to move in constants TOFIX
+        //movement - pass characterType to get correct config values
+        const characterType = options?.isPlayer ? 'player' : 'zombie';
+        const mv = new MovementComponent(characterType);
+        if (!options?.isPlayer) {
+            // Apply zombie speed multiplier from config
+            const zombieConfig = this.game.config.getZombie();
+            mv.moveSpeed *= zombieConfig.movement?.moveSpeedMultiplier || 0.15;
+        }
 
         //AnimatorComponent
         const animatorManager = this.game.systems.animatorManager;
@@ -420,8 +424,8 @@ export default class CharacterFactory {
         /*--------------------*/
         /*--------------------*/
 
-        //gameplay
-        const gp = new GameplayComponent();
+        //gameplay - pass characterType to get correct config values
+        const gp = new GameplayComponent(characterType);
 
         //add components
         this.world.addComponent(e, vs);
@@ -438,7 +442,7 @@ export default class CharacterFactory {
             this.world.addComponent(e, pc);
             this.world.addComponent(e, new InventoryComponent());
         } else {
-            const ai = new AIComponent();
+            const ai = new AIComponent(characterType);
             const patrolPath = options?.patrolPath;
             if (patrolPath)
                 ai.patrolPath.push(...patrolPath);
@@ -447,7 +451,8 @@ export default class CharacterFactory {
 
             //add health bar
             const hp = this.createHealthBar();
-            hp.position.y = col.capsuleTotalHeight + 0.3;
+            const healthBarYOffset = this.game.config.get('zombie.healthBar.yOffset', 0.3);
+            hp.position.y = col.capsuleTotalHeight + healthBarYOffset;
             root.add(hp);
             gp.healthBar = hp;
         }

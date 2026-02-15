@@ -5,6 +5,7 @@ export default class HealthManager {
     constructor(game) {
         this.game = game;
         this.world = game.world;
+        this.config = game.config;
     }
 
    update(dt) {
@@ -28,7 +29,10 @@ export default class HealthManager {
 
             // update invincibility status
             gp.timeSinceLastHit += dt;
-            if (gp.timeSinceLastHit > 1) gp.invincibility = false;
+            const invincibilityDuration = isPlayer
+                ? this.config.get('player.combat.invincibilityDuration', 1.0)
+                : this.config.get('zombie.combat.invincibilityDuration', 1.0);
+            if (gp.timeSinceLastHit > invincibilityDuration) gp.invincibility = false;
 
             if (mv){
                 //update repulsion forces from hit
@@ -46,8 +50,14 @@ export default class HealthManager {
         const gp = target.gameplay;
         if (gp.invincibility || gp.health <= 0) return;
         gp.invincibility = true;
-        // gp.health -= 50;
-        gp.health -= 10;
+
+        // Get damage from config based on source type
+        const isSourcePlayer = source.playerCtrl;
+        const damage = isSourcePlayer
+            ? this.config.get('player.combat.damage', 10)
+            : this.config.get('zombie.combat.damage', 10);
+
+        gp.health -= damage;
         gp.isHurt = true; //set here, reset in AI for enemies (not used by playercontroller)
         // console.log(target.name, "was hurt by", source.name)
 

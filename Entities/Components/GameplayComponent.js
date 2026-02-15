@@ -1,15 +1,19 @@
 import * as THREE from 'three';
 import { ECT } from '../Entity.js';
+import { configManager } from '../../Infra/ConfigManager.js';
 
 // holds all entity gameplay related properties
 
 export default class GameplayComponent {
-    constructor() {
+    constructor(characterType = 'player') {
         this.type = ECT.GAMEPLAY;
 
+        // Get config for this character type
+        const config = configManager.getCharacter(characterType);
+
         //health
-        this.health = 100;
-        this.maxHealth = 100;
+        this.health = config.health?.startingHealth || 100;
+        this.maxHealth = config.health?.maxHealth || 100;
 
         //hurt related
         this.invincibility = false;
