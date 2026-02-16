@@ -265,7 +265,8 @@ export default class CharacterFactory {
 
                 // --- 5. Compute offset from root to camera (eye height) ---
                 // Assume camera is at 85% of capsule height
-                const eyeHeight = prefab.capsuleHeight * 0.85;
+                // const eyeHeight = prefab.capsuleHeight * 0.85;
+                const eyeHeight = prefab.capsuleHeight * 0.95;
                 prefab.offsetRootToCamera.set(0, eyeHeight, 0);
 
                 // Mark that we're using mesh-based capsule
