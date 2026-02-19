@@ -72,7 +72,7 @@
   
   "interactables": {
     "Action_Door": {
-      "locked": true,
+      "locked": false,
       "keyRequired": null
     },
     "Action_Door_Treasury": {

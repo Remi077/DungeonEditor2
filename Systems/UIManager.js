@@ -1,5 +1,6 @@
 import { ECT } from '../Entities/Entity.js';
 import Stats from "stats.js";
+import { configManager } from '../Infra/ConfigManager.js';
 
 export default class UIManager {
     constructor(game) {
@@ -14,6 +15,15 @@ export default class UIManager {
         this.hotbar = null;
         this.inventoryContainer = null;
 
+        // New inventory UI elements
+        this.newInventoryUI = null;
+        this.weaponSlot = null;
+        this.coinSlot = null;
+        this.vialSlot = null;
+        this.keySlot = null;
+
+        this.useNewInventoryUI = false;
+
         //stats
         this.fpsPanel = new Stats();//extra fps panel
         this.fpsPanel.showPanel(0);//fps
@@ -27,11 +37,69 @@ export default class UIManager {
     }
 
     showGameUI(){
+        // Check which inventory UI style to use
+        const uiConfig = configManager.get('ui');
+        this.useNewInventoryUI = uiConfig?.useNewInventoryUI ?? false;
+
         // ---------------------------
         // Inject CSS for this state
         // ---------------------------
         this.styleTag = document.createElement('style');
-        this.styleTag.textContent = `
+
+        if (this.useNewInventoryUI) {
+            this.styleTag.textContent = this.getNewInventoryUIStyles();
+        } else {
+            this.styleTag.textContent = this.getOldInventoryUIStyles();
+        }
+
+        document.head.appendChild(this.styleTag);
+
+        // -------------------------
+        // Locate canvas-container
+        // -------------------------
+        const canvasContainer = this.game.canvasContainer;
+
+        // =========== CROSSHAIR ===========
+        this.crosshair = document.createElement('div');
+        this.crosshair.id = 'crosshair';
+        this.crosshair.textContent = '+';
+        canvasContainer.appendChild(this.crosshair);
+
+        // =========== HEALTH BAR ===========
+        this.healthContainer = document.createElement('div');
+        this.healthContainer.id = 'health-container';
+
+        this.healthBar = document.createElement('div');
+        this.healthBar.id = 'health-bar';
+        this.healthContainer.appendChild(this.healthBar);
+
+        canvasContainer.appendChild(this.healthContainer);
+
+        // =========== INVENTORY UI ===========
+        if (this.useNewInventoryUI) {
+            this.createNewInventoryUI(canvasContainer);
+        } else {
+            this.createOldInventoryUI(canvasContainer);
+        }
+
+        // --- extra FPS Panel ---
+        this.fpsPanel = new Stats();//extra fps panel
+        this.fpsPanel.showPanel(0);//fps
+        const fpsPanel = this.fpsPanel;
+        Object.assign(fpsPanel.dom.style, {
+            position: 'absolute',
+            top: '100px',
+            left: 'auto',
+            right: '100px',
+            margin: '0',
+            transform: 'scale(2)',
+            transformOrigin: 'top right'
+        });
+        this.game.mainContainer.appendChild(fpsPanel.dom);
+    }
+
+    getOldInventoryUIStyles() {
+        return `
             #crosshair {
                 position: absolute;
                 color: white;
@@ -136,29 +204,94 @@ export default class UIManager {
                 text-shadow: 0 0 4px black;
             }
         `;
-        document.head.appendChild(this.styleTag);
+    }
 
-        // -------------------------
-        // Locate canvas-container
-        // -------------------------
-        const canvasContainer = this.game.canvasContainer;
+    getNewInventoryUIStyles() {
+        return `
+            #crosshair {
+                position: absolute;
+                color: white;
+                font-size: 24px;
+                pointer-events: none;
+                z-index: 10;
+                display: block;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+            }
 
-        // =========== CROSSHAIR ===========
-        this.crosshair = document.createElement('div');
-        this.crosshair.id = 'crosshair';
-        this.crosshair.textContent = '+';
-        canvasContainer.appendChild(this.crosshair);
+            #health-container {
+                position: fixed;
+                top: 20px;
+                left: 20px;
+                width: 200px;
+                height: 20px;
+                background: #300;
+                border: 2px solid #900;
+                border-radius: 4px;
+            }
 
-        // =========== HEALTH BAR ===========
-        this.healthContainer = document.createElement('div');
-        this.healthContainer.id = 'health-container';
+            #health-bar {
+                width: 100%;
+                height: 100%;
+                background: #0f0;
+                transition: width 0.2s ease-out;
+            }
 
-        this.healthBar = document.createElement('div');
-        this.healthBar.id = 'health-bar';
-        this.healthContainer.appendChild(this.healthBar);
+            #new-inventory-ui {
+                position: absolute;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                pointer-events: none;
+                z-index: 10;
+            }
 
-        canvasContainer.appendChild(this.healthContainer);
+            .inventory-section {
+                position: absolute;
+                display: flex;
+                gap: 8px;
+            }
 
+            .inventory-section.top-right {
+                top: 20px;
+                right: 20px;
+                flex-direction: row;
+            }
+
+            .inventory-section.bottom-right {
+                bottom: 20px;
+                right: 20px;
+                flex-direction: row;
+            }
+
+            .discrete-slot {
+                width: 64px;
+                height: 64px;
+                background: rgba(0, 0, 0, 0.6);
+                border: 2px solid rgba(255, 255, 255, 0.3);
+                border-radius: 8px;
+                position: relative;
+                backdrop-filter: blur(4px);
+            }
+
+            .discrete-slot .count {
+                position: absolute;
+                bottom: 4px;
+                right: 6px;
+                font-size: 16px;
+                font-weight: bold;
+                color: white;
+                text-shadow: 0 0 4px black, 1px 1px 2px black;
+            }
+
+            .discrete-slot.empty {
+                opacity: 0.3;
+            }
+        `;
+    }
+
+    createOldInventoryUI(canvasContainer) {
         // =========== HOTBAR ===========
         this.hotbar = document.createElement('div');
         this.hotbar.id = 'hotbar';
@@ -190,28 +323,63 @@ export default class UIManager {
 
         this.inventoryContainer.appendChild(grid);
         canvasContainer.appendChild(this.inventoryContainer);
+    }
 
-        // --- extra FPS Panel ---
-        this.fpsPanel = new Stats();//extra fps panel
-        this.fpsPanel.showPanel(0);//fps
-        const fpsPanel = this.fpsPanel;
-        Object.assign(fpsPanel.dom.style, {
-            position: 'absolute',
-            top: '100px',
-            left: 'auto',
-            right: '100px',
-            margin: '0',
-            transform: 'scale(2)',
-            transformOrigin: 'top right'
-        });
-        this.game.mainContainer.appendChild(fpsPanel.dom);
+    createNewInventoryUI(canvasContainer) {
+        // Create main container for new inventory UI
+        this.newInventoryUI = document.createElement('div');
+        this.newInventoryUI.id = 'new-inventory-ui';
+
+        // =========== TOP RIGHT: Weapon, Coins, Vials ===========
+        const topRightSection = document.createElement('div');
+        topRightSection.className = 'inventory-section top-right';
+
+        // Weapon slot
+        this.weaponSlot = document.createElement('div');
+        this.weaponSlot.className = 'discrete-slot empty';
+        this.weaponSlot.dataset.category = 'weapon';
+        topRightSection.appendChild(this.weaponSlot);
+
+        // Coin slot
+        this.coinSlot = document.createElement('div');
+        this.coinSlot.className = 'discrete-slot empty';
+        this.coinSlot.dataset.category = 'currency';
+        topRightSection.appendChild(this.coinSlot);
+
+        // Vial slot
+        this.vialSlot = document.createElement('div');
+        this.vialSlot.className = 'discrete-slot empty';
+        this.vialSlot.dataset.category = 'consumable';
+        topRightSection.appendChild(this.vialSlot);
+
+        this.newInventoryUI.appendChild(topRightSection);
+
+        // =========== BOTTOM RIGHT: Special Items (Keys) ===========
+        const bottomRightSection = document.createElement('div');
+        bottomRightSection.className = 'inventory-section bottom-right';
+
+        // Key slot
+        this.keySlot = document.createElement('div');
+        this.keySlot.className = 'discrete-slot empty';
+        this.keySlot.dataset.category = 'key';
+        bottomRightSection.appendChild(this.keySlot);
+
+        this.newInventoryUI.appendChild(bottomRightSection);
+
+        canvasContainer.appendChild(this.newInventoryUI);
     }
 
     hideGameUI() {
         if (this.crosshair) this.crosshair.remove();
         if (this.healthContainer) this.healthContainer.remove();
+
+        // Old inventory UI elements
         if (this.hotbar) this.hotbar.remove();
         if (this.inventoryContainer) this.inventoryContainer.remove();
+
+        // New inventory UI elements
+        if (this.newInventoryUI) this.newInventoryUI.remove();
+
         if (this.fpsPanel && this.fpsPanel.dom && this.fpsPanel.dom.parentNode) {
             this.fpsPanel.dom.parentNode.removeChild(this.fpsPanel.dom);
         }
@@ -271,16 +439,22 @@ export default class UIManager {
     }
 
     toggleInventory(){
-        this.uiState.isInventoryOpen = !this.uiState.isInventoryOpen;
+        // Only toggle inventory grid for old UI
+        if (!this.useNewInventoryUI) {
+            this.uiState.isInventoryOpen = !this.uiState.isInventoryOpen;
 
-        const inventoryContainer = document.getElementById("inventory-grid-container");
-        inventoryContainer.style.display = this.uiState.isInventoryOpen ? "block" : "none";
-        
-        if (this.uiState.isInventoryOpen) {
-            document.exitPointerLock?.();
-        } else {
-            this.game.canvas.requestPointerLock?.(); // request lock on canvas
+            const inventoryContainer = document.getElementById("inventory-grid-container");
+            if (inventoryContainer) {
+                inventoryContainer.style.display = this.uiState.isInventoryOpen ? "block" : "none";
+            }
+
+            if (this.uiState.isInventoryOpen) {
+                document.exitPointerLock?.();
+            } else {
+                this.game.canvas.requestPointerLock?.(); // request lock on canvas
+            }
         }
+        // New UI doesn't have a toggleable inventory grid
     }
 
     updateInventory(e) {
@@ -290,17 +464,12 @@ export default class UIManager {
         if (!inventory?.needsUpdate) return;
         inventory.needsUpdate = false;
 
-        // Convert object to array of [itemId, data] pairs
-        // const inventoryEntries = Object.entries(inventoryObj);
-
-        // // Take first 7 items for hotbar
-        // const hotbarItems = inventoryEntries.slice(0, 7);
-
-        const hotbarItems = inventory.hotbar;
-
-        this.updateHotbarUI(e, hotbarItems);
-
-        // this.highlightSelectedSlot(inventoryObj.selectedSlot);
+        if (this.useNewInventoryUI) {
+            this.updateNewInventoryUI(e);
+        } else {
+            const hotbarItems = inventory.hotbar;
+            this.updateHotbarUI(e, hotbarItems);
+        }
     }
 
     updateHotbarUI(e, hotbarItems) {
@@ -322,14 +491,78 @@ export default class UIManager {
         }
     }
 
-    // highlightSelectedSlot(selectedIndex) {
-    //     const hotbar = document.getElementById("hotbar");
+    updateNewInventoryUI(e) {
+        const inventory = e.inventory;
+        const uiConfig = configManager.get('ui');
+        const categories = uiConfig?.itemCategories || {};
 
-    //     for (let i = 0; i < 7; i++) {   
-    //         hotbar.children[i].classList.toggle("selected", i === (selectedIndex-1));
-    //         // hotbar.children[i].classList.toggle("selected", i === selectedIndex);
-    //     }
-    // }
+        // Collect all items from hotbar and inventory
+        const allItems = [...inventory.hotbar, ...inventory.inventory].filter(item => item !== null);
+
+        // Categorize items
+        const itemsByCategory = {
+            weapons: [],
+            consumables: [],
+            currency: [],
+            keys: []
+        };
+
+        for (const item of allItems) {
+            if (categories.weapons?.includes(item.itemId)) {
+                itemsByCategory.weapons.push(item);
+            } else if (categories.consumables?.includes(item.itemId)) {
+                itemsByCategory.consumables.push(item);
+            } else if (categories.currency?.includes(item.itemId)) {
+                itemsByCategory.currency.push(item);
+            } else if (categories.keys?.includes(item.itemId)) {
+                itemsByCategory.keys.push(item);
+            }
+        }
+
+        // Update weapon slot (show first weapon)
+        const weapon = itemsByCategory.weapons[0];
+        if (weapon) {
+            this.setSlotIcon(this.weaponSlot, weapon.itemId, weapon.count);
+            this.weaponSlot.classList.remove('empty');
+        } else {
+            this.weaponSlot.style.backgroundImage = 'none';
+            this.weaponSlot.innerHTML = '';
+            this.weaponSlot.classList.add('empty');
+        }
+
+        // Update coin slot (sum all currency)
+        const totalCoins = itemsByCategory.currency.reduce((sum, item) => sum + item.count, 0);
+        if (totalCoins > 0) {
+            this.setSlotIcon(this.coinSlot, 'coinbag', totalCoins);
+            this.coinSlot.classList.remove('empty');
+        } else {
+            this.coinSlot.style.backgroundImage = 'none';
+            this.coinSlot.innerHTML = '';
+            this.coinSlot.classList.add('empty');
+        }
+
+        // Update vial slot (sum all consumables)
+        const totalVials = itemsByCategory.consumables.reduce((sum, item) => sum + item.count, 0);
+        if (totalVials > 0) {
+            this.setSlotIcon(this.vialSlot, 'vial', totalVials);
+            this.vialSlot.classList.remove('empty');
+        } else {
+            this.vialSlot.style.backgroundImage = 'none';
+            this.vialSlot.innerHTML = '';
+            this.vialSlot.classList.add('empty');
+        }
+
+        // Update key slot (sum all keys)
+        const totalKeys = itemsByCategory.keys.reduce((sum, item) => sum + item.count, 0);
+        if (totalKeys > 0) {
+            this.setSlotIcon(this.keySlot, 'key', totalKeys);
+            this.keySlot.classList.remove('empty');
+        } else {
+            this.keySlot.style.backgroundImage = 'none';
+            this.keySlot.innerHTML = '';
+            this.keySlot.classList.add('empty');
+        }
+    }
 
     setSlotIcon(slotElement, itemName, count) {
         const data = this.itemAtlas.IMAGES[itemName];

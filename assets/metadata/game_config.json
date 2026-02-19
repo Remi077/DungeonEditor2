@@ -73,6 +73,16 @@
       "titleSlideInDuration": "1s",
       "titleSlideInDelay": "0.3s"
     }
+  },
+
+  "ui": {
+    "useNewInventoryUI": true,
+    "itemCategories": {
+      "weapons": ["sword"],
+      "consumables": ["vial"],
+      "currency": ["coinbag"],
+      "keys": ["key"]
+    }
   }
 }
 
