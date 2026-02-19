@@ -57,6 +57,22 @@
     "ai": {
       "attackDistance": 1.1
     }
+  },
+
+  "menu": {
+    "useNewMenu": false,
+    "assets": {
+      "background": "./assets/textures/menu/menuscreenbg.png",
+      "title": "./assets/textures/menu/menuscreentitle.png",
+      "startButton": "./assets/textures/menu/menuscreenstartbtn.png",
+      "loadButton": "./assets/textures/menu/menuscreenloadbtn.png",
+      "editorButton": "./assets/textures/menu/menuscreeneditorbtn.png",
+      "optionsButton": "./assets/textures/menu/menuscreenoptionsbtn.png"
+    },
+    "animation": {
+      "titleSlideInDuration": "1s",
+      "titleSlideInDelay": "0.3s"
+    }
   }
 }
 
