@@ -75,6 +75,17 @@ export default class UIManager {
 
         canvasContainer.appendChild(this.healthContainer);
 
+        // =========== OXYGEN BAR ===========
+        this.oxygenContainer = document.createElement('div');
+        this.oxygenContainer.id = 'oxygen-container';
+        this.oxygenContainer.style.display = 'none'; // Hidden by default
+
+        this.oxygenBar = document.createElement('div');
+        this.oxygenBar.id = 'oxygen-bar';
+        this.oxygenContainer.appendChild(this.oxygenBar);
+
+        canvasContainer.appendChild(this.oxygenContainer);
+
         // =========== INVENTORY UI ===========
         if (this.useNewInventoryUI) {
             this.createNewInventoryUI(canvasContainer);
@@ -127,6 +138,24 @@ export default class UIManager {
                 width: 100%;
                 height: 100%;
                 background: #0f0;
+                transition: width 0.2s ease-out;
+            }
+
+            #oxygen-container {
+                position: fixed;
+                top: 46px;
+                left: 20px;
+                width: 200px;
+                height: 20px;
+                background: #003;
+                border: 2px solid #009;
+                border-radius: 4px;
+            }
+
+            #oxygen-bar {
+                width: 100%;
+                height: 100%;
+                background: #0af;
                 transition: width 0.2s ease-out;
             }
 
@@ -235,6 +264,24 @@ export default class UIManager {
                 width: 100%;
                 height: 100%;
                 background: #0f0;
+                transition: width 0.2s ease-out;
+            }
+
+            #oxygen-container {
+                position: fixed;
+                top: 46px;
+                left: 20px;
+                width: 200px;
+                height: 20px;
+                background: #003;
+                border: 2px solid #009;
+                border-radius: 4px;
+            }
+
+            #oxygen-bar {
+                width: 100%;
+                height: 100%;
+                background: #0af;
                 transition: width 0.2s ease-out;
             }
 
@@ -404,31 +451,54 @@ export default class UIManager {
         const isPlayer = e.playerCtrl;
         const gp = e.gameplay;
         if (!gp) return;
-        const healthBar = gp?.healthBar ;
-        if (gp.invincibility){
-            const hpPercent = (gp.health / gp.maxHealth) ;
-            if (isPlayer) {
-                gp.healthBar.style.width = (hpPercent * 100)+ "%";
+
+        const hpPercent = (gp.health / gp.maxHealth);
+        if (isPlayer) {
+            gp.healthBar.style.width = (hpPercent * 100)+ "%";
+        } else {
+            if (gp.health <= 0){
+                gp.healthBar.visible = false;
             } else {
-                if (gp.health <= 0){
-                    gp.healthBar.visible = false;
-                } else {
-                    gp.healthBar.visible = true;
-                    const fg = gp.healthBar.healthForeground
-                    fg.scale.x = hpPercent;
-                    fg.position.x = -(gp.healthBar.fullWidth * (1 - hpPercent)) / 2; 
-                }               
+                gp.healthBar.visible = true;
+                const fg = gp.healthBar.healthForeground
+                fg.scale.x = hpPercent;
+                fg.position.x = -(gp.healthBar.fullWidth * (1 - hpPercent)) / 2;
+            }
+
+            // Hide enemy health bar after 3s of no hits
+            if (gp.timeSinceLastHit > 3) {
+                gp.healthBar.visible = false;
             }
         }
-        if (!isPlayer) {
-            if (gp.timeSinceLastHit > 3)
-                gp.healthBar.visible = false; //hide enemy health bar after 3s
+    }
+
+    updateOxygen(e) {
+        const isPlayer = e.playerCtrl;
+        if (!isPlayer) return;
+
+        const gp = e.gameplay;
+        if (!gp) return;
+
+        const oxygenConfig = this.game.config.get('player.oxygen');
+        const oxygenPercent = (gp.oxygen / gp.maxOxygen);
+
+        // Update oxygen bar width
+        this.oxygenBar.style.width = (oxygenPercent * 100) + "%";
+
+        // Show/hide oxygen bar based on oxygen level and time at 100%
+        if (gp.oxygen < gp.maxOxygen) {
+            // Show oxygen bar when oxygen is not at max
+            this.oxygenContainer.style.display = 'block';
+        } else if (gp.timeSinceOxygenAt100 > oxygenConfig.oxygenBarHideDelay) {
+            // Hide oxygen bar after delay when oxygen is at 100%
+            this.oxygenContainer.style.display = 'none';
         }
     }
 
     update(dt, actions) {
         for (const e of this.world.query(ECT.GAMEPLAY)) {
             this.updateHP(e);
+            this.updateOxygen(e);
         }
         for (const e of this.world.query(ECT.INVENTORY)) {
             this.updateInventory(e);

@@ -15,13 +15,45 @@ export default class HealthManager {
             const isPlayer = e.playerCtrl;
             const mv = e.movement;
 
+            // Handle oxygen depletion/recovery for player
+            if (isPlayer && e.capsuleCol) {
+                const col = e.capsuleCol;
+                const oxygenConfig = this.config.get('player.oxygen');
+
+                // Fully submerged - deplete oxygen
+                if (col.isInWater && !col.isAtSurface) {
+                    gp.oxygen = Math.max(0, gp.oxygen - oxygenConfig.depletionRate * dt);
+                    gp.timeSinceOxygenAt100 = 0;
+                }
+                // At surface - recover oxygen
+                else if (col.isAtSurface) {
+                    gp.oxygen = Math.min(gp.maxOxygen, gp.oxygen + oxygenConfig.recoveryRate * dt);
+                }
+                // Not in water - oxygen stays at max
+                else if (!col.isInWater) {
+                    gp.oxygen = gp.maxOxygen;
+                }
+
+                // Track time at 100%
+                if (gp.oxygen >= gp.maxOxygen) {
+                    gp.timeSinceOxygenAt100 += dt;
+                } else {
+                    gp.timeSinceOxygenAt100 = 0;
+                }
+
+                // Drowning damage when oxygen depleted
+                if (gp.oxygen <= 0) {
+                    gp.health = Math.max(0, gp.health - oxygenConfig.drowningDamageRate * dt);
+                }
+            }
+
             // console.log(e.name, gp.isHurt, gp.invincibility)
             //is player alive?
             if (gp.health <= 0) {
                 if (isPlayer) this.game.stateManager.setState(GAMESTATES.GAMEOVER);
             } else if (gp.isHit) {
                 this.hurt(e, gp.perpetrator)
-                //we've processed the hit 
+                //we've processed the hit
                 //now reset hit state
                 gp.isHit = false;
                 gp.perpetrator = null;

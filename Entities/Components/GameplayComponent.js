@@ -15,6 +15,11 @@ export default class GameplayComponent {
         this.health = config.health?.startingHealth || 100;
         this.maxHealth = config.health?.maxHealth || 100;
 
+        //oxygen (for drowning)
+        this.oxygen = config.oxygen?.maxOxygen || 100;
+        this.maxOxygen = config.oxygen?.maxOxygen || 100;
+        this.timeSinceOxygenAt100 = 0; // Track time oxygen has been at 100%
+
         //hurt related
         this.invincibility = false;
         this.isHit = false;
@@ -24,6 +29,7 @@ export default class GameplayComponent {
 
         //UI related
         this.healthBar = null;
+        this.oxygenBar = null;
         this.timeSinceHealthBarShowedUp = 0;
     }
 }

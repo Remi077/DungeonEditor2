@@ -23,6 +23,13 @@
       "startingHealth": 100,
       "maxHealth": 100
     },
+    "oxygen": {
+      "maxOxygen": 100,
+      "depletionRate": 10,
+      "recoveryRate": 25,
+      "drowningDamageRate": 5,
+      "oxygenBarHideDelay": 2.0
+    },
     "healthBar": {
       "width": 0.5,
       "height": 0.05,
