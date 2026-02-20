@@ -181,8 +181,22 @@ export default class EditorState {
         ); // Soft light
         scene.add(this.ambientLight);
 
+        // Get level metadata
+        const levelMetadata = this.game.systems.levelFactory.metadata;
+
+        // Add fog if enabled
+        const fogConfig = levelMetadata?.fog;
+        if (fogConfig?.enabled) {
+            this.game.scene.fog = new THREE.Fog(
+                fogConfig.color,
+                fogConfig.near,
+                fogConfig.far
+            );
+            console.log('Fog enabled in editor:', fogConfig);
+        }
+
         // Add sky sphere if enabled
-        const skyConfig = this.game.config.get('sky');
+        const skyConfig = levelMetadata?.sky;
         if (skyConfig?.enabled) {
             const textureLoader = new THREE.TextureLoader();
             textureLoader.load(skyConfig.texture, (texture) => {
@@ -352,6 +366,9 @@ export default class EditorState {
         // clear scene
         this.game.scene.remove(this.ambientLight);
         this.ambientLight.dispose?.(); // optional, safe
+
+        // Remove fog
+        this.game.scene.fog = null;
 
         // Clean up sky sphere
         if (this.skySphere) {

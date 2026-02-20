@@ -91,6 +91,20 @@
       "locked": false,
       "keyRequired": null
     }
+  },
+
+  "sky": {
+    "enabled": true,
+    "texture": "./assets/textures/sky.png",
+    "radius": 800,
+    "segments": 32
+  },
+
+  "fog": {
+    "enabled": true,
+    "color": "#000000",
+    "near": 10,
+    "far": 100
   }
 }
 

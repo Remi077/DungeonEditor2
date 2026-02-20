@@ -84,15 +84,29 @@ export default class GameState {
 
         this.game.scene.add(this.ambientLight);
 
+        // Get level metadata
+        const levelMetadata = this.game.systems.levelFactory.metadata;
+
+        // Add fog if enabled
+        const fogConfig = levelMetadata?.fog;
+        if (fogConfig?.enabled) {
+            this.game.scene.fog = new THREE.Fog(
+                fogConfig.color,
+                fogConfig.near,
+                fogConfig.far
+            );
+            console.log('Fog enabled:', fogConfig);
+        }
+
         // Add sky sphere if enabled
-        const skyConfig = this.game.config.get('sky');
+        const skyConfig = levelMetadata?.sky;
         if (skyConfig?.enabled) {
             const textureLoader = new THREE.TextureLoader();
             textureLoader.load(skyConfig.texture, (texture) => {
                 // Set texture wrapping and repeat
                 texture.wrapS = THREE.RepeatWrapping;
                 texture.wrapT = THREE.RepeatWrapping;
-                texture.repeat.set(4, 4); // Wrap 4 times horizontally, 1 time vertically
+                texture.repeat.set(4, 4); // Wrap 4 times horizontally, 4 times vertically
 
                 const geometry = new THREE.SphereGeometry(skyConfig.radius, skyConfig.segments, skyConfig.segments);
                 const material = new THREE.MeshBasicMaterial({
@@ -179,6 +193,9 @@ export default class GameState {
         //clear scene
         this.game.scene.remove(this.ambientLight);
         this.ambientLight.dispose?.(); // optional, safe
+
+        // Remove fog
+        this.game.scene.fog = null;
 
         // Clean up sky sphere
         if (this.skySphere) {
