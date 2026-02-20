@@ -181,6 +181,32 @@ export default class EditorState {
         ); // Soft light
         scene.add(this.ambientLight);
 
+        // Add sky sphere if enabled
+        const skyConfig = this.game.config.get('sky');
+        if (skyConfig?.enabled) {
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.load(skyConfig.texture, (texture) => {
+                // Set texture wrapping and repeat
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                texture.repeat.set(4, 1); // Wrap 4 times horizontally, 1 time vertically
+
+                const geometry = new THREE.SphereGeometry(skyConfig.radius, skyConfig.segments, skyConfig.segments);
+                const material = new THREE.MeshBasicMaterial({
+                    map: texture,
+                    side: THREE.BackSide,
+                    fog: false
+                });
+                this.skySphere = new THREE.Mesh(geometry, material);
+                this.skySphere.name = 'SkySphere';
+                this.skySphere.rotation.x = Math.PI / 2; // Rotate 90 degrees to hide pole distortion
+                this.game.scene.add(this.skySphere);
+                console.log('Sky sphere added to editor scene');
+            }, undefined, (error) => {
+                console.error('Failed to load sky texture:', error);
+            });
+        }
+
         //Mini scene for axis helper
         this.axesScene = new THREE.Scene();
         this.axesScene.background = new THREE.Color(0x000000);
@@ -326,6 +352,19 @@ export default class EditorState {
         // clear scene
         this.game.scene.remove(this.ambientLight);
         this.ambientLight.dispose?.(); // optional, safe
+
+        // Clean up sky sphere
+        if (this.skySphere) {
+            this.game.scene.remove(this.skySphere);
+            this.skySphere.geometry.dispose();
+            if (this.skySphere.material) {
+                if (this.skySphere.material.map) {
+                    this.skySphere.material.map.dispose();
+                }
+                this.skySphere.material.dispose();
+            }
+            this.skySphere = null;
+        }
 
         // --- Remove editor-only helpers from main scene ---
         if (this.grid) {

@@ -84,6 +84,32 @@ export default class GameState {
 
         this.game.scene.add(this.ambientLight);
 
+        // Add sky sphere if enabled
+        const skyConfig = this.game.config.get('sky');
+        if (skyConfig?.enabled) {
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.load(skyConfig.texture, (texture) => {
+                // Set texture wrapping and repeat
+                texture.wrapS = THREE.RepeatWrapping;
+                texture.wrapT = THREE.RepeatWrapping;
+                texture.repeat.set(4, 4); // Wrap 4 times horizontally, 1 time vertically
+
+                const geometry = new THREE.SphereGeometry(skyConfig.radius, skyConfig.segments, skyConfig.segments);
+                const material = new THREE.MeshBasicMaterial({
+                    map: texture,
+                    side: THREE.BackSide,
+                    fog: false
+                });
+                this.skySphere = new THREE.Mesh(geometry, material);
+                this.skySphere.name = 'SkySphere';
+                this.skySphere.rotation.x = Math.PI / 2; // Rotate 90 degrees to hide pole distortion
+                this.game.scene.add(this.skySphere);
+                console.log('Sky sphere added to scene');
+            }, undefined, (error) => {
+                console.error('Failed to load sky texture:', error);
+            });
+        }
+
         //initialize and place camera holder if not in scene
         const yawObject = this.game.yawObject;
         const pitchObject = this.game.pitchObject;
@@ -153,6 +179,19 @@ export default class GameState {
         //clear scene
         this.game.scene.remove(this.ambientLight);
         this.ambientLight.dispose?.(); // optional, safe
+
+        // Clean up sky sphere
+        if (this.skySphere) {
+            this.game.scene.remove(this.skySphere);
+            this.skySphere.geometry.dispose();
+            if (this.skySphere.material) {
+                if (this.skySphere.material.map) {
+                    this.skySphere.material.map.dispose();
+                }
+                this.skySphere.material.dispose();
+            }
+            this.skySphere = null;
+        }
     }
 
     keydown(e) {

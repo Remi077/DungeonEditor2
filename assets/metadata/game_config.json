@@ -83,6 +83,13 @@
       "currency": ["coinbag"],
       "keys": ["key"]
     }
+  },
+
+  "sky": {
+    "enabled": true,
+    "texture": "./assets/textures/sky.png",
+    "radius": 800,
+    "segments": 32
   }
 }
 
