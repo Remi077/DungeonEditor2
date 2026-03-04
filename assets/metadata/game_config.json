@@ -67,7 +67,7 @@
   },
 
   "menu": {
-    "useNewMenu": false,
+    "useNewMenu": true,
     "assets": {
       "background": "./assets/textures/menu/menuscreenbg.png",
       "title": "./assets/textures/menu/menuscreentitle.png",

@@ -98,8 +98,8 @@ export default class LoadingScreenState {
         const characterFactory = game.systems.characterFactory;
 
         // Load level
-        // await levelFactory.loadLevel('./assets/glb/Level2.glb', './assets/metadata/Level2_metadata.json');
-        await levelFactory.loadLevel('./assets/glb/Level1.glb', './assets/metadata/Level1_metadata.json');
+        await levelFactory.loadLevel('./assets/glb/Level2.glb', './assets/metadata/Level2_metadata.json');
+        // await levelFactory.loadLevel('./assets/glb/Level1.glb', './assets/metadata/Level1_metadata.json');
         levelFactory.addToScene();
 
         // Load navmesh
