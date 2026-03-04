@@ -1,0 +1,83 @@
+{
+  "lightTemplates": {
+    "torch": {
+      "frequency": 2.0,
+      "jitter": 0.3,
+      "phase": 0.0,
+      "intensityAmp": 0.4
+    },
+    "candle": {
+      "frequency": 3.0,
+      "jitter": 0.5,
+      "phase": 0.0,
+      "intensityAmp": 0.3
+    },
+    "static": {
+      "frequency": 0.0,
+      "jitter": 0.0,
+      "phase": 0.0,
+      "intensityAmp": 0.0
+    },
+    "flicker": {
+      "frequency": 5.0,
+      "jitter": 0.8,
+      "phase": 0.0,
+      "intensityAmp": 0.6
+    }
+  },
+  
+  "lights": {
+  },
+  
+  "uvAnimTemplates": {
+    "water": {
+      "speedUV": [0.1, 0.05],
+      "offsetUV": [0, 0],
+      "loop": true
+    },
+    "lava": {
+      "speedUV": [0.2, 0.1],
+      "offsetUV": [0, 0],
+      "loop": true
+    },
+    "conveyor": {
+      "speedUV": [0.5, 0],
+      "offsetUV": [0, 0],
+      "loop": true
+    },
+    "slow_scroll": {
+      "speedUV": [0.05, 0],
+      "offsetUV": [0, 0],
+      "loop": true
+    },
+    "fire": {
+      "isFrameAnimation": true,
+      "atlasSize": [4, 4],
+      "frameCount": 12,
+      "frameRate": 10,
+      "frameLoop": true
+    }
+  },
+  
+  "uvAnims": {
+    "UVAnim_Fire": "fire"
+  },
+  
+  "interactables": {
+  },
+
+  "sky": {
+    "enabled": true,
+    "texture": "./assets/textures/sky.png",
+    "radius": 800,
+    "segments": 32
+  },
+
+  "fog": {
+    "enabled": true,
+    "color": "#050505",
+    "near": 10,
+    "far": 210
+  }
+}
+

@@ -1,0 +1,377 @@
+import * as THREE from 'three';
+import { GLTFLoader } from 'GLTFLoader';
+import * as Constants from '../Constants.js';
+
+import Entity from '../Entities/Entity.js';
+import AnimColliderComponent from '../Entities/Components/AnimColliderComponent.js';
+import VisualComponent from '../Entities/Components/VisualComponent.js';
+import TransformComponent from '../Entities/Components/TransformComponent.js';
+import UVAnimComponent from '../Entities/Components/UVAnimComponent.js';
+import InteractableComponent from '../Entities/Components/InteractableComponent.js';
+import DialogComponent from '../Entities/Components/DialogComponent.js';
+import LightComponent from '../Entities/Components/LightComponent.js';
+
+export default class LevelFactory {
+    constructor(game) {
+        this.game = game;
+        this.world = game.world;
+        this.scene = game.scene;
+        this.collision = game.systems.collisionManager;
+
+        this.staticGroup = new THREE.Group();
+        this.actionnablesGroup = new THREE.Group();
+        this.lightGroup = new THREE.Group();
+        this.enemySpawnGroup = new THREE.Group();
+        this.rigGroup = new THREE.Group();
+        this.colliderGroup = new THREE.Group();
+        this.trimeshGroup = new THREE.Group();
+        this.triggerGroup = new THREE.Group();
+        this.uvAnimMaterials = new Set();
+
+        this.loaded = false;
+        this.animatedNodes = [];
+        this.gltf = null;
+        this.metadata = null; // Level metadata (lights, uvAnims, interactables)
+    }
+
+    async loadMetadata(path) {
+        try {
+            const response = await fetch(path);
+            this.metadata = await response.json();
+            console.log('Level metadata loaded:', path);
+        } catch (error) {
+            console.warn('No metadata found for level:', path, error);
+            this.metadata = null;
+        }
+    }
+
+    async loadLevel(path, metadataPath = null) {
+        // Load metadata if provided
+        if (metadataPath) {
+            await this.loadMetadata(metadataPath);
+        }
+
+        const arrayBuffer = await (await fetch(path)).arrayBuffer();
+        const gltf = await this.loadLevelGlb(arrayBuffer);
+        this.gltf = gltf;
+
+        //find animated nodes
+        this.findAnimatedNodes(gltf);
+
+        //parse into groups
+        Array.from(gltf.scene.children).forEach(child => {
+
+            // ---- 1. UVANIM MATERIAL PARSING (BEFORE RE-PARENTING) ----
+            child.traverse(obj => {
+                if (!obj.isMesh) return;
+
+                const materials = Array.isArray(obj.material)
+                    ? obj.material
+                    : [obj.material];
+
+                for (const mat of materials) {
+                    if (!mat || !mat.map) continue;
+
+                    if (mat.name.startsWith(Constants.GLB_PREFIX.UVANIM)) {
+                        this.uvAnimMaterials.add(mat);
+                    }
+                }
+            });
+
+            // ---- 2. GROUP ASSIGNMENT (THIS REMOVES FROM gltf.scene) ----
+            if (child.isLight) this.lightGroup.add(child);
+            else if (child.name.startsWith(Constants.GLB_PREFIX.COLLIDER)) this.colliderGroup.add(child);
+            else if (child.name.startsWith(Constants.GLB_PREFIX.TRIMESH)) this.trimeshGroup.add(child);
+            else if (child.name.startsWith(Constants.GLB_PREFIX.TRIGGER)) this.triggerGroup.add(child);
+            else if (child.name.startsWith(Constants.GLB_PREFIX.ACTION)) this.actionnablesGroup.add(child);
+            else if (child.name.startsWith(Constants.GLB_PREFIX.ENEMY)) this.enemySpawnGroup.add(child);
+            else this.staticGroup.add(child);
+        });
+
+        // Create collision for colliders/triggers
+        this.processColliders();
+
+        this.processActionnables();
+
+        this.processLights();
+
+        this.processUVAnims(this.uvAnimMaterials);
+
+        this.loaded = true;
+    }
+
+    async loadLevelGlb(arrayBuffer) {
+        return new Promise((resolve, reject) => {
+            const loader = new GLTFLoader();
+            loader.parse(arrayBuffer, '', (gltf) => {
+                // gltf.scene is your loaded model
+                console.log('GLB loaded:', gltf.scene);
+                resolve(gltf);
+            }, (error) => {
+                reject(error);
+            });
+        });
+    }
+
+    addToScene() {
+        if (!this.loaded) return;
+        this.scene.add(this.staticGroup);
+        this.scene.add(this.actionnablesGroup);
+        this.scene.add(this.lightGroup);
+        this.scene.add(this.rigGroup);
+    }
+
+    removeFromScene() {
+        this.scene.remove(this.staticGroup);
+        this.scene.remove(this.actionnablesGroup);
+        this.scene.remove(this.lightGroup);
+        this.scene.remove(this.enemySpawnGroup);
+        this.scene.remove(this.rigGroup);
+    }
+
+    processColliders() {
+        const physics = this.collision; // reference to your collisionManager
+
+        Array.from(this.colliderGroup.children).forEach(child => {
+            if (child.name.startsWith(Constants.GLB_PREFIX.COLLIDER_KINE)) {
+                this.collision.createKinematicColliderFromMesh(child, Constants.COL_MASKS.SCENERY);
+            } else {
+                this.collision.createStaticColliderFromMesh(child, Constants.COL_MASKS.SCENERY);
+            }
+        });
+
+        Array.from(this.trimeshGroup.children).forEach(child => {
+           this.collision.createTriMeshColliderFromMesh(child, Constants.COL_MASKS.SCENERY)
+        });
+
+        Array.from(this.triggerGroup.children).forEach(child => {
+           this.collision.createStaticColliderFromMesh(child, Constants.COL_MASKS.WATER)
+        //    .setSensor(true); 
+        });
+
+    }
+
+    findAnimatedNodes(gltf) {
+        const animatedNames = new Set();
+
+        for (const clip of gltf.animations) {
+            for (const track of clip.tracks) {
+                const [nodeName] = track.name.split('.');
+                animatedNames.add(nodeName);
+            }
+        }
+
+        gltf.scene.traverse(obj => {
+            if (animatedNames.has(obj.name) && !obj.isSkinnedMesh) {
+                this.animatedNodes.push(obj);
+            }
+        });
+
+    }
+
+    processActionnables() {
+        const col = this.collision; // reference to your collisionManager
+
+        // First detect which level objects actually have animations
+        // const animatedNodes = this.findAnimatedNodes(this.gltf);
+        const animatedSet = new Set(this.animatedNodes.map(n => n.name));
+
+        this.actionnablesGroup.traverse(child => {
+
+            // Setup actionnable properties here
+            const visualComponent = new VisualComponent(child)
+            const transformComponent = new TransformComponent()
+            
+            //new entity
+            const e = new Entity(child.name);
+
+            //animator component
+            if (animatedSet.has(child.name)) {
+
+                const mixer = new THREE.AnimationMixer(child);
+
+                // const animator = new AnimatorComponent(null, mixer);
+
+                // Add relevant clips for this node
+                const animationClips = new Map();
+                for (const clip of this.gltf.animations) {
+                    const filtered = clip.clone();
+
+                    // Keep only tracks belonging to this child
+                    filtered.tracks = filtered.tracks.filter(t => 
+                        t.name.startsWith(child.name + '.')
+                    );
+
+                    if (filtered.tracks.length > 0) {
+                        animationClips.set(clip.name, filtered);
+                    }
+                }
+                const animatorManager = this.game.systems.animatorManager;
+                const anim = animatorManager.createAnimatorComponent(null, mixer, animationClips);
+                this.world.addComponent(e, anim);
+
+            }
+            
+            //body component
+            const rb = col.getRigidBodyByName(`Collider_Kine_${child.name}`);
+            if (rb) {
+                const col = new AnimColliderComponent();
+                col.mesh = child;
+                col.body = rb;
+                const worldPos = new THREE.Vector3();
+                child.getWorldPosition(worldPos);
+                const rbPos = rb.translation();
+                col.offsetRootToBody = new THREE.Vector3(
+                    rbPos.x - worldPos.x, 
+                    rbPos.y - worldPos.y, 
+                    rbPos.z - worldPos.z);
+                this.world.addComponent(e, col);
+            }
+
+            // add visual and transform components
+            this.world.addComponent(e, visualComponent);
+            e.addComponent(transformComponent);
+
+            // Get interactable metadata (locked, keyRequired)
+            const interactableConfig = this.metadata?.interactables?.[child.name];
+            const locked = interactableConfig?.locked || false;
+            const keyRequired = interactableConfig?.keyRequired || null;
+
+            if (
+                child.name.startsWith(Constants.GLB_PREFIX.ACTION_DOOR)
+                || child.name.startsWith(Constants.GLB_PREFIX.ACTION_CHEST)
+            ) {
+                this.world.addComponent(e, new InteractableComponent(
+                    () => this.game.systems.interactableManager.doorInteract(e),
+                    false, // open
+                    [], // dependentEntities
+                    locked,
+                    keyRequired
+                ));
+                // No DialogComponent needed - uses singleton for locked messages
+            } else if (child.name.startsWith(Constants.GLB_PREFIX.ACTION_SWITCH)) {
+                this.world.addComponent(e, new InteractableComponent(
+                    () => this.game.systems.interactableManager.switchInteract(e),
+                    false, // open
+                    [], // dependentEntities
+                    locked,
+                    keyRequired
+                ));
+            } else if (child.name.startsWith(Constants.GLB_PREFIX.ACTION_ITEM)) {
+                this.world.addComponent(e, new InteractableComponent((callerEntity) => this.game.systems.interactableManager.itemInteract(e, callerEntity)));
+            } else if (child.name.startsWith(Constants.GLB_PREFIX.ACTION_NPC)) {
+                // Extract dialogId from object name: Action_NPC_npc_guard_01 -> npc_guard_01
+                // Or check for custom property 'dialogId' in Blender
+                // let dialogId = child.userData?.dialogId; // Check custom property first
+                let dialogId = null; // Check custom property first
+
+                if (!dialogId) {
+                    // Extract from name: Action_NPC_npc_guard_01 -> npc_guard_01
+                    dialogId = child.name
+                        .replace(new RegExp(`^${Constants.GLB_PREFIX.ACTION_NPC}_?`), '')
+                        .replace(/\d+$/, ''); // Remove trailing numbers like _01
+                }
+
+                if (dialogId) {
+                    this.world.addComponent(e, new DialogComponent(dialogId));
+                    this.world.addComponent(e, new InteractableComponent(() => this.game.systems.interactableManager.dialogInteract(e)));
+                } else {
+                    console.warn(`NPC entity ${child.name} has no dialogId specified`);
+                }
+            } else {
+                if (child.parent?.name.startsWith(Constants.GLB_PREFIX.ACTION_SWITCH)) {
+                    //this current mesh is parented to a switch, get the switch parent and its associated entity
+                    const parentEntity = child.parent.userData[Constants.USER_DATA_FIELDS.INTERACT_ENTITY];
+                    //add this current mesh to the list of dependables for the parent switch entity
+                    parentEntity.interactable?.dependentEntities?.push(e);
+                }
+            }
+
+            //add a pointer to the entity on the mesh (for raycast)
+            child.userData[Constants.USER_DATA_FIELDS.INTERACT_ENTITY] = e;
+
+        });
+    }
+
+    processLights() {
+        Array.from(this.lightGroup.children).forEach(child => {
+
+            const e = new Entity(child.name);
+
+            // Get template from metadata
+            const templateName = this.metadata?.lights?.[child.name];
+            const template = this.metadata?.lightTemplates?.[templateName];
+
+            // Create component with template parameters or defaults
+            const lightComp = template
+                ? new LightComponent(child, template)
+                : new LightComponent(child);
+
+            this.world.addComponent(e, lightComp);
+            this.world.setActive(e, true);
+
+        })
+    }
+
+    processUVAnims(uvAnimMaterials) {
+        for (const mat of uvAnimMaterials) {
+            const e = new Entity(mat.name);
+
+            const uvComp = new UVAnimComponent(mat.map);
+
+            // Get template from metadata
+            const templateName = this.metadata?.uvAnims?.[mat.name];
+            const template = this.metadata?.uvAnimTemplates?.[templateName];
+
+            // Apply template parameters if available
+            if (template) {
+                if (template.isFrameAnimation) {
+                    // Frame-by-frame animation mode
+                    uvComp.isFrameAnimation = true;
+                    uvComp.atlasSize.set(template.atlasSize[0], template.atlasSize[1]);
+                    uvComp.frameCount = template.frameCount;
+                    uvComp.frameRate = template.frameRate;
+                    uvComp.frameLoop = template.frameLoop !== undefined ? template.frameLoop : true;
+                    uvComp.currentFrame = 0;
+                    uvComp.frameTime = 0;
+                } else {
+                    // Continuous scrolling mode
+                    uvComp.speedUV.set(template.speedUV[0], template.speedUV[1]);
+                    uvComp.offsetUV.set(template.offsetUV[0], template.offsetUV[1]);
+                    uvComp.loop = template.loop;
+                }
+            }
+
+            this.world.addComponent(e, uvComp);
+            this.world.setActive(e, true);
+
+            // One-time setup
+            mat.map.wrapS = THREE.RepeatWrapping;
+            mat.map.wrapT = THREE.RepeatWrapping;
+            mat.map.needsUpdate = true;
+        }
+    }
+
+    getRaycastTargets(
+        IncStatic = true, //all static items
+        IncActionnable = true, //interactable items
+        IncRig = false, //characters, enemies
+    ){
+        const raycastTargets = [];
+        if (IncActionnable)
+            this.actionnablesGroup.traverse((child) => {
+                if (child.isMesh) raycastTargets.push(child);
+            });
+        if (IncStatic)
+            this.staticGroup.traverse((child) => {
+                if (child.isMesh) raycastTargets.push(child);
+            });
+        if (IncRig)
+            this.rigGroup.traverse((child) => {
+                if (child.isMesh || child.isSkinnedMesh) raycastTargets.push(child);
+            });
+        const visibleTargets = raycastTargets.filter(obj => obj.visible);
+        return visibleTargets;
+    }
+
+}

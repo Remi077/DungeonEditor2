@@ -1,0 +1,95 @@
+{
+  "physics": {
+    "gravity": 9.81,
+    "maxFallSpeed": 50,
+    "groundedDownwardForce": -0.1
+  },
+
+  "player": {
+    "movement": {
+      "moveSpeed": 5,
+      "maxJumpHeight": 1,
+      "waterSpeedAttenuation": 0.93
+    },
+    "combat": {
+      "attackDamageStart": 0.2,
+      "attackDamageEnd": null,
+      "damage": 10,
+      "repulsionDuration": 0.2,
+      "maxHitRepulsionForce": 5,
+      "invincibilityDuration": 1.0
+    },
+    "health": {
+      "startingHealth": 100,
+      "maxHealth": 100
+    },
+    "oxygen": {
+      "maxOxygen": 100,
+      "depletionRate": 10,
+      "recoveryRate": 25,
+      "drowningDamageRate": 5,
+      "oxygenBarHideDelay": 2.0
+    },
+    "healthBar": {
+      "width": 0.5,
+      "height": 0.05,
+      "yOffset": 0.3
+    }
+  },
+
+  "zombie": {
+    "movement": {
+      "moveSpeed": 5,
+      "moveSpeedMultiplier": 0.15,
+      "maxJumpHeight": 1,
+      "waterSpeedAttenuation": 0.93
+    },
+    "combat": {
+      "attackDamageStart": 0.5,
+      "attackDamageEnd": 0.8,
+      "damage": 10,
+      "repulsionDuration": 0.2,
+      "maxHitRepulsionForce": 5,
+      "invincibilityDuration": 1.0
+    },
+    "health": {
+      "startingHealth": 100,
+      "maxHealth": 100
+    },
+    "healthBar": {
+      "width": 0.5,
+      "height": 0.05,
+      "yOffset": 0.3
+    },
+    "ai": {
+      "attackDistance": 1.1
+    }
+  },
+
+  "menu": {
+    "useNewMenu": false,
+    "assets": {
+      "background": "./assets/textures/menu/menuscreenbg.png",
+      "title": "./assets/textures/menu/menuscreentitle.png",
+      "startButton": "./assets/textures/menu/menuscreenstartbtn.png",
+      "loadButton": "./assets/textures/menu/menuscreenloadbtn.png",
+      "editorButton": "./assets/textures/menu/menuscreeneditorbtn.png",
+      "optionsButton": "./assets/textures/menu/menuscreenoptionsbtn.png"
+    },
+    "animation": {
+      "titleSlideInDuration": "1s",
+      "titleSlideInDelay": "0.3s"
+    }
+  },
+
+  "ui": {
+    "useNewInventoryUI": true,
+    "itemCategories": {
+      "weapons": ["sword"],
+      "consumables": ["vial"],
+      "currency": ["coinbag"],
+      "keys": ["key"]
+    }
+  }
+}
+
