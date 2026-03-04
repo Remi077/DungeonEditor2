@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { ECT } from '../Entities/Entity.js';
 import AnimatorComponent from '../Entities/Components/AnimatorComponent.js';
-import * as Constants from '../../Constants.js';
+import * as Constants from '../Constants.js';
 
 export default class AnimatorManager {
     constructor(game) {
