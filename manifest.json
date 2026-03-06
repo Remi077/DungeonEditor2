@@ -1,0 +1,10 @@
+{
+    "name": "DungeonEditor2",
+    "short_name": "Dungeon",
+    "display": "fullscreen",
+    "orientation": "landscape",
+    "start_url": "./index.html",
+    "background_color": "#111111",
+    "theme_color": "#111111",
+    "icons": []
+}
