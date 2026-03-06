@@ -208,9 +208,17 @@ export default class DialogManager {
         
         this.continuePrompt = document.createElement('div');
         this.continuePrompt.id = 'dialog-continue';
-        this.continuePrompt.textContent = 'Press E to continue...';
+        this.continuePrompt.textContent = navigator.maxTouchPoints > 0 ? 'Tap to continue...' : 'Press E to continue...';
         this.dialogBox.appendChild(this.continuePrompt);
-        
+
+        // Mobile: tap dialog box to advance
+        this.dialogBox.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (this.activeEntity && !this.dialogJustOpened) {
+                this.nextLine();
+            }
+        }, { passive: false });
+
         document.body.appendChild(this.dialogBox);
     }
 }

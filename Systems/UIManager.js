@@ -97,13 +97,14 @@ export default class UIManager {
         this.fpsPanel = new Stats();//extra fps panel
         this.fpsPanel.showPanel(0);//fps
         const fpsPanel = this.fpsPanel;
+        const isMobile = navigator.maxTouchPoints > 0;
         Object.assign(fpsPanel.dom.style, {
             position: 'absolute',
-            top: '100px',
+            top: '4px',
             left: 'auto',
-            right: '100px',
+            right: isMobile ? '4px' : '100px',
             margin: '0',
-            transform: 'scale(2)',
+            transform: isMobile ? 'scale(1)' : 'scale(2)',
             transformOrigin: 'top right'
         });
         this.game.mainContainer.appendChild(fpsPanel.dom);
@@ -179,6 +180,12 @@ export default class UIManager {
                 border: 2px solid rgba(255,255,255,0.2);
                 border-radius: 6px;
                 position: relative;
+            }
+
+            @media (pointer: coarse) and (max-height: 500px) {
+                #hotbar { gap: 6px; padding: 6px 8px; bottom: 8px; }
+                .slot { width: 38px; height: 38px; }
+                .slot .count { font-size: 10px; }
             }
 
             .slot.selected {
@@ -320,6 +327,14 @@ export default class UIManager {
                 border-radius: 8px;
                 position: relative;
                 backdrop-filter: blur(4px);
+            }
+
+            @media (pointer: coarse) and (max-height: 500px) {
+                .discrete-slot { width: 38px; height: 38px; }
+                .discrete-slot .count { font-size: 10px; }
+                .inventory-section { gap: 4px; }
+                .inventory-section.top-right { top: 8px; right: 8px; }
+                .inventory-section.bottom-right { bottom: 8px; right: 8px; }
             }
 
             .discrete-slot .count {

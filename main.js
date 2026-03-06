@@ -35,7 +35,7 @@ import UVAnimManager from './Systems/UVAnimManager.js';
 /*-----------------------------------------------------*/
 
 // revision hash
-const revision = "0.92"; // Replace with actual Git hash
+const revision = "0.94"; // Replace with actual Git hash
 
 // Add it to the div
 document.getElementById('revision-info').innerText = `Version: ${revision}`;
@@ -51,10 +51,20 @@ function isMobile() {
 if (isMobile()) {
     console.log("You're on a mobile device! revision:", revision);
 
+    // Resize renderer when fullscreen is granted (address bar disappears)
+    document.addEventListener('fullscreenchange', () => {
+        const cc = document.getElementById('canvas-container');
+        if (cc && game.renderer) {
+            game.renderer.setSize(cc.clientWidth, cc.clientHeight);
+            game.camera.aspect = cc.clientWidth / cc.clientHeight;
+            game.camera.updateProjectionMatrix();
+        }
+    });
+
     // Request fullscreen + lock landscape on first touch (requires user gesture)
     const enterFullscreenLandscape = async () => {
         try {
-            await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+            await document.documentElement.requestFullscreen();
         } catch (e) {
             console.warn('Fullscreen request failed:', e);
         }

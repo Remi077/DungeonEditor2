@@ -9,7 +9,7 @@ export default class VirtualPadManager {
         this._joystickOrigin = { x: 0, y: 0 };
         this._lookLast = { x: 0, y: 0 };
 
-        this._JOYSTICK_RADIUS = 60;
+        this._JOYSTICK_RADIUS = 45;
 
         this._build();
         this._bindEvents();
@@ -25,8 +25,8 @@ export default class VirtualPadManager {
         style.textContent = `
             #vpad-joystick-base {
                 position: absolute;
-                width: 120px;
-                height: 120px;
+                width: 90px;
+                height: 90px;
                 border-radius: 50%;
                 background: rgba(255,255,255,0.12);
                 border: 2px solid rgba(255,255,255,0.35);
@@ -37,8 +37,8 @@ export default class VirtualPadManager {
                 justify-content: center;
             }
             #vpad-joystick-knob {
-                width: 52px;
-                height: 52px;
+                width: 38px;
+                height: 38px;
                 border-radius: 50%;
                 background: rgba(255,255,255,0.45);
                 position: absolute;
@@ -49,15 +49,15 @@ export default class VirtualPadManager {
             }
             #vpad-btn-jump {
                 position: absolute;
-                bottom: 200px;
-                right: 50px;
-                width: 70px;
-                height: 70px;
+                bottom: 130px;
+                right: 36px;
+                width: 52px;
+                height: 52px;
                 border-radius: 50%;
                 background: rgba(200,220,255,0.25);
                 border: 2px solid rgba(200,220,255,0.55);
                 color: white;
-                font-size: 13px;
+                font-size: 11px;
                 font-family: sans-serif;
                 display: flex;
                 align-items: center;
@@ -68,15 +68,15 @@ export default class VirtualPadManager {
             }
             #vpad-btn-attack {
                 position: absolute;
-                bottom: 110px;
-                right: 50px;
-                width: 70px;
-                height: 70px;
+                bottom: 60px;
+                right: 36px;
+                width: 52px;
+                height: 52px;
                 border-radius: 50%;
                 background: rgba(255,100,80,0.3);
                 border: 2px solid rgba(255,100,80,0.65);
                 color: white;
-                font-size: 13px;
+                font-size: 11px;
                 font-family: sans-serif;
                 display: flex;
                 align-items: center;
@@ -87,15 +87,15 @@ export default class VirtualPadManager {
             }
             #vpad-btn-interact {
                 position: absolute;
-                bottom: 110px;
-                right: 140px;
-                width: 70px;
-                height: 70px;
+                bottom: 60px;
+                right: 104px;
+                width: 52px;
+                height: 52px;
                 border-radius: 50%;
                 background: rgba(80,200,255,0.25);
                 border: 2px solid rgba(80,200,255,0.55);
                 color: white;
-                font-size: 13px;
+                font-size: 11px;
                 font-family: sans-serif;
                 display: flex;
                 align-items: center;
@@ -182,8 +182,8 @@ export default class VirtualPadManager {
 
                 // Place joystick base at touch position
                 this._joystickBase.style.display = '';
-                this._joystickBase.style.left = (x - rect.left - 60) + 'px';
-                this._joystickBase.style.top  = (touch.clientY - rect.top - 60) + 'px';
+                this._joystickBase.style.left = (x - rect.left - 45) + 'px';
+                this._joystickBase.style.top  = (touch.clientY - rect.top - 45) + 'px';
                 this._joystickKnob.style.transform = 'translate(-50%, -50%)';
             }
             // Right 55% → camera look
