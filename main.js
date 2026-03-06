@@ -35,7 +35,7 @@ import UVAnimManager from './Systems/UVAnimManager.js';
 /*-----------------------------------------------------*/
 
 // revision hash
-const revision = "0.95"; // Replace with actual Git hash
+const revision = "0.951"; // Replace with actual Git hash
 
 // Add it to the div
 document.getElementById('revision-info').innerText = `Version: ${revision}`;
