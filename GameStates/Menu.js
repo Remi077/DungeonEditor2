@@ -69,6 +69,18 @@ export default class MenuState {
                 #menu-overlay button.green {
                     background-color: green;
                 }
+
+                @media screen and (orientation: landscape) and (max-height: 500px) {
+                    #menu-overlay h1 {
+                        font-size: 2em;
+                        margin-bottom: 16px;
+                    }
+                    #menu-overlay button {
+                        padding: 8px 28px;
+                        font-size: 1em;
+                        margin: 5px;
+                    }
+                }
             `;
             document.head.appendChild(this.styleTag);
         }
@@ -164,6 +176,26 @@ export default class MenuState {
 
                 .menu-button-img:active {
                     transform: scale(0.95);
+                }
+
+                @media screen and (orientation: landscape) and (max-height: 500px) {
+                    #menu-overlay-new {
+                        flex-direction: row;
+                        align-items: center;
+                        justify-content: center;
+                        gap: 40px;
+                    }
+                    #menu-title {
+                        margin-top: 0;
+                        max-width: 35%;
+                    }
+                    #menu-buttons {
+                        margin-top: 0;
+                        gap: 10px;
+                    }
+                    .menu-button-img {
+                        max-width: 180px;
+                    }
                 }
             `;
             document.head.appendChild(this.styleTag);

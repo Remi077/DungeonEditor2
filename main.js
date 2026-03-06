@@ -35,7 +35,7 @@ import UVAnimManager from './Systems/UVAnimManager.js';
 /*-----------------------------------------------------*/
 
 // revision hash
-const revision = "0.91"; // Replace with actual Git hash
+const revision = "0.92"; // Replace with actual Git hash
 
 // Add it to the div
 document.getElementById('revision-info').innerText = `Version: ${revision}`;
@@ -50,6 +50,23 @@ function isMobile() {
 // Usage
 if (isMobile()) {
     console.log("You're on a mobile device! revision:", revision);
+
+    // Request fullscreen + lock landscape on first touch (requires user gesture)
+    const enterFullscreenLandscape = async () => {
+        try {
+            await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+        } catch (e) {
+            console.warn('Fullscreen request failed:', e);
+        }
+        try {
+            // @ts-ignore - lock() exists on mobile but missing from TS lib
+            await screen.orientation.lock('landscape');
+        } catch (e) {
+            console.warn('Orientation lock failed (fallback overlay shown):', e);
+        }
+    };
+    document.addEventListener('touchstart', enterFullscreenLandscape, { once: true });
+
 } else {
     console.log("You're on a desktop! revision:", revision);
 }
