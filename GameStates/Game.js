@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 import { GAMESTATES } from '../Infra/GameStateManager.js';
 import { CHARACTER_TYPES } from '../Constants.js';
+import VirtualPadManager from '../Systems/VirtualPadManager.js';
 
 export default class GameState {
     constructor(game) {
@@ -37,6 +38,7 @@ export default class GameState {
         }
 
         this.player = null; // player handle
+        this.virtualPad = null;
         this.targetPos = new THREE.Vector3();
 
         //used in update(dt)
@@ -49,12 +51,23 @@ export default class GameState {
 
     onEnter() {
 
-        // lock pointer on click canvas
-        const canvas = this.game.canvas;
-        canvas.requestPointerLock();
+        const isMobile = VirtualPadManager.isMobile();
+
+        // lock pointer on click canvas (desktop only)
+        if (!isMobile) {
+            const canvas = this.game.canvas;
+            canvas.requestPointerLock();
+        }
 
         // show game UI
         this.game.systems.uiManager.showGameUI();
+
+        // virtual pad (mobile only)
+        if (isMobile) {
+            this.game.systems.uiManager.uiState.isPointerLocked = true; // not managed by pointer lock on mobile
+            this.game.systems.uiManager.crosshair.style.display = 'none';
+            this.virtualPad = new VirtualPadManager(this.game);
+        }
 
         // hide collision debug by default
         this.game.systems.collisionManager.hide();
@@ -187,6 +200,12 @@ export default class GameState {
         //hide game UI
         this.game.systems.uiManager.hideGameUI();
 
+        //virtual pad cleanup
+        if (this.virtualPad) {
+            this.virtualPad.destroy();
+            this.virtualPad = null;
+        }
+
         //input management
         this.game.input.clearAllListeners(); //cleanup
 
@@ -273,7 +292,9 @@ export default class GameState {
         const fpsPanel = this.game.systems.uiManager.fpsPanel;
         fpsPanel.begin(); // start measuring frame
 
-        const actions = { ...this.actions, ...this.actionsOnce, ...this.mouseActions };
+        const padActions     = this.virtualPad?.actions     ?? {};
+        const padActionsOnce = this.virtualPad?.actionsOnce ?? {};
+        const actions = { ...this.actions, ...this.actionsOnce, ...this.mouseActions, ...padActions, ...padActionsOnce };
         const uiState = this.game.systems.uiManager.uiState;
         const enableMovement = !uiState.isInventoryOpen && !uiState.isDialogActive
         
@@ -308,6 +329,7 @@ export default class GameState {
         //clear the onpress/onrelease actions now that they have been sampled
         //in that loop to avoid resampling
         for (let key in this.actionsOnce) this.actionsOnce[key] = false;
+        this.virtualPad?.clearActionsOnce();
 
     }
 
