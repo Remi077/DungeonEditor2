@@ -84,7 +84,7 @@ export default class GameState {
         input.on('keydown', (e) => { this.keydown(e) });
         input.on('keyup', (e) => { this.keyup(e) });
         input.on('keypressonce', (e) => { this.keypressonce(e) });
-        input.on('mousedown', (e) => { this.mousedown(e) });
+        if (!isMobile) input.on('mousedown', (e) => { this.mousedown(e) });
         input.on('mouseup', (e) => { this.mouseup(e) });
         input.on('mousemove', (e) => { this.mousemove(e) });
         input.on('resize', (e) => { this.resize(e) });
