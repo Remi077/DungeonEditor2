@@ -157,7 +157,8 @@ export default class GameState {
         //spawn player
         if (!this.player){
 
-            const playerPos = this.game.yawObject.position.clone();
+            // const playerPos = this.game.yawObject.position.clone();
+            const playerPos = new THREE.Vector3(30,10,30);
             this.player = this.game.systems.characterFactory.spawnPlayer(
                 CHARACTER_TYPES.PLAYER,
                 playerPos,
