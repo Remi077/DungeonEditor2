@@ -104,7 +104,7 @@ export default class MenuState {
         this.menuOverlay.appendChild(this.editorButton);
 
         document.body.appendChild(this.menuOverlay);
-
+        this._addFullscreenButton(this.menuOverlay);
     }
 
     createNewMenu() {
@@ -246,6 +246,42 @@ export default class MenuState {
 
         this.menuOverlay.appendChild(buttonsContainer);
         document.body.appendChild(this.menuOverlay);
+        this._addFullscreenButton(this.menuOverlay);
+    }
+
+    _addFullscreenButton(overlay) {
+        if (!navigator.maxTouchPoints) return; // desktop: skip
+
+        const btn = document.createElement('button');
+        btn.textContent = '⛶ Fullscreen';
+        Object.assign(btn.style, {
+            position: 'absolute',
+            bottom: '16px',
+            right: '16px',
+            padding: '10px 18px',
+            fontSize: '1em',
+            background: 'rgba(255,255,255,0.15)',
+            color: 'white',
+            border: '2px solid rgba(255,255,255,0.4)',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            zIndex: '1001',
+        });
+
+        btn.addEventListener('click', async () => {
+            try {
+                await document.documentElement.requestFullscreen();
+            } catch(e) {
+                console.warn('Fullscreen failed:', e);
+            }
+            try {
+                // @ts-ignore
+                await screen.orientation.lock('landscape');
+            } catch(e) {}
+        });
+
+        overlay.appendChild(btn);
+        this._fullscreenBtn = btn;
     }
 
     createButton(label, onClick) {
@@ -276,6 +312,7 @@ export default class MenuState {
         if (this.editorButton) this.editorButton.remove();
         if (this.optionsButton) this.optionsButton.remove();
         if (this.titleElement) this.titleElement.remove();
+        if (this._fullscreenBtn) { this._fullscreenBtn.remove(); this._fullscreenBtn = null; }
         if (this.menuOverlay) this.menuOverlay.remove();
 
         // --- Remove dynamic CSS ---
